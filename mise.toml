@@ -1,0 +1,53 @@
+# Development tooling for open-java-format.
+#
+# Note: the Gradle build provisions its own JDKs (gradle/jdks/**, via the
+# gradle-jdks plugin) and ignores anything on PATH, because gradle.properties
+# sets org.gradle.java.installations.auto-detect=false. The `java` pinned here
+# is for editors, tooling and anything that needs a JVM outside of ./gradlew —
+# it deliberately matches gradle/gradle-daemon-jdk-version.
+
+[tools]
+java = "temurin-21"
+act = "latest"
+
+# --no-configuration-cache: the GraalVM plugin (org.graalvm.buildtools 0.10.4) cannot
+# serialise its NativeConfigurations bean, so any task reaching nativeCompile fails when
+# the configuration cache is on. CI is unaffected (it is off by default) but a developer
+# with org.gradle.configuration-cache=true in ~/.gradle/gradle.properties would hit it —
+# and a user-level gradle.properties outranks the project's, so the flag has to be here.
+
+[tasks.build]
+description = "Full build: compile, test, and the native image for this platform"
+run = "./gradlew --stacktrace --no-configuration-cache build"
+
+[tasks.test]
+description = "Run the test suite"
+run = "./gradlew --stacktrace test"
+
+[tasks.native]
+description = "Build the native image for the current platform only"
+run = "./gradlew --stacktrace --no-configuration-cache :palantir-java-format-native:nativeCompile"
+
+[tasks.format]
+description = "Format this repository with the formatter it builds"
+run = "./gradlew spotlessApply"
+
+[tasks.idea]
+description = "Launch a sandboxed IntelliJ with the plugin installed"
+run = "./gradlew :idea-plugin:runIde"
+
+[tasks."ci:list"]
+description = "List the CI jobs act can see, without running anything"
+run = "act push --list"
+
+[tasks."ci:lint"]
+description = "Dry-run every CI job: resolves images, actions and steps, executes nothing"
+run = "act push --dryrun"
+
+[tasks."ci:build"]
+description = "Run the linux jar+native build job locally in Docker (slow: downloads JDKs, runs all tests)"
+run = "act push --job build"
+
+[tasks."ci:native"]
+description = "Run the linux-aarch64 native job locally in Docker"
+run = "act push --job native --matrix platform:linux-aarch64"

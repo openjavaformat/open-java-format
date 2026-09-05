@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Compiles everything, runs the whole test suite, and — because the GraalVM
+  # plugin wires `nativeCompile` into `assemble` — also produces the
+  # linux-x86-64 native image. This is the job every other one depends on.
+  build:
+    name: build (linux-x86-64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # gradle-git-version derives the project version from `git describe`,
+          # so it needs the full history and all tags.
+          fetch-depth: 0
+
+      - name: Cache JDKs provisioned by gradle-jdks
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.gradle/gradle-jdks
+          key: gradle-jdks-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gradle/jdks/**', 'gradle/gradle-daemon-jdk-version') }}
+
+      # gradle/actions/setup-gradle needs a JVM on PATH. This is only a bootstrap:
+      # the Gradle daemon and every toolchain come from gradle-jdks (gradle/jdks/**),
+      # because gradle.properties disables installation auto-detection. Kept in sync
+      # with gradle/gradle-daemon-jdk-version.
+      - name: Set up a bootstrap JDK
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+        with:
+          # Only the default branch writes to the shared Gradle cache; every
+          # other ref reads it. Avoids pinning the trunk name in two places.
+          cache-read-only: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+      - name: Build
+        run: ./gradlew --stacktrace --continue build
+
+      - name: Upload native image
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-image-linux-x86-64
+          path: palantir-java-format-native/build/native/nativeCompile/*
+          if-no-files-found: error
+
+      - name: Upload jars and plugin distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: jars
+          path: |
+            */build/libs/*.jar
+            idea-plugin/build/distributions/*.zip
+          if-no-files-found: error
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: test-results-linux-x86-64
+          path: '**/build/test-results/**/*.xml'
+          if-no-files-found: warn
+
+  # The platforms the linux-x86-64 job cannot produce. One explicit job per
+  # target, so every published binary is traceable to a named workflow run.
+  native:
+    name: nativeCompile (${{ matrix.platform }})
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-aarch64
+            runner: ubuntu-24.04-arm
+          - platform: macos-aarch64
+            runner: macos-15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      - name: Cache JDKs provisioned by gradle-jdks
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.gradle/gradle-jdks
+          key: gradle-jdks-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gradle/jdks/**', 'gradle/gradle-daemon-jdk-version') }}
+
+      # gradle/actions/setup-gradle needs a JVM on PATH. This is only a bootstrap:
+      # the Gradle daemon and every toolchain come from gradle-jdks (gradle/jdks/**),
+      # because gradle.properties disables installation auto-detection. Kept in sync
+      # with gradle/gradle-daemon-jdk-version.
+      - name: Set up a bootstrap JDK
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+        with:
+          cache-read-only: true
+
+      - name: Compile native image
+        run: ./gradlew --stacktrace :palantir-java-format-native:nativeCompile
+
+      - name: Upload native image
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-image-${{ matrix.platform }}
+          path: palantir-java-format-native/build/native/nativeCompile/*
+          if-no-files-found: error
