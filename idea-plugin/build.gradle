@@ -14,21 +14,28 @@
  * limitations under the License.
  */
 
-apply plugin: 'java'
-apply plugin: 'com.palantir.external-publish-intellij'
-
-def name = "palantir-java-format"
-intellij {
-    pluginName = name
-    updateSinceUntilBuild = true
-    version = "2024.1"
-    plugins = ['java']
+// IntelliJ Platform Gradle Plugin 2.x. The 1.x plugin — which reached this project through
+// com.palantir.external-publish-intellij — cannot run on Gradle 9: it touches
+// org.gradle.api.internal.plugins.DefaultArtifactPublicationSet, which no longer exists.
+buildscript {
+    repositories {
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath 'org.jetbrains.intellij.platform:org.jetbrains.intellij.platform.gradle.plugin:2.18.1'
+    }
 }
 
-patchPluginXml {
-    pluginDescription = "Formats source code using the palantir-java-format tool."
-    sinceBuild = '241' // TODO: keep the intellij version & sinceBuild in sync
-    untilBuild = ''
+apply plugin: 'java'
+apply plugin: 'org.jetbrains.intellij.platform'
+
+def pluginName = "palantir-java-format"
+
+repositories {
+    mavenCentral()
+    intellijPlatform {
+        defaultRepositories()
+    }
 }
 
 configurations {
@@ -40,35 +47,77 @@ configurations {
     }
 }
 
-// This task will resolve runtimeClasspath without telling Gradle that it depends on it, therefore dependent jars won't
-// be created beforehand. Therefore, ensure that it knows about it.
-// see https://github.com/JetBrains/gradle-intellij-plugin/blob/master/src/main/groovy/org/jetbrains/intellij/tasks/PrepareSandboxTask.groovy
-tasks.withType(org.jetbrains.intellij.tasks.PrepareSandboxTask).configureEach {
+dependencies {
+    intellijPlatform {
+        // useInstaller = false: take the IDE from the intellij-repository maven artifact
+        // rather than the platform installer, which has no download URL for this version.
+        intellijIdeaCommunity('2024.2.6') {
+            useInstaller = false
+        }
+        bundledPlugin 'com.intellij.java'
+
+        // 2.x no longer ships the test framework implicitly. 'closest' is the plugin's own
+        // default version constraint; Groovy cannot see Kotlin default arguments, so it is
+        // spelled out here.
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform.INSTANCE, 'closest')
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Plugin.Java.INSTANCE, 'closest')
+    }
+
+    implementation project(':palantir-java-format-jdk-bootstrap')
+    implementation libs.caffeine
+    implementation(libs.slsVersions) {
+        // Has class version conflicts with slf4j brought in by Intellij
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    implementation libs.palantir.platform
+
+    formatter project(':palantir-java-format')
+
+    testImplementation libs.assertj
+    testImplementation libs.junit.jupiter
+    testImplementation libs.junit.platform.launcher
+    implementation libs.jsr305
+}
+
+intellijPlatform {
+    // Bytecode instrumentation (@NotNull assertions, GUI forms) needs the platform's
+    // java-compiler-ant-tasks, whose version the plugin cannot derive from a non-installer
+    // IDE artifact. This plugin has no forms and does not rely on the assertions; the 1.x
+    // setup only carried instrumentation along with a workaround for the duplicate classes
+    // it produced, which the marketplace rejected.
+    instrumentCode = false
+
+    // Launches a headless IDE to index the settings UI for the IDE's search. This plugin has a
+    // single settings page, and the task is fragile outside a desktop session — JetBrains
+    // recommend switching it off for small plugins.
+    buildSearchableOptions = false
+
+    pluginConfiguration {
+        name = pluginName
+        description = "Formats source code using the palantir-java-format tool."
+        ideaVersion {
+            sinceBuild = '242' // JBR 21: the first IDEs that can load this plugin's bytecode
+            untilBuild = provider { null }
+        }
+    }
+
+    publishing {
+        // Inert until the token is present; wiring the marketplace release is Phase 2 work.
+        token = providers.environmentVariable('JETBRAINS_MARKETPLACE_TOKEN')
+    }
+}
+
+// This task resolves runtimeClasspath without telling Gradle it depends on it, so the dependent
+// jars would not be built first. Make the dependency explicit.
+tasks.withType(org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask).configureEach {
     dependsOn configurations.runtimeClasspath
 
     // Also pack the formatter in its own directory
-    into("${name}/impl") {
+    into("${pluginName}/impl") {
         // Note that we don't filter down the jars in the impl directory due to behavior when
         // the formatter is bootstrapped with jdk16+ exports.
         from configurations.formatter
     }
-}
-
-dependencies {
-    implementation project(':palantir-java-format-jdk-bootstrap')
-    implementation 'com.github.ben-manes.caffeine:caffeine'
-    implementation('com.palantir.sls.versions:sls-versions') {
-        // Has class version conflicts with slf4j brought in by Intellij
-        exclude group: 'org.slf4j', module: 'slf4j-api'
-    }
-    implementation 'com.palantir.gradle.utils:platform'
-
-    formatter project(':palantir-java-format')
-
-    testImplementation 'org.assertj:assertj-core'
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'org.junit.platform:junit-platform-launcher'
-    implementation 'com.google.code.findbugs:jsr305'
 }
 
 // Javadoc fails if there are no public classes to javadoc, so make it stop complaining.
@@ -76,10 +125,7 @@ tasks.named("javadoc", Javadoc) {
     failOnError = false
 }
 
-// Prevent duplicate class entries in the instrumentedJar, which the JetBrains marketplace rejects.
-// The jar task's duplicatesStrategy is overridden from INHERIT to WARN. The instrumentedJar task
-// uses with(jarTask) to include the jar's CopySpec, so it picks up WARN and allows duplicates through.
-// Setting EXCLUDE here on the jar task propagates into instrumentedJar via that with(jarTask) call.
+// Prevent duplicate class entries in the instrumented jar, which the JetBrains marketplace rejects.
 tasks.named('jar') {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

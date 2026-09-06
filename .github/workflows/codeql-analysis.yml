@@ -1,0 +1,48 @@
+name: "CodeQL"
+
+on:
+  push:
+    branches: [ 'main' ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ 'main' ]
+  schedule:
+    - cron: '33 9 * * 6'
+
+jobs:
+  analyze:
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Only a bootstrap JVM for the Gradle launcher: the daemon and every toolchain
+      # are provisioned by gradle-jdks (gradle/jdks/**), because gradle.properties
+      # disables installation auto-detection.
+      - name: Set up a bootstrap JDK
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # Initializes the CodeQL tools for scanning.
+      # Must run AFTER setup-java so CodeQL hooks into the correct JDK.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@5595ccaf912efad79be6eef63a5619ff05969be3 # v4
+        with:
+          languages: 'java'
+
+      - name: Build all source sets for CodeQL
+        # --no-build-cache forces javac to run even if outputs are cached,
+        # so CodeQL can intercept all compilation calls.
+        run: ./gradlew --no-build-cache clean compileJava compileTestJava
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # v4

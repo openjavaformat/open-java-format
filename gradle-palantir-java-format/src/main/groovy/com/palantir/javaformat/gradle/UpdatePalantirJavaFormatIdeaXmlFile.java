@@ -27,8 +27,12 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
+@DisableCachingByDefault(because = "Writes the developer's local .idea configuration; nothing to cache")
 public abstract class UpdatePalantirJavaFormatIdeaXmlFile extends DefaultTask {
 
     @InputFiles
@@ -37,6 +41,7 @@ public abstract class UpdatePalantirJavaFormatIdeaXmlFile extends DefaultTask {
 
     @org.gradle.api.tasks.Optional
     @InputFiles
+    @PathSensitive(PathSensitivity.NAME_ONLY)
     public abstract ConfigurableFileCollection getNativeImageConfig();
 
     @org.gradle.api.tasks.Optional

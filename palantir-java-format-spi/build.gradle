@@ -1,22 +1,24 @@
 apply plugin: 'java-library'
 apply plugin: 'com.palantir.revapi'
-apply plugin: 'com.palantir.external-publish-jar'
 
 dependencies {
-    api 'com.google.guava:guava'
-    api 'com.fasterxml.jackson.core:jackson-annotations'
-    api 'com.fasterxml.jackson.datatype:jackson-datatype-guava'
+    api libs.guava
+    api libs.jackson.annotations
+    api libs.jackson.datatype.guava
 
-    testImplementation 'org.assertj:assertj-core'
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
-}
-
-tasks.withType(JavaCompile).named('compileJava') {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    testImplementation libs.assertj
+    testImplementation libs.junit.jupiter
+    testImplementation libs.jackson.databind
 }
 
 javaVersion {
     target = 21
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
 }

@@ -1,9 +1,7 @@
 apply plugin: 'java-gradle-plugin'
 apply plugin: 'com.palantir.revapi'
 apply plugin: 'groovy'
-apply plugin: 'com.palantir.external-publish-jar'
 apply plugin: 'com.palantir.gradle-plugin-testing'
-apply plugin: 'com.palantir.external-publish-gradle-plugin'
 
 configurations {
     pluginClasspath {
@@ -13,30 +11,27 @@ configurations {
 }
 
 dependencies {
-    compileOnly 'com.diffplug.spotless:spotless-plugin-gradle'
+    compileOnly libs.spotless.gradlePlugin
 
     implementation gradleApi()
-    implementation 'com.google.guava:guava'
+    implementation libs.guava
     implementation project(':palantir-java-format-spi')
     implementation project(':palantir-java-format-jdk-bootstrap')
-    implementation 'com.palantir.gradle.utils:platform'
-    implementation 'com.palantir.gradle.idea-configuration:gradle-idea-configuration'
+    implementation libs.palantir.platform
+    implementation libs.ideaConfiguration.gradlePlugin
 
     testImplementation project(':palantir-java-format')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'org.assertj:assertj-core'
-    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj
+    testImplementation libs.jackson.dataformat.xml
 
-    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine'
+    testRuntimeOnly libs.junit.vintage.engine
 
-    pluginClasspath 'com.diffplug.spotless:spotless-plugin-gradle'
+    pluginClasspath libs.spotless.gradlePlugin
 
-    gradlePluginForTesting 'com.palantir.gradle.consistentversions:gradle-consistent-versions'
-    gradlePluginForTesting 'com.diffplug.spotless:spotless-plugin-gradle'
-    gradlePluginForTesting 'com.palantir.gradle.jdks:gradle-jdks-settings'
-    gradlePluginForTesting 'com.palantir.baseline:gradle-baseline-java'
-    gradlePluginForTesting 'com.palantir.gradle.jdkslatest:gradle-jdks-latest'
-    gradlePluginForTesting 'com.palantir.gradle.jdks:gradle-jdks'
+    gradlePluginForTesting libs.consistentVersions.gradlePlugin
+    gradlePluginForTesting libs.spotless.gradlePlugin
+    gradlePluginForTesting libs.baseline.gradlePlugin
 }
 
 gradlePlugin {
@@ -109,16 +104,36 @@ tasks.register("copyNativeImage", Copy.class) {
     into("$buildDir/nativeImage")
 }
 
+// Split in two so the jar build does not need a GraalVM image: every test reads
+// impl.classpath, only the four that drive the binary read nativeImage.path.
 def writeImplClasspath = tasks.register("writeImplClasspath") {
-    inputs.files(tasks.named("copyNativeImage"))
     doLast {
         file("$buildDir/impl.classpath").text = configurations.impl.asPath
+    }
+}
+
+def writeNativeImagePath = tasks.register("writeNativeImagePath") {
+    inputs.files(tasks.named("copyNativeImage"))
+    doLast {
         file("$buildDir/nativeImage.path").text = tasks.named("copyNativeImage").get().getOutputs().getFiles().getSingleFile().listFiles()[0].getAbsolutePath()
     }
 }
 
 tasks.named("test").configure {
     dependsOn(writeImplClasspath)
+
+    if (rootProject.ext.nativeImageRequested) {
+        dependsOn(writeNativeImagePath)
+    } else {
+        // These run the GraalVM binary through NativeImageFormatterService. Without
+        // -PnativeImage=true there is no binary to run, so they are left to the per-platform
+        // `native` CI jobs, which pass it. Keep this list in sync with the test classes that
+        // read build/nativeImage.path.
+        exclude '**/PalantirJavaFormatPluginTest.class'
+        exclude '**/PalantirJavaFormatIdeaPluginTest.class'
+        exclude '**/PalantirJavaFormatSpotlessPluginTest.class'
+        exclude '**/FormatDiffTest.class'
+    }
 }
 
 gradleTestUtils {

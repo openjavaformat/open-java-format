@@ -21,7 +21,9 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
+@DisableCachingByDefault(because = "Edits the developer's local .idea/workspace.xml in place; nothing to cache")
 public abstract class UpdateWorkspaceXmlFile extends DefaultTask {
 
     @Optional

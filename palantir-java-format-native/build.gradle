@@ -17,7 +17,6 @@ buildscript {
 
 apply plugin: 'java-library'
 apply plugin: 'org.graalvm.buildtools.native'
-apply plugin: 'com.palantir.external-publish-custom'
 
 dependencies {
     implementation project(':palantir-java-format')
@@ -45,7 +44,7 @@ graalvmNative {
     binaries {
         main {
             javaLauncher = javaToolchains.launcherFor {
-                languageVersion = JavaLanguageVersion.of(23)
+                languageVersion = JavaLanguageVersion.of(25)
                 vendor = JvmVendorSpec.GRAAL_VM
             }
             imageName = String.format('palantir-java-format-%s_%s', operatingSystem.uiName(), architecture.uiName())
@@ -68,26 +67,14 @@ graalvmNative {
     }
 }
 
-if (Optional.ofNullable(System.getenv("CI")).isPresent()) {
-    externalPublishing {
-        publication('nativeImage') {
-            fileTree("build/native/nativeCompile", { it.include("**/*") }).forEach { file ->
-                artifact(file) {
-                    classifier = String.format("nativeImage-%s", getOsArchName(file))
-                    extension = getExtension(file)
-                }
-            }
-        }
-    }
-} else {
-    logger.info("Configuring local publishing, skipping the external publishing setup because CI was not detected")
-    publishing {
-        publications {
-            nativeImage(MavenPublication) {
-                artifact(tasks.named('nativeCompile', BuildNativeImageTask.class).map { it.getOutputFile() }) {
-                    classifier = String.format("nativeImage-%s", getOsArchName(it.getFile()))
-                    extension = getExtension(it.getFile())
-                }
+// One publication either way: external-publish's CI-only variant is gone, and JReleaser
+// stages whatever maven-publish produces.
+publishing {
+    publications {
+        nativeImage(MavenPublication) {
+            artifact(tasks.named('nativeCompile', BuildNativeImageTask.class).map { it.getOutputFile() }) {
+                classifier = String.format("nativeImage-%s", getOsArchName(it.getFile()))
+                extension = getExtension(it.getFile())
             }
         }
     }
@@ -116,7 +103,11 @@ configurations {
     nativeImage {
         canBeConsumed = true
         canBeResolved = false
-        outgoing.artifact(tasks.named('nativeCompile').map(task -> task.getOutputFile()))
+        // Publishing the binary here is precisely what makes `assemble` (and therefore
+        // `build`) depend on `nativeCompile`, so it is opt-in. See rootProject.build.gradle.
+        if (rootProject.ext.nativeImageRequested) {
+            outgoing.artifact(tasks.named('nativeCompile').map(task -> task.getOutputFile()))
+        }
         attributes {
             attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.objects.named(LibraryElements, 'nativeImage'))
         }

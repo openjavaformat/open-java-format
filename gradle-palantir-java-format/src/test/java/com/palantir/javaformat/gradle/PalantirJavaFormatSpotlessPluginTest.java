@@ -56,26 +56,20 @@ class PalantirJavaFormatSpotlessPluginTest {
                 .map(props -> NATIVE_CONFIG)
                 .orElse("");
 
-        project.settingsGradle().plugins().add("com.palantir.jdks.settings");
-
         // The 'com.diffplug.spotless:spotless-plugin-gradle' dependency is already added by palantir-java-format
         project.buildGradle()
                 .plugins()
                 .add("java")
                 .add("com.palantir.java-format")
-                .add("com.palantir.baseline-java-versions")
-                .add("com.palantir.jdks")
-                .add("com.palantir.jdks.latest");
+                .add("com.palantir.baseline-java-versions");
 
+        // The generated project resolves this through Gradle's own toolchain detection; this
+        // repository no longer provisions JDKs itself (palantir/gradle-jdks was removed).
         project.buildGradle().append("""
             javaVersions {
                 libraryTarget = %s
             }
-
-            jdks {
-                daemonTarget = %s
-            }
-            """, javaVersion, javaVersion);
+            """, javaVersion);
 
         // Add jvm args to allow spotless and formatter gradle plugins to run with Java 16+
         project.gradlePropertiesFile()
@@ -85,8 +79,7 @@ class PalantirJavaFormatSpotlessPluginTest {
                                 + "--add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED "
                                 + "--add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED "
                                 + "--add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED "
-                                + "--add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED")
-                .appendProperty("palantir.jdk.setup.enabled", "true");
+                                + "--add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED");
 
         project.gradlePropertiesFile()
                 .appendLine(Optional.ofNullable(extraGradleProperties).orElse(""));

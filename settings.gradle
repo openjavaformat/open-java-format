@@ -1,13 +1,3 @@
-buildscript {
-    repositories {
-        mavenCentral()
-        gradlePluginPortal()
-    }
-    dependencies {
-        classpath 'com.palantir.gradle.jdks:gradle-jdks-settings:0.82.0'
-    }
-}
-apply plugin: 'com.palantir.jdks.settings'
 rootProject.name = 'palantir-java-format-parent'
 
 include ':gradle-palantir-java-format'

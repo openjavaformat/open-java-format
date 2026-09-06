@@ -7,13 +7,13 @@ configurations {
 }
 
 dependencies {
-    jmhAnnotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess'
-    compileOnly 'org.openjdk.jmh:jmh-generator-annprocess'
+    jmhAnnotationProcessor libs.jmh.generator.annprocess
+    compileOnly libs.jmh.generator.annprocess
 
-    jmhImplementation 'org.assertj:assertj-core'
-    jmhImplementation 'org.junit.jupiter:junit-jupiter'
-    jmhImplementation 'org.openjdk.jmh:jmh-core'
-    jmhImplementation 'org.openjdk.jmh:jmh-generator-annprocess'
+    jmhImplementation libs.assertj
+    jmhImplementation libs.junit.jupiter
+    jmhImplementation libs.jmh.core
+    jmhImplementation libs.jmh.generator.annprocess
     formatterNativeJars project(':palantir-java-format')
     formatterNativeImage(project(':palantir-java-format-native')) {
         attributes {

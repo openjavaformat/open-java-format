@@ -30,7 +30,10 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.Nested;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 public abstract class PalantirJavaFormatPlugin implements Plugin<Project> {
 
@@ -64,12 +67,15 @@ public abstract class PalantirJavaFormatPlugin implements Plugin<Project> {
                 .map(FileCollection::getSingleFile));
     }
 
+    @DisableCachingByDefault(
+            because = "Reformats whatever the working tree currently differs by; there is no reusable output")
     public abstract static class FormatDiffTask extends DefaultTask {
 
         private static Logger log = Logging.getLogger(FormatDiffTask.class);
 
         @org.gradle.api.tasks.Optional
         @InputFile
+        @PathSensitive(PathSensitivity.NAME_ONLY)
         abstract RegularFileProperty getNativeImage();
 
         public FormatDiffTask() {

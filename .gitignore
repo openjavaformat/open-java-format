@@ -61,3 +61,4 @@ node_modules/
 
 # Gradle JDKs setup
 !gradle/*
+.intellijPlatform/

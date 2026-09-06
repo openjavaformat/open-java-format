@@ -1,0 +1,28 @@
+name: Submit dependency graph
+
+on:
+  push:
+    branches: [ 'main' ]
+
+permissions:
+  contents: write
+
+jobs:
+  full-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up a bootstrap JDK
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Submit Dependency Snapshot
+        uses: gradle/actions/dependency-submission@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        env:
+          # Only runtime-classpath dependencies of the published modules count as 'runtime';
+          # annotation processors, Gradle plugin classpaths and test-only dependencies are
+          # reported as 'development' so Dependabot auto-triage rules can dismiss their alerts.
+          DEPENDENCY_GRAPH_RUNTIME_INCLUDE_CONFIGURATIONS: 'runtimeClasspath'

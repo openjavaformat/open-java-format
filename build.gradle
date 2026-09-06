@@ -4,21 +4,24 @@ buildscript {
         gradlePluginPortal()
     }
 
+
     dependencies {
         classpath 'com.palantir.jakartapackagealignment:jakarta-package-alignment:0.7.0'
         classpath 'com.gradle.publish:plugin-publish-plugin:2.1.1'
         classpath 'com.palantir.baseline-error-prone:gradle-baseline-error-prone:0.7.0'
-        classpath 'com.palantir.baseline:gradle-baseline-java:6.80.0'
-        classpath 'com.palantir.gradle.consistentversions:gradle-consistent-versions:3.19.0'
-        classpath 'com.palantir.gradle.externalpublish:gradle-external-publish-plugin:1.37.0'
+        classpath 'com.palantir.baseline:gradle-baseline-java:7.9.0'
         classpath 'com.palantir.gradle.failure-reports:gradle-failure-reports:1.21.0'
         classpath 'com.palantir.gradle.gitversion:gradle-git-version:5.1.0'
         classpath 'com.palantir.gradle.guide:gradle-guide:1.27.0'
         classpath 'com.palantir.gradle.idea-configuration:gradle-idea-configuration:0.11.0'
         classpath 'com.palantir.gradle.idea-language-injector:gradle-idea-language-injector:0.5.0'
-        classpath 'com.palantir.gradle.jdks:gradle-jdks:0.82.0'
-        classpath 'com.palantir.gradle.jdkslatest:gradle-jdks-latest:0.32.0'
         classpath 'com.palantir.gradle.plugintesting:gradle-plugin-testing:0.54.0'
+        // Not applied: versions come from gradle/libs.versions.toml now. It is on the
+        // classpath only because com.palantir.gradle-plugin-testing links against
+        // VersionsLockExtension and fails to instantiate without it. Applying it is what
+        // breaks Gradle 9 (unsafe cross-project configuration resolution); merely having the
+        // jar present does not. Goes away with gradle-plugin-testing itself.
+        classpath 'com.palantir.gradle.consistentversions:gradle-consistent-versions:3.19.0'
         classpath 'com.palantir.javaformat:gradle-palantir-java-format:2.97.0'
         classpath 'com.palantir.suppressible-error-prone:gradle-suppressible-error-prone:2.28.0'
         classpath 'me.champeau.jmh:jmh-gradle-plugin:0.7.3'
@@ -26,22 +29,24 @@ buildscript {
     }
 }
 
-apply plugin: 'com.palantir.external-publish'
 apply plugin: 'com.palantir.failure-reports'
 apply plugin: 'com.palantir.git-version'
 apply plugin: 'com.palantir.gradle-guide'
 apply plugin: 'com.palantir.idea-language-injector'
-apply plugin: 'com.palantir.jdks'
-apply plugin: 'com.palantir.jdks.latest'
 apply plugin: 'com.palantir.baseline'
 apply plugin: 'com.palantir.baseline-error-prone-root'
 apply plugin: 'com.palantir.baseline-java-versions'
-apply plugin: 'com.palantir.consistent-versions'
 apply plugin: 'com.palantir.baseline-java-versions'
 
 // GitHub Actions sets GITHUB_REF_TYPE=tag on a tag build; otherwise derive the
 // version from git history (needs a full clone: actions/checkout fetch-depth: 0).
 version System.env.GITHUB_REF_TYPE == 'tag' ? System.env.GITHUB_REF_NAME : gitVersion()
+
+// The GraalVM image is built by its own per-platform CI job, never as a side effect of
+// `./gradlew build`: an aggregate build must not require a GraalVM toolchain on a machine that
+// only wants the jars. Pass -PnativeImage=true to wire it back into the lifecycle tasks — that is
+// what .github/workflows/ci.yml's `native` jobs do.
+ext.nativeImageRequested = Boolean.parseBoolean(providers.gradleProperty('nativeImage').getOrElse('false'))
 
 allprojects {
     apply plugin: 'com.palantir.baseline-null-away'
@@ -58,6 +63,19 @@ allprojects {
 
 subprojects {
     apply plugin: 'java-library'
+
+    // Publication is plain maven-publish; JReleaser takes it from there.
+    apply plugin: 'maven-publish'
+
+    java {
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    dependencies {
+        // Gives a version to the JUnit artifacts that plugins add without one.
+        testImplementation platform(libs.junit.bom)
+    }
 
     tasks.withType(Checkstyle).configureEach {
         enabled = false
@@ -76,17 +94,10 @@ subprojects {
 }
 
 javaVersions {
-    libraryTarget = 17
+    libraryTarget = 21
     runtime = 21
 }
 
-jdks {
-    daemonTarget = 21
-
-    jdk(23) {
-        distribution = 'graalvm-ce'
-        jdkVersion = '23.0.1'
-    }
-
-    jdkMajorVersionsToUse().add(JavaLanguageVersion.of("23"))
-}
+// GraalVM for the native image. gradle-jdks used to pin an exact build in gradle/jdks/**;
+// the toolchain spec plus the foojay resolver (settings.gradle) does the same job with the
+// JDK the environment already provides — setup-graalvm in CI, mise locally.

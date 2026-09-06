@@ -2,24 +2,23 @@ import me.champeau.jmh.JMHTask
 
 apply plugin: 'java-library'
 apply plugin: 'com.palantir.revapi'
-apply plugin: 'com.palantir.external-publish-jar'
 
 configurations {
     formatterNativeImage
 }
 
 dependencies {
-    annotationProcessor "org.immutables:value"
+    annotationProcessor libs.immutables.value
 
     api project(':palantir-java-format-spi')
-    compileOnly 'org.immutables:value::annotations'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    compileOnly variantOf(libs.immutables.value) { classifier('annotations') }
+    implementation libs.jackson.databind
 
     // So that we have pjf on our test classpath
     testImplementation project(':palantir-java-format')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testImplementation 'org.assertj:assertj-core'
-    testImplementation 'com.fasterxml.jackson.core:jackson-databind'
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj
+    testImplementation libs.jackson.databind
     formatterNativeImage(project(':palantir-java-format-native')) {
         attributes {
             attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.objects.named(LibraryElements, 'nativeImage'))
@@ -30,4 +29,20 @@ dependencies {
 tasks.named('test', Test.class) {
     inputs.files(configurations.named('formatterNativeImage'))
     environment.put('NATIVE_IMAGE_CLASSPATH', configurations.formatterNativeImage.asPath)
+
+    // FormatterServicesTest is parameterised over the JVM and the GraalVM implementations, and
+    // reaches the binary through NATIVE_IMAGE_CLASSPATH rather than a task dependency — so
+    // without -PnativeImage=true that path is empty and every case fails. The per-platform
+    // `native` CI jobs pass the flag and run it.
+    if (!rootProject.ext.nativeImageRequested) {
+        exclude '**/FormatterServicesTest.class'
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
 }
