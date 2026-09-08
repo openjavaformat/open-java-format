@@ -15,17 +15,9 @@ buildscript {
         classpath 'com.palantir.gradle.guide:gradle-guide:1.27.0'
         classpath 'com.palantir.gradle.idea-configuration:gradle-idea-configuration:0.11.0'
         classpath 'com.palantir.gradle.idea-language-injector:gradle-idea-language-injector:0.5.0'
-        classpath 'com.palantir.gradle.plugintesting:gradle-plugin-testing:0.54.0'
-        // Not applied: versions come from gradle/libs.versions.toml now. It is on the
-        // classpath only because com.palantir.gradle-plugin-testing links against
-        // VersionsLockExtension and fails to instantiate without it. Applying it is what
-        // breaks Gradle 9 (unsafe cross-project configuration resolution); merely having the
-        // jar present does not. Goes away with gradle-plugin-testing itself.
-        classpath 'com.palantir.gradle.consistentversions:gradle-consistent-versions:3.19.0'
         classpath 'com.palantir.javaformat:gradle-palantir-java-format:2.97.0'
         classpath 'com.palantir.suppressible-error-prone:gradle-suppressible-error-prone:2.28.0'
         classpath 'me.champeau.jmh:jmh-gradle-plugin:0.7.3'
-        classpath 'com.palantir.gradle.revapi:gradle-revapi:2.3.0'
     }
 }
 
@@ -33,9 +25,12 @@ apply plugin: 'com.palantir.failure-reports'
 apply plugin: 'com.palantir.git-version'
 apply plugin: 'com.palantir.gradle-guide'
 apply plugin: 'com.palantir.idea-language-injector'
-apply plugin: 'com.palantir.baseline'
+// Not the `com.palantir.baseline` aggregate: it also applies baseline-format (Spotless) and
+// baseline-class-uniqueness, and both are incompatible with the configuration cache at their
+// latest versions — Spotless fails serialising its Groovy extension, checkClassUniqueness casts
+// a ResolvingFileCollection to Configuration. The rest of what baseline gives us is applied
+// per project below, so error-prone and the JUnit wiring survive.
 apply plugin: 'com.palantir.baseline-error-prone-root'
-apply plugin: 'com.palantir.baseline-java-versions'
 apply plugin: 'com.palantir.baseline-java-versions'
 
 // GitHub Actions sets GITHUB_REF_TYPE=tag on a tag build; otherwise derive the
@@ -48,12 +43,50 @@ version System.env.GITHUB_REF_TYPE == 'tag' ? System.env.GITHUB_REF_NAME : gitVe
 // what .github/workflows/ci.yml's `native` jobs do.
 ext.nativeImageRequested = Boolean.parseBoolean(providers.gradleProperty('nativeImage').getOrElse('false'))
 
+// The javac internals the formatter parses with. Was baseline's `moduleJvmArgs`, which is
+// dropped because it resolves its extension at execution time and the configuration cache
+// forbids that — so the exports are handed to javac and to the test JVMs here instead.
+def javacInternalExports = [
+        'jdk.compiler/com.sun.tools.javac.api',
+        'jdk.compiler/com.sun.tools.javac.code',
+        'jdk.compiler/com.sun.tools.javac.file',
+        'jdk.compiler/com.sun.tools.javac.main',
+        'jdk.compiler/com.sun.tools.javac.parser',
+        'jdk.compiler/com.sun.tools.javac.tree',
+        'jdk.compiler/com.sun.tools.javac.util',
+]
+
 allprojects {
     apply plugin: 'com.palantir.baseline-null-away'
+    apply plugin: 'com.palantir.baseline-encoding'
+    apply plugin: 'com.palantir.baseline-immutables'
+    apply plugin: 'com.palantir.baseline-java-compiler-diagnostics'
+    apply plugin: 'com.palantir.baseline-java-compiler-heap'
+    apply plugin: 'com.palantir.baseline-java-properties'
+    apply plugin: 'com.palantir.baseline-prefer-project-modules'
+    apply plugin: 'com.palantir.baseline-reproducibility'
+    apply plugin: 'com.palantir.baseline-test-heap'
+    apply plugin: com.palantir.baseline.plugins.BaselineTesting
     apply plugin: 'com.palantir.java-format'
     apply plugin: 'com.palantir.jakarta-package-alignment'
     group = 'com.palantir.javaformat'
     version = rootProject.version
+
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs.addAll(javacInternalExports.collect { "--add-exports=${it}=ALL-UNNAMED".toString() })
+    }
+
+    tasks.withType(Test).configureEach {
+        jvmArgs(javacInternalExports.collect { "--add-exports=${it}=ALL-UNNAMED".toString() })
+    }
+
+    tasks.withType(Javadoc).configureEach {
+        options.addMultilineStringsOption('-add-exports')
+                .setValue(javacInternalExports.collect { "${it}=ALL-UNNAMED".toString() })
+        // baseline used to silence doclint; these sources carry inherited javadoc from
+        // google-java-format that has never satisfied it (unknown tags, malformed HTML).
+        options.addStringOption('Xdoclint:none', '-quiet')
+    }
 
     repositories {
         mavenCentral() { metadataSources { mavenPom(); ignoreGradleMetadataRedirection() } }

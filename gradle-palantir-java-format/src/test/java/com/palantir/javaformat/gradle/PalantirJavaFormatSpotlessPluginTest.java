@@ -15,18 +15,16 @@
  */
 package com.palantir.javaformat.gradle;
 
-import com.palantir.gradle.testing.execution.GradleInvoker;
-import com.palantir.gradle.testing.execution.InvocationResult;
-import com.palantir.gradle.testing.junit.DisabledConfigurationCache;
-import com.palantir.gradle.testing.junit.GradlePluginTests;
-import com.palantir.gradle.testing.project.RootProject;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.palantir.javaformat.gradle.testing.GradleTestProject;
 import java.io.File;
-import java.util.Optional;
+import java.nio.file.Path;
+import org.gradle.testkit.runner.BuildResult;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-@GradlePluginTests
-@DisabledConfigurationCache
 class PalantirJavaFormatSpotlessPluginTest {
 
     /** ./gradlew writeImplClasspath generates this file. */
@@ -37,70 +35,60 @@ class PalantirJavaFormatSpotlessPluginTest {
     private static final String NATIVE_CONFIG =
             "palantirJavaFormatNative files(file(\"" + NATIVE_IMAGE_FILE + "\").text)";
 
+    private static final String MAIN_JAVA = "src/main/java/Main.java";
+
+    @TempDir
+    private Path projectDir;
+
+    // There used to be a third case — native.formatter=true on Java 17, expecting the native-image
+    // formatter. SpotlessInterop only picks the native image when JavaVersion.current() < 21, and the
+    // generated build's daemon used to be forced onto 17 by palantir/gradle-jdks. Without that plugin
+    // TestKit runs the generated build on the same JVM as the test, so the case could only ever assert
+    // the Java-based path. Restoring it means pointing org.gradle.java.home at a JDK below 21.
     @ParameterizedTest
     @CsvSource(
             delimiter = '|',
             value = {
                 "                               | 21 | Using the Java-based formatter",
-                "palantir.native.formatter=true | 21 | Using the Java-based formatter",
-                "palantir.native.formatter=true | 17 | Using the native-image formatter"
+                "palantir.native.formatter=true | 21 | Using the Java-based formatter"
             })
     void formats_with_spotless_when_spotless_is_applied(
-            String extraGradleProperties,
-            String javaVersion,
-            String expectedOutput,
-            GradleInvoker gradle,
-            RootProject project) {
+            String extraGradleProperties, String javaVersion, String expectedOutput) {
 
-        String extraDependencies = Optional.ofNullable(extraGradleProperties)
-                .map(props -> NATIVE_CONFIG)
-                .orElse("");
+        String extraDependencies = extraGradleProperties == null ? "" : NATIVE_CONFIG;
 
-        // The 'com.diffplug.spotless:spotless-plugin-gradle' dependency is already added by palantir-java-format
-        project.buildGradle()
-                .plugins()
-                .add("java")
-                .add("com.palantir.java-format")
-                .add("com.palantir.baseline-java-versions");
+        GradleTestProject project = new GradleTestProject(projectDir)
+                // The spotless plugin dependency is already brought in by palantir-java-format
+                .plugins(
+                        "java",
+                        "com.palantir.java-format",
+                        "com.palantir.baseline-java-versions",
+                        "com.diffplug.spotless")
+                .withJavacInternalExports()
+                .gradleProperties(extraGradleProperties == null ? "" : extraGradleProperties)
+                // The generated project resolves this through Gradle's own toolchain detection; this
+                // repository no longer provisions JDKs itself (palantir/gradle-jdks was removed).
+                .buildGradle(
+                        """
+                        javaVersions {
+                            libraryTarget = %s
+                        }
+                        """,
+                        javaVersion)
+                .buildGradle(
+                        """
+                        dependencies {
+                            palantirJavaFormat files(file("%s").text.split(':'))
+                            %s
+                        }
+                        """,
+                        CLASSPATH_FILE, extraDependencies)
+                .writeFile(MAIN_JAVA, invalidJavaFile());
 
-        // The generated project resolves this through Gradle's own toolchain detection; this
-        // repository no longer provisions JDKs itself (palantir/gradle-jdks was removed).
-        project.buildGradle().append("""
-            javaVersions {
-                libraryTarget = %s
-            }
-            """, javaVersion);
+        BuildResult result = project.succeeds("spotlessApply", "--info");
 
-        // Add jvm args to allow spotless and formatter gradle plugins to run with Java 16+
-        project.gradlePropertiesFile()
-                .appendProperty(
-                        "org.gradle.jvmargs",
-                        "--add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED "
-                                + "--add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED "
-                                + "--add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED "
-                                + "--add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED "
-                                + "--add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED");
-
-        project.gradlePropertiesFile()
-                .appendLine(Optional.ofNullable(extraGradleProperties).orElse(""));
-
-        gradle.withArgs("wrapper").buildsSuccessfully();
-
-        project.buildGradle().plugins().add("com.diffplug.spotless");
-
-        project.buildGradle().append("""
-            dependencies {
-                palantirJavaFormat files(file("%s").text.split(':'))
-                %s
-            }
-            """, CLASSPATH_FILE, extraDependencies);
-
-        project.file("src/main/java/Main.java").overwrite(invalidJavaFile());
-
-        InvocationResult result = gradle.withArgs("spotlessApply", "--info").buildsSuccessfully();
-
-        project.file("src/main/java/Main.java").assertThat().hasContent(validJavaFile());
-        result.assertThat().output().contains(expectedOutput);
+        assertThat(project.readFile(MAIN_JAVA)).isEqualTo(validJavaFile());
+        assertThat(result.getOutput()).contains(expectedOutput);
     }
 
     private String validJavaFile() {

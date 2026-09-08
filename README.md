@@ -125,7 +125,7 @@ replaced with something a stranger can run.
 | Changelog | Palantir changelog-app (`.changelog.yml`) | Release Drafter, changelog entry in the PR template |
 | Version pinning | `gradle-consistent-versions` (`versions.props` / `versions.lock`) | Version catalog (`gradle/libs.versions.toml`) + Gradle dependency locking |
 | Static analysis | `gradle-baseline`, `baseline-error-prone`, `suppressible-error-prone`, `baseline-null-away`, `.baseline/` | `net.ltgt.errorprone` + NullAway directly; vendor the checkstyle config (checkstyle is disabled in this build today anyway) |
-| JDK provisioning | `gradle-jdks`, `gradle-jdks-latest`, `gradle-jdks-settings`, `gradle/jdks/**`, `palantir.jdk.setup.enabled` | Gradle toolchains + foojay resolver locally; `actions/setup-java` and `graalvm/setup-graalvm` in CI |
+| JDK provisioning | ~~`gradle-jdks`, `gradle-jdks-latest`, `gradle-jdks-settings`, `gradle/jdks/**`, `palantir.jdk.setup.enabled`, a patched `gradlew`~~ | **Done** — Gradle toolchains resolved from JDKs that mise installs locally and `actions/setup-java` / `graalvm/setup-graalvm` install in CI |
 | Version string | `gradle-git-version` + `CIRCLE_TAG` | `git describe` / `GITHUB_REF_NAME` |
 | API compatibility | `gradle-revapi` (`.palantir/revapi.yml`) | japicmp, or revapi's own plugin |
 | IntelliJ plugin publish | `com.palantir.external-publish-intellij` | `org.jetbrains.intellij.platform` + `publishPlugin` with a marketplace token |
@@ -165,18 +165,19 @@ point at.
 | Gradle plugin | ✅ | — | — | — | — | — |
 | IntelliJ plugin | ✅ | — | — | — | — | — |
 | Eclipse plugin | ✅ | — | — | — | — | — |
-| Native image | ⚠️ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Native image | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 
-✅ built and uploaded by [`ci.yml`](.github/workflows/ci.yml) · ⚠️ built, but as a side effect of
-`assemble` rather than by a job of its own · ❌ missing · — not applicable
+✅ built and uploaded by [`ci.yml`](.github/workflows/ci.yml) · ❌ missing · — not applicable
+
+Every native image now comes from a job of its own, on a GraalVM installed by
+`graalvm/setup-graalvm`, never as a side effect of `./gradlew build` — pass `-PnativeImage=true`
+to wire it back into the lifecycle tasks.
 
 Remaining gaps, each a self-contained PR:
 
-- [ ] macOS x86-64 (`macos-13` runner)
 - [ ] Windows x86-64 — the coordinate already exists in `NativeImageFormatProviderPlugin`, nothing
       produces the binary
 - [ ] linux musl / Alpine
-- [ ] Give linux x86-64 its own `nativeCompile` job instead of relying on `build`
 
 ### Phase 2 — Republish under neutral coordinates
 
@@ -366,11 +367,15 @@ mise run format                 # format this repo with the formatter it builds
 mise tasks                      # everything else
 ```
 
-The Gradle build provisions its own JDKs — Amazon Corretto 21 for the daemon and GraalVM CE 23 for
-`nativeCompile`, pinned in `gradle/jdks/**` — and ignores whatever is on `PATH`, because
-`gradle.properties` sets `org.gradle.java.installations.auto-detect=false`. The first build
-therefore downloads about 500 MB before it compiles anything. All of it comes from public vendor
-URLs (corretto.aws, github.com/graalvm), not from any private mirror.
+Nothing inside the build downloads a JDK. `mise.toml` pins all three the build uses — Temurin 17
+(library target), Temurin 21 (daemon and runtime target) and GraalVM Community 23 (the native
+image) — and Gradle resolves its toolchains from them; `org.gradle.java.installations.auto-download`
+is off, so a missing JDK is an error you can read rather than a silent download. CI installs the
+same three with `actions/setup-java` and `graalvm/setup-graalvm`.
+
+GraalVM specifically has to come from outside Gradle: unpacking a JDK Gradle downloaded itself does
+not preserve the symlink GraalVM ships at `bin/native-image`, and `nativeCompile` then fails on an
+empty, unexecutable file.
 
 ### Running CI locally
 

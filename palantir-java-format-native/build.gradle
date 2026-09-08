@@ -9,7 +9,7 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath 'org.graalvm.buildtools:native-gradle-plugin:0.10.4'
+        classpath 'org.graalvm.buildtools:native-gradle-plugin:1.1.12'
         classpath 'com.palantir.gradle.utils:platform:0.10.0'
     }
 }
@@ -41,29 +41,42 @@ def exports = [
 def jvmArgList = exports.collect { value -> "--add-exports=${value}=ALL-UNNAMED".toString() }
 
 graalvmNative {
-    binaries {
-        main {
-            javaLauncher = javaToolchains.launcherFor {
-                languageVersion = JavaLanguageVersion.of(25)
-                vendor = JvmVendorSpec.GRAAL_VM
-            }
-            imageName = String.format('palantir-java-format-%s_%s', operatingSystem.uiName(), architecture.uiName())
-            mainClass = 'com.palantir.javaformat.java.Main'
-            fallback = false
-            sharedLibrary = false
-            classpath.setFrom(configurations.named('runtimeClasspath'))
-            configurationFileDirectories.from(file('src/main/resources/META-INF/native-image'))
-            buildArgs.addAll(
-                    '-H:+UnlockExperimentalVMOptions',
-                    '-H:+IncludeAllLocales',
-                    '--no-fallback',
-                    '--initialize-at-build-time=com.sun.tools.javac.file.Locations',
-                    '-H:+ReportExceptionStackTraces',
-                    '-H:-UseContainerSupport',
-                    '--exact-reachability-metadata',
-                    "-march=compatibility")
-            jvmArgs.addAll(jvmArgList)
-        }
+    // 1.x turns the shared GraalVM reachability-metadata repository on by default; 0.10.x had
+    // no such thing, and it refuses to run unless the JDK is newer than the one Gradle resolves
+    // here. This project ships its own metadata (configurationFileDirectories below), so keep
+    // the previous behaviour rather than couple the build to a GraalVM patch level.
+    metadataRepository {
+        enabled = false
+    }
+
+    // native-gradle-plugin 1.x exposes these as lazy Property/FileCollection. Groovy's `=`
+    // shorthand does not reach them through the container's proxy, so set them explicitly.
+    binaries.named('main') {
+        it.javaLauncher.set(javaToolchains.launcherFor {
+            it.languageVersion.set(JavaLanguageVersion.of(25))
+            it.vendor.set(JvmVendorSpec.GRAAL_VM)
+        })
+        it.imageName.set(String.format('palantir-java-format-%s_%s', operatingSystem.uiName(), architecture.uiName()))
+        it.mainClass.set('com.palantir.javaformat.java.Main')
+        it.fallback.set(false)
+        it.sharedLibrary.set(false)
+        it.classpath.from(configurations.named('runtimeClasspath'))
+        it.configurationFileDirectories.from(file('src/main/resources/META-INF/native-image'))
+        it.buildArgs.addAll(
+                '-H:+UnlockExperimentalVMOptions',
+                '-H:+IncludeAllLocales',
+                '--no-fallback',
+                // Missing reachability metadata must fail loudly instead of looking like an
+                // absent class: without this an unregistered Class.forName throws
+                // ClassNotFoundException, and any optional-dependency fallback swallows it.
+                // GraalVM 23+ only — affordable because the image is the one artifact that
+                // owes nobody backwards compatibility.
+                '--exact-reachability-metadata',
+                '--initialize-at-build-time=com.sun.tools.javac.file.Locations',
+                '-H:+ReportExceptionStackTraces',
+                '-H:-UseContainerSupport',
+                "-march=compatibility")
+        it.jvmArgs.addAll(jvmArgList)
     }
 }
 

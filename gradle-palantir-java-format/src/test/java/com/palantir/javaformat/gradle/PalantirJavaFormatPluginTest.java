@@ -13,24 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.palantir.javaformat.gradle;
 
-import static com.palantir.gradle.testing.assertion.GradlePluginTestAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import com.palantir.gradle.testing.execution.GradleInvoker;
-import com.palantir.gradle.testing.execution.InvocationResult;
-import com.palantir.gradle.testing.files.gradle.GradleFile;
-import com.palantir.gradle.testing.junit.DisabledConfigurationCache;
-import com.palantir.gradle.testing.junit.GradlePluginTests;
-import com.palantir.gradle.testing.project.RootProject;
+import com.palantir.javaformat.gradle.testing.GradleTestProject;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import org.gradle.testkit.runner.BuildResult;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-@GradlePluginTests
-@DisabledConfigurationCache
 class PalantirJavaFormatPluginTest {
 
     /** ./gradlew writeImplClasspath generates this file. */
@@ -41,6 +36,11 @@ class PalantirJavaFormatPluginTest {
     private static final String NATIVE_CONFIG =
             "palantirJavaFormatNative files(file(\"" + NATIVE_IMAGE_FILE + "\").text)";
 
+    private static final String MAIN_JAVA = "src/main/java/Main.java";
+
+    @TempDir
+    private Path projectDir;
+
     @ParameterizedTest
     @CsvSource(
             delimiter = '|',
@@ -48,92 +48,73 @@ class PalantirJavaFormatPluginTest {
                 " | Using the Java-based formatter",
                 "palantir.native.formatter=true | Using the native-image formatter"
             })
-    void formatDiff_updates_only_lines_changed_in_git_diff(
-            String extraGradleProperties, String expectedOutput, GradleInvoker gradle, RootProject project)
+    void formatDiff_updates_only_lines_changed_in_git_diff(String extraGradleProperties, String expectedOutput)
             throws IOException, InterruptedException {
-        if (extraGradleProperties != null && !extraGradleProperties.isBlank()) {
-            project.gradlePropertiesFile().append("%s\n", extraGradleProperties);
-        }
+        boolean nativeFormatter = extraGradleProperties != null && !extraGradleProperties.isBlank();
 
-        String extraDependencies =
-                (extraGradleProperties == null || extraGradleProperties.isBlank()) ? "" : NATIVE_CONFIG;
-
-        standardBuildFile(project, extraDependencies);
-
-        // Add jvm args to allow spotless and formatter gradle plugins to run with Java 16+
-        project.gradlePropertiesFile().append("""
-            org.gradle.jvmargs=--add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
-              --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \
-              --add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED \
-              --add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED \
-              --add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-            """);
+        GradleTestProject project = new GradleTestProject(projectDir)
+                .plugins("java", "com.palantir.java-format", "idea")
+                .withJavacInternalExports()
+                .gradleProperties(nativeFormatter ? extraGradleProperties : "")
+                .buildGradle(
+                        """
+                        dependencies {
+                            palantirJavaFormat files(file("%s").text.split(':'))
+                            %s
+                        }
+                        """,
+                        CLASSPATH_FILE, nativeFormatter ? NATIVE_CONFIG : "");
 
         executeGitCommand(project, "git", "init");
         executeGitCommand(project, "git", "config", "user.name", "Foo");
         executeGitCommand(project, "git", "config", "user.email", "foo@bar.com");
+        // The repository this runs in may sign commits; a throwaway one has no key to sign with.
+        executeGitCommand(project, "git", "config", "commit.gpgsign", "false");
 
-        project.mainSourceSet().java().writeClass("""
-            class Main {
-                public static void crazyExistingFormatting  (  String... args) {
+        project.writeFile(
+                MAIN_JAVA,
+                """
+                class Main {
+                    public static void crazyExistingFormatting  (  String... args) {
 
+                    }
                 }
-            }
-            """);
+                """);
 
         executeGitCommand(project, "git", "add", ".");
         executeGitCommand(project, "git", "commit", "-m", "Commit");
 
-        project.mainSourceSet().java().fileByClassName("Main").overwrite("""
-            class Main {
-                public static void crazyExistingFormatting  (  String... args) {
-                                            System.out.println("Reformat me please");
-                    // some comments
-                                                    System.out.println("Reformat me again please");
+        project.writeFile(
+                MAIN_JAVA,
+                """
+                class Main {
+                    public static void crazyExistingFormatting  (  String... args) {
+                                                System.out.println("Reformat me please");
+                        // some comments
+                                                        System.out.println("Reformat me again please");
+                    }
                 }
-            }
-            """);
+                """);
 
-        InvocationResult result = gradle.withArgs("formatDiff", "--info").buildsSuccessfully();
+        BuildResult result = project.succeeds("formatDiff", "--info");
 
-        assertThat(result).output().contains(expectedOutput);
+        assertThat(result.getOutput()).contains(expectedOutput);
 
-        String expectedMainJava = """
-            class Main {
-                public static void crazyExistingFormatting  (  String... args) {
-                    System.out.println("Reformat me please");
-                    // some comments
-                    System.out.println("Reformat me again please");
-                }
-            }
-            """;
-
-        project.mainSourceSet()
-                .java()
-                .fileByClassName("Main")
-                .assertThat()
-                .content()
-                .isEqualTo(expectedMainJava);
+        assertThat(project.readFile(MAIN_JAVA))
+                .isEqualTo(
+                        """
+                        class Main {
+                            public static void crazyExistingFormatting  (  String... args) {
+                                System.out.println("Reformat me please");
+                                // some comments
+                                System.out.println("Reformat me again please");
+                            }
+                        }
+                        """);
     }
 
-    private GradleFile standardBuildFile(RootProject project, String extraDependencies) {
-        project.buildGradle()
-                .plugins()
-                .add("java")
-                .add("com.palantir.java-format")
-                .add("idea");
-
-        project.buildGradle().append("""
-            dependencies {
-                palantirJavaFormat files(file("%s").text.split(':'))
-                %s
-            }
-            """, CLASSPATH_FILE, extraDependencies);
-
-        return project.buildGradle();
-    }
-
-    private void executeGitCommand(RootProject project, String... command) throws IOException, InterruptedException {
+    private void executeGitCommand(GradleTestProject project, String... command)
+            throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.directory(project.path().toFile());
         Process process = pb.start();

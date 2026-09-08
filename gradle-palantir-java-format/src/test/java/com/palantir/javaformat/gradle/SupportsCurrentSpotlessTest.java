@@ -15,53 +15,46 @@
  */
 package com.palantir.javaformat.gradle;
 
-import com.palantir.gradle.testing.execution.GradleInvoker;
-import com.palantir.gradle.testing.junit.GradlePluginTests;
-import com.palantir.gradle.testing.project.RootProject;
+import com.palantir.javaformat.gradle.testing.GradleTestProject;
 import java.io.File;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
- * When we were getting gradle-baseline to support the configuration cache, spotless had some poorly written tasks
- * which caused issues with the configuration cache.
- * <p>
- * Bumping spotless to 6.22.0 or newer fixed this, but revealed a new error — the {@code palantirJavaFormat} configuration was
- * being <a href="https://github.com/palantir/palantir-java-format/blob/b7b5995df3be690780939c0d0cb2ec49b99c68c8/gradle-palantir-java-format/src/main/java/com/palantir/javaformat/gradle/spotless/NativePalantirJavaFormatStep.java#L45"> resolved eagerly</a>.
- * <p>
- * gradle-consistent-versions enforces against resolving configurations at configuration time, and throws an error.
- * <p>
- * This test forces creation of the spotless steps, which will reveal any eager resolution of configurations.
+ * Spotless has historically shipped tasks that misbehave under the configuration cache, and the {@code
+ * palantirJavaFormat} configuration was once <a
+ * href="https://github.com/palantir/palantir-java-format/blob/b7b5995df3be690780939c0d0cb2ec49b99c68c8/gradle-palantir-java-format/src/main/java/com/palantir/javaformat/gradle/spotless/NativePalantirJavaFormatStep.java#L45">resolved
+ * eagerly</a>.
+ *
+ * <p>This test forces the spotless steps to be created and runs the generated build <em>with</em> the configuration
+ * cache, which is what now catches eager resolution. gradle-consistent-versions used to play that role; it is gone,
+ * because applying it is precisely what Gradle 9 rejects.
  */
-@GradlePluginTests
 class SupportsCurrentSpotlessTest {
+
     private static final String CLASSPATH_FILE = new File("build/impl.classpath").getAbsolutePath();
 
+    @TempDir
+    private Path projectDir;
+
     @Test
-    void palantirjavaformatplugin_works_with_current_spotless(GradleInvoker gradle, RootProject rootProject) {
-        rootProject
-                .buildGradle()
-                .plugins()
-                .add("java")
-                .add("com.palantir.java-format")
-                .add("com.palantir.consistent-versions")
-                .add("com.diffplug.spotless");
+    void palantirjavaformatplugin_works_with_current_spotless() {
+        new GradleTestProject(projectDir)
+                .withConfigurationCache()
+                .plugins("java", "com.palantir.java-format", "com.diffplug.spotless")
+                .withJavacInternalExports()
+                .buildGradle(
+                        """
+                        dependencies {
+                            palantirJavaFormat files(file("%s").text.split(':'))
+                        }
 
-        rootProject.file("versions.props").createEmpty();
-        rootProject.file("versions.lock").createEmpty();
-
-        gradle.withArgs("wrapper").buildsSuccessfully();
-
-        rootProject.buildGradle().append("""
-            dependencies {
-                palantirJavaFormat files(file("%s").text.split(':'))
-            }
-
-            // This forces the realization of the spotlessJava task, creating the spotless steps.
-            // If any configurations are eagerly resolved in the spotless steps,
-            // consistent-versions should catch it and throw here.
-            project.getTasks().getByName("spotlessJava")
-            """, CLASSPATH_FILE);
-
-        gradle.withArgs("classes", "--info").buildsSuccessfully();
+                        // Forces realization of the spotlessJava task, creating the spotless steps. Any
+                        // configuration resolved eagerly in them fails the configuration cache here.
+                        project.getTasks().getByName("spotlessJava")
+                        """,
+                        CLASSPATH_FILE)
+                .succeeds("classes", "--info");
     }
 }

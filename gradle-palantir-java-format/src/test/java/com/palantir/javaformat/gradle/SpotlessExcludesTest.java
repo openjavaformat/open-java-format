@@ -15,46 +15,46 @@
  */
 package com.palantir.javaformat.gradle;
 
-import static com.palantir.gradle.testing.assertion.GradlePluginTestAssertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import com.palantir.gradle.testing.execution.GradleInvoker;
-import com.palantir.gradle.testing.execution.InvocationResult;
-import com.palantir.gradle.testing.junit.DisabledConfigurationCache;
-import com.palantir.gradle.testing.junit.GradlePluginTests;
-import com.palantir.gradle.testing.project.RootProject;
+import com.palantir.javaformat.gradle.testing.GradleTestProject;
 import java.io.File;
+import java.nio.file.Path;
+import org.gradle.testkit.runner.BuildResult;
+import org.gradle.testkit.runner.TaskOutcome;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@GradlePluginTests
-@DisabledConfigurationCache
 class SpotlessExcludesTest {
 
     private static final String CLASSPATH_FILE = new File("build/impl.classpath").getAbsolutePath();
 
-    @BeforeEach
-    void setup(RootProject project) {
-        project.buildGradle()
-                .plugins()
-                .add("java")
-                .add("com.palantir.java-format")
-                .add("com.diffplug.spotless");
+    private static final String SOURCE_FILE =
+            """
+            package test;
+            import java.lang.Void;
+            public class Test { Void test() { return null; } }
+            """;
 
-        project.buildGradle().append("""
-            dependencies {
-                palantirJavaFormat files(file("%s").text.split(':'))
-            }
-            """, CLASSPATH_FILE);
-        // Add jvm args to allow spotless and formatter gradle plugins to run with Java 16+
-        project.gradlePropertiesFile()
-                .appendProperty(
-                        "org.gradle.jvmargs",
-                        "--add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED "
-                                + "--add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED "
-                                + "--add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED "
-                                + "--add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED "
-                                + "--add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED");
+    @TempDir
+    private Path projectDir;
+
+    private GradleTestProject project;
+
+    @BeforeEach
+    void setup() {
+        project = new GradleTestProject(projectDir)
+                .plugins("java", "com.palantir.java-format", "com.diffplug.spotless")
+                .withJavacInternalExports()
+                .buildGradle(
+                        """
+                        dependencies {
+                            palantirJavaFormat files(file("%s").text.split(':'))
+                        }
+                        """,
+                        CLASSPATH_FILE);
     }
 
     @ParameterizedTest
@@ -67,24 +67,22 @@ class SpotlessExcludesTest {
                 "generated_testSrc",
                 "build/groovy-dsl-plugins/output"
             })
-    void format_ignores_excluded_directories(String srcDir, GradleInvoker gradle, RootProject project) {
-        project.buildGradle().append("""
-            sourceSets {
-                main {
-                    java { srcDir '%s' }
-                }
-            }
-            """, srcDir);
+    void format_ignores_excluded_directories(String srcDir) {
+        project.buildGradle(
+                        """
+                        sourceSets {
+                            main {
+                                java { srcDir '%s' }
+                            }
+                        }
+                        """,
+                        srcDir)
+                .writeFile(srcDir + "/test/Test.java", SOURCE_FILE);
 
-        project.file(srcDir + "/test/Test.java").overwrite("""
-            package test;
-            import java.lang.Void;
-            public class Test { Void test() { return null; } }
-            """);
+        BuildResult result = project.succeeds("spotlessJavaCheck");
 
-        InvocationResult result = gradle.withArgs("spotlessJavaCheck").buildsSuccessfully();
-
-        assertThat(result).task(":spotlessJava").succeeded();
+        assertThat(result.task(":spotlessJava")).isNotNull().extracting(task -> task.getOutcome())
+                .isEqualTo(TaskOutcome.SUCCESS);
     }
 
     @ParameterizedTest
@@ -93,23 +91,21 @@ class SpotlessExcludesTest {
                 "foo/generated_foo/src/bar",
                 "src/main/java/test/generatedNamespace",
             })
-    void format_checks_non_generated_files(String srcDir, GradleInvoker gradle, RootProject project) {
-        project.buildGradle().append("""
-            sourceSets {
-                main {
-                    java { srcDir '%s' }
-                }
-            }
-            """, srcDir);
+    void format_checks_non_generated_files(String srcDir) {
+        project.buildGradle(
+                        """
+                        sourceSets {
+                            main {
+                                java { srcDir '%s' }
+                            }
+                        }
+                        """,
+                        srcDir)
+                .writeFile(srcDir + "/Test.java", SOURCE_FILE);
 
-        project.file(srcDir + "/Test.java").overwrite("""
-            package test;
-            import java.lang.Void;
-            public class Test { Void test() { return null; } }
-            """);
+        BuildResult result = project.fails("spotlessJavaCheck");
 
-        InvocationResult result = gradle.withArgs("spotlessJavaCheck").buildsWithFailure();
-
-        assertThat(result).task(":spotlessJava").succeeded();
+        assertThat(result.task(":spotlessJava")).isNotNull().extracting(task -> task.getOutcome())
+                .isEqualTo(TaskOutcome.SUCCESS);
     }
 }

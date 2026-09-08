@@ -29,8 +29,6 @@ buildscript {
 apply plugin: 'java'
 apply plugin: 'org.jetbrains.intellij.platform'
 
-def pluginName = "palantir-java-format"
-
 repositories {
     mavenCentral()
     intellijPlatform {
@@ -93,7 +91,7 @@ intellijPlatform {
     buildSearchableOptions = false
 
     pluginConfiguration {
-        name = pluginName
+        name = 'palantir-java-format'
         description = "Formats source code using the palantir-java-format tool."
         ideaVersion {
             sinceBuild = '242' // JBR 21: the first IDEs that can load this plugin's bytecode
@@ -109,14 +107,21 @@ intellijPlatform {
 
 // This task resolves runtimeClasspath without telling Gradle it depends on it, so the dependent
 // jars would not be built first. Make the dependency explicit.
+//
+// The task's own `pluginName`, not a name of our own: a local variable of that name here would
+// silently shadow the task property and drop the formatter into a directory the IDE never looks
+// in, which is exactly what happened. The configuration is captured outside the closure so the
+// configuration cache does not have to serialise the project.
+def formatterFiles = configurations.formatter
+
 tasks.withType(org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask).configureEach {
     dependsOn configurations.runtimeClasspath
 
     // Also pack the formatter in its own directory
-    into("${pluginName}/impl") {
+    into(pluginName.map { "${it}/impl" }) {
         // Note that we don't filter down the jars in the impl directory due to behavior when
         // the formatter is bootstrapped with jdk16+ exports.
-        from configurations.formatter
+        from formatterFiles
     }
 }
 

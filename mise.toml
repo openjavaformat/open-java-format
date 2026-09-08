@@ -1,40 +1,8 @@
 # Development tooling for open-java-format.
 #
-# Note: the Gradle build provisions its own JDKs (gradle/jdks/**, via the
-# gradle-jdks plugin) and ignores anything on PATH, because gradle.properties
-# sets org.gradle.java.installations.auto-detect=false. The `java` pinned here
-# is for editors, tooling and anything that needs a JVM outside of ./gradlew —
-# it deliberately matches gradle/gradle-daemon-jdk-version.
-
 [tools]
 java = "temurin-21"
 act = "latest"
-
-# --no-configuration-cache: the GraalVM plugin (org.graalvm.buildtools 0.10.4) cannot
-# serialise its NativeConfigurations bean, so any task reaching nativeCompile fails when
-# the configuration cache is on. CI is unaffected (it is off by default) but a developer
-# with org.gradle.configuration-cache=true in ~/.gradle/gradle.properties would hit it —
-# and a user-level gradle.properties outranks the project's, so the flag has to be here.
-
-[tasks.build]
-description = "Full build: compile, test, and the native image for this platform"
-run = "./gradlew --stacktrace --no-configuration-cache build"
-
-[tasks.test]
-description = "Run the test suite"
-run = "./gradlew --stacktrace test"
-
-[tasks.native]
-description = "Build the native image for the current platform only"
-run = "./gradlew --stacktrace --no-configuration-cache :palantir-java-format-native:nativeCompile"
-
-[tasks.format]
-description = "Format this repository with the formatter it builds"
-run = "./gradlew spotlessApply"
-
-[tasks.idea]
-description = "Launch a sandboxed IntelliJ with the plugin installed"
-run = "./gradlew :idea-plugin:runIde"
 
 [tasks."ci:list"]
 description = "List the CI jobs act can see, without running anything"
@@ -51,3 +19,36 @@ run = "act push --job build"
 [tasks."ci:native"]
 description = "Run the linux-aarch64 native job locally in Docker"
 run = "act push --job native --matrix platform:linux-aarch64"
+
+# ---- GitHub Actions secrets ----
+# Read from 1Password at apply time; nothing secret is stored in the repo. Requires gh
+# (authenticated with admin on this repository) and the 1Password CLI (`op signin` first).
+
+[tasks."gh:secrets"]
+description = "Set the repository's Actions secrets from 1Password (op)"
+shell = "bash -c"
+quiet = true                 # suppress mise's `[task] $ <first line>` command echo
+env = { NO_COLOR = "1" }     # suppress gh's OSC-11 terminal-background probe
+run = '''
+set -euo pipefail
+
+# BOT_PAT is consumed by .github/workflows/update-pr-branch.yml, and it cannot be GITHUB_TOKEN:
+# a push made with GITHUB_TOKEN does not start workflow runs, so a PR branch would be brought
+# up to date and then never re-checked — which is the whole point of that workflow. A
+# fine-grained PAT scoped to this repository with Contents: read and write is enough.
+apply() {
+  local name="$1" ref="$2" value
+  if [[ "$ref" == *TODO* ]]; then
+    echo "– $name: op reference still contains TODO, skipping"; return
+  fi
+  if ! value="$(op read "$ref" 2>/dev/null)"; then
+    echo "✗ $name: cannot read $ref" >&2
+    echo "  Create that item in 1Password (or point the reference at an existing one), then re-run." >&2
+    return 1
+  fi
+  gh secret set "$name" --body "$value"
+  echo "✓ $name set"
+}
+
+apply BOT_PAT 'op://Private/open-java-format/GitHub/bot-pat'
+'''

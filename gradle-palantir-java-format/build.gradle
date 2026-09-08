@@ -1,7 +1,5 @@
 apply plugin: 'java-gradle-plugin'
-apply plugin: 'com.palantir.revapi'
 apply plugin: 'groovy'
-apply plugin: 'com.palantir.gradle-plugin-testing'
 
 configurations {
     pluginClasspath {
@@ -24,14 +22,19 @@ dependencies {
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj
     testImplementation libs.jackson.dataformat.xml
+    // @Language on the XML fixtures; used to arrive transitively via gradle-plugin-testing.
+    testImplementation libs.jetbrainsAnnotations
 
     testRuntimeOnly libs.junit.vintage.engine
 
-    pluginClasspath libs.spotless.gradlePlugin
+    // Plain Gradle TestKit drives the generated projects; see
+    // src/test/java/com/palantir/javaformat/gradle/testing/GradleTestProject.java.
+    testImplementation gradleTestKit()
 
-    gradlePluginForTesting libs.consistentVersions.gradlePlugin
-    gradlePluginForTesting libs.spotless.gradlePlugin
-    gradlePluginForTesting libs.baseline.gradlePlugin
+    // Third-party plugins the generated test projects apply. java-gradle-plugin injects this
+    // alongside the plugin under test, so `plugins { id '...' }` resolves them without a version.
+    pluginClasspath libs.spotless.gradlePlugin
+    pluginClasspath libs.baseline.gradlePlugin
 }
 
 gradlePlugin {
@@ -70,7 +73,10 @@ gradlePlugin {
 }
 
 tasks.withType(PluginUnderTestMetadata).configureEach {
-    pluginClasspath.from += configurations.pluginClasspath
+    // `from(...)`, not `from += ...`: the latter reads the collection and reassigns it, dropping the
+    // task dependency on `jar` that java-gradle-plugin put there. It only shows up on a clean build,
+    // where the jar has not been produced yet.
+    pluginClasspath.from(configurations.pluginClasspath)
 }
 
 configurations {
@@ -106,16 +112,28 @@ tasks.register("copyNativeImage", Copy.class) {
 
 // Split in two so the jar build does not need a GraalVM image: every test reads
 // impl.classpath, only the four that drive the binary read nativeImage.path.
+//
+// Everything the doLast bodies touch is captured here, at configuration time: reaching for
+// `configurations` or `tasks` from inside them would pull the whole script into the task and
+// the configuration cache rejects that.
+def implFiles = configurations.impl
+def implClasspathFile = layout.buildDirectory.file("impl.classpath")
+def nativeImageDir = layout.buildDirectory.dir("nativeImage")
+def nativeImagePathFile = layout.buildDirectory.file("nativeImage.path")
+
 def writeImplClasspath = tasks.register("writeImplClasspath") {
+    inputs.files(implFiles)
+    outputs.file(implClasspathFile)
     doLast {
-        file("$buildDir/impl.classpath").text = configurations.impl.asPath
+        implClasspathFile.get().asFile.text = implFiles.asPath
     }
 }
 
 def writeNativeImagePath = tasks.register("writeNativeImagePath") {
     inputs.files(tasks.named("copyNativeImage"))
+    outputs.file(nativeImagePathFile)
     doLast {
-        file("$buildDir/nativeImage.path").text = tasks.named("copyNativeImage").get().getOutputs().getFiles().getSingleFile().listFiles()[0].getAbsolutePath()
+        nativeImagePathFile.get().asFile.text = nativeImageDir.get().asFile.listFiles()[0].absolutePath
     }
 }
 
@@ -134,8 +152,4 @@ tasks.named("test").configure {
         exclude '**/PalantirJavaFormatSpotlessPluginTest.class'
         exclude '**/FormatDiffTest.class'
     }
-}
-
-gradleTestUtils {
-    configurationCacheEnabled = true
 }
