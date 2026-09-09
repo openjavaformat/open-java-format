@@ -17,6 +17,11 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
+      # GITHUB_TOKEN, deliberately: a review starts no workflow run and does not need to, so the
+      # short-lived token is enough and the approval shows in the PR as the bot rather than as a
+      # person. This needs `can_approve_pull_request_reviews` on the repository — no `permissions`
+      # block can stand in for it, and without it GitHub refuses with "GitHub Actions is not
+      # permitted to approve pull requests".
       - name: Approve patch and minor updates
         if: steps.metadata.outputs.update-type != 'version-update:semver-major'
         run: gh pr review --approve "$PR_URL"
@@ -24,9 +29,14 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # BOT_PAT here, and not GITHUB_TOKEN: auto-merge is completed on behalf of whoever enabled
+      # it, and a push made by GITHUB_TOKEN starts no workflow runs. Enabled with GITHUB_TOKEN the
+      # merge lands on main silently — no CI, no CodeQL, no dependency snapshot, and
+      # update-pr-branch never wakes to rebase the remaining PRs, so the automation cuts its own
+      # legs. A PAT is a real user, so the push behaves like any other.
       - name: Enable auto-merge for patch and minor updates
         if: steps.metadata.outputs.update-type != 'version-update:semver-major'
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.BOT_PAT }}
