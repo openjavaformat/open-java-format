@@ -41,7 +41,7 @@ jobs:
         run: ./gradlew --stacktrace build
 
       - name: Upload jars and plugin distributions
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jars
           path: |
@@ -51,7 +51,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results-build
           path: '**/build/test-results/**/*.xml'
@@ -115,7 +115,7 @@ jobs:
         run: ./gradlew --stacktrace -PnativeImage=true :palantir-java-format-jdk-bootstrap:test :gradle-palantir-java-format:test
 
       - name: Upload native image
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: native-image-${{ matrix.platform }}
           path: palantir-java-format-native/build/native/nativeCompile/*
