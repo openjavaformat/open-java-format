@@ -20,8 +20,8 @@ guava-testlib = { module = "com.google.guava:guava-testlib", version = "33.5.0-j
 ideaConfiguration-gradlePlugin = { module = "com.palantir.gradle.idea-configuration:gradle-idea-configuration", version = "0.8.0" }
 immutables-value = { module = "org.immutables:value", version = "2.12.2" }
 jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version = "2.22" }
-jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version = "2.22.1" }
-jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version = "2.22.1" }
+jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version = "2.22.2" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version = "2.22.2" }
 jackson-dataformat-xml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-xml", version = "2.22.1" }
 jackson-datatype-guava = { module = "com.fasterxml.jackson.datatype:jackson-datatype-guava", version = "2.22.1" }
 jackson-datatype-jdk8 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jdk8", version = "2.22.1" }
