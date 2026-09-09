@@ -25,17 +25,29 @@ run = "act push --job native --matrix platform:linux-aarch64"
 # (authenticated with admin on this repository) and the 1Password CLI (`op signin` first).
 
 [tasks."gh:secrets"]
-description = "Set the repository's Actions secrets from 1Password (op)"
+description = "Set the repository's Actions and Dependabot secrets from 1Password (op)"
 shell = "bash -c"
 quiet = true                 # suppress mise's `[task] $ <first line>` command echo
 env = { NO_COLOR = "1" }     # suppress gh's OSC-11 terminal-background probe
-run = '''
+run = """
 set -euo pipefail
 
-# BOT_PAT is consumed by .github/workflows/update-pr-branch.yml, and it cannot be GITHUB_TOKEN:
-# a push made with GITHUB_TOKEN does not start workflow runs, so a PR branch would be brought
-# up to date and then never re-checked — which is the whole point of that workflow. A
-# fine-grained PAT scoped to this repository with Contents: read and write is enough.
+# BOT_PAT is consumed by update-pr-branch.yml and by the auto-merge step of
+# dependabot-automerge.yml, and it cannot be GITHUB_TOKEN: a push made with GITHUB_TOKEN starts no
+# workflow runs, so a branch would be brought up to date — or a pull request merged — and then
+# never re-checked.
+#
+# The token needs these repository permissions:
+#   Pull requests  Write   PUT /repos/{owner}/{repo}/pulls/{n}/update-branch requires it
+#   Contents       Write   pushing the updated branch and the merge commit
+#
+# It is written to BOTH secret stores. A run triggered by a Dependabot event cannot read Actions
+# secrets at all — it reads the Dependabot store instead — so a token present only in Actions
+# expands to an empty string there, and gh fails with "set the GH_TOKEN environment variable".
+#
+# --repo, because this checkout has two remotes (origin and upstream) and gh refuses to guess.
+repo="$(git remote get-url origin | sed -E 's#(git@github\\.com:|https://github\\.com/)##; s#\\.git$##')"
+
 apply() {
   local name="$1" ref="$2" value
   if [[ "$ref" == *TODO* ]]; then
@@ -46,9 +58,11 @@ apply() {
     echo "  Create that item in 1Password (or point the reference at an existing one), then re-run." >&2
     return 1
   fi
-  gh secret set "$name" --body "$value"
-  echo "✓ $name set"
+  for store in actions dependabot; do
+    gh secret set "$name" --app "$store" --repo "$repo" --body "$value"
+    echo "✓ $name set ($store)"
+  done
 }
 
 apply BOT_PAT 'op://Private/open-java-format/GitHub/bot-pat'
-'''
+"""
