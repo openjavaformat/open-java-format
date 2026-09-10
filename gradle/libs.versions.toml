@@ -3,6 +3,12 @@
 # updates it, which it could not do for versions.props.
 
 [libraries]
+# Eclipse bundles the plugin compiles against. compileOnly: at runtime the host IDE
+# provides them, and META-INF/MANIFEST.MF imports the packages without version ranges.
+# Versions here match Eclipse 2020-09, which is what the p2 repository used to resolve.
+eclipse-jdtCore = { module = "org.eclipse.jdt:org.eclipse.jdt.core", version = "3.23.0" }
+eclipse-jfaceText = { module = "org.eclipse.platform:org.eclipse.jface.text", version = "3.16.300" }
+eclipse-text = { module = "org.eclipse.platform:org.eclipse.text", version = "3.10.200" }
 jetbrainsAnnotations = { module = "org.jetbrains:annotations", version = "26.1.0" }
 # A platform, not a dependency: plugins (baseline) inject versionless JUnit artifacts such as
 # junit-platform-launcher, and versions.props used to supply their versions.

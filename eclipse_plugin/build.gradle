@@ -14,32 +14,45 @@
 
 plugins {
     id 'java-library'
-    id 'dev.equo.p2deps' version '1.7.8'
-}
-
-p2deps {
-    into 'compileOnly', {
-        p2repo 'https://download.eclipse.org/releases/2020-09/202009161000/'
-
-        install 'org.eclipse.jdt.core'
-    }
 }
 
 dependencies {
+    // Was dev.equo.p2deps resolving these from an Eclipse p2 repository at configuration time:
+    // a network fetch on every configuration, and a parse of the metadata index of an entire
+    // Eclipse release — which now exceeds the JDK's JAXP entity-size limit and fails the build.
+    // Same bundles, from Maven Central, resolved like every other dependency. compileOnly because
+    // the host IDE provides them at runtime; MANIFEST.MF imports the packages without version
+    // ranges, so the versions here only have to satisfy the compiler.
+    compileOnly libs.eclipse.jdtCore
+    compileOnly libs.eclipse.jfaceText
+    compileOnly libs.eclipse.text
+
     implementation project(':palantir-java-format')
     implementation libs.jsr305
 }
 
+// The dependencies embedded in the plugin jar. Named once, so the manifest can list exactly what
+// was packaged rather than a guess at what the file names will be.
+def embeddedLibs = configurations.runtimeClasspath.filter { file ->
+    ['functionaljava', 'guava', 'palantir'].any { file.name.startsWith(it) }
+}
+
 tasks.named("jar", Jar) {
     archiveBaseName = 'palantir-java-format-eclipse-plugin'
+
     manifest {
         from 'src/main/resources/META-INF/MANIFEST.MF'
+        // Generated, not hardcoded. There used to be a rename() stripping versions off the
+        // embedded jars so their names would match a fixed Bundle-ClassPath, but its pattern only
+        // matched plain versions: on any build whose version comes from `git describe`
+        // (2.97.0-26-g9da6ae7.dirty) the rename silently did nothing and the manifest pointed at
+        // files that were not in the archive, so Eclipse could not load the plugin.
+        attributes('Bundle-ClassPath': embeddedLibs.elements.map { files ->
+            (['.'] + files.collect { "lib/${it.asFile.name}" }).join(',')
+        })
     }
-    // We embed some dependencies into the JAR file
-    from(configurations.runtimeClasspath) {
+
+    from(embeddedLibs) {
         into 'lib'
-        include('functionaljava*', 'guava*', 'palantir*')
-        // The libraries are listed without a version in the manifest
-        rename('(.*)-[0-9b.]+(\\.dirty|-jre)?\\.jar', '$1.jar')
     }
 }
