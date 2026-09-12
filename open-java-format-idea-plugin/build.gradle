@@ -1,0 +1,138 @@
+/*
+ * Copyright 2017 Google Inc. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// IntelliJ Platform Gradle Plugin 2.x. The 1.x plugin — which reached this project through
+// com.palantir.external-publish-intellij — cannot run on Gradle 9: it touches
+// org.gradle.api.internal.plugins.DefaultArtifactPublicationSet, which no longer exists.
+buildscript {
+    repositories {
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath 'org.jetbrains.intellij.platform:org.jetbrains.intellij.platform.gradle.plugin:2.18.1'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'org.jetbrains.intellij.platform'
+
+repositories {
+    mavenCentral()
+    intellijPlatform {
+        defaultRepositories()
+    }
+}
+
+configurations {
+    formatter {
+        description = 'The default implementation of open-java-format, used if the user doesn\'t specify an explicit classpath.'
+
+        canBeConsumed = false
+        canBeResolved = true
+    }
+}
+
+dependencies {
+    intellijPlatform {
+        // useInstaller = false: take the IDE from the intellij-repository maven artifact
+        // rather than the platform installer, which has no download URL for this version.
+        intellijIdeaCommunity('2024.2.6') {
+            useInstaller = false
+        }
+        bundledPlugin 'com.intellij.java'
+
+        // 2.x no longer ships the test framework implicitly. 'closest' is the plugin's own
+        // default version constraint; Groovy cannot see Kotlin default arguments, so it is
+        // spelled out here.
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform.INSTANCE, 'closest')
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Plugin.Java.INSTANCE, 'closest')
+    }
+
+    implementation project(':open-java-format-jdk-bootstrap')
+    implementation libs.caffeine
+    implementation(libs.slsVersions) {
+        // Has class version conflicts with slf4j brought in by Intellij
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    implementation libs.palantir.platform
+
+    formatter project(':open-java-format')
+
+    testImplementation libs.assertj
+    testImplementation libs.junit.jupiter
+    testImplementation libs.junit.platform.launcher
+    implementation libs.jsr305
+}
+
+intellijPlatform {
+    // Bytecode instrumentation (@NotNull assertions, GUI forms) needs the platform's
+    // java-compiler-ant-tasks, whose version the plugin cannot derive from a non-installer
+    // IDE artifact; the 1.x setup only carried instrumentation along with a workaround for the
+    // duplicate classes it produced, which the marketplace rejected. Nothing here needs it: the
+    // settings page is laid out in plain Java, and the assertions are not relied upon. Do not add a
+    // .form back without turning this on — an uninstrumented form leaves every bound field null,
+    // which is exactly how the settings page came to be broken.
+    instrumentCode = false
+
+    // Launches a headless IDE to index the settings UI for the IDE's search. This plugin has a
+    // single settings page, and the task is fragile outside a desktop session — JetBrains
+    // recommend switching it off for small plugins.
+    buildSearchableOptions = false
+
+    pluginConfiguration {
+        name = 'open-java-format'
+        description = "Formats source code using the open-java-format tool."
+        ideaVersion {
+            sinceBuild = '242' // JBR 21: the first IDEs that can load this plugin's bytecode
+            untilBuild = provider { null }
+        }
+    }
+
+    publishing {
+        // Inert until the token is present; wiring the marketplace release is Phase 2 work.
+        token = providers.environmentVariable('JETBRAINS_MARKETPLACE_TOKEN')
+    }
+}
+
+// This task resolves runtimeClasspath without telling Gradle it depends on it, so the dependent
+// jars would not be built first. Make the dependency explicit.
+//
+// The task's own `pluginName`, not a name of our own: a local variable of that name here would
+// silently shadow the task property and drop the formatter into a directory the IDE never looks
+// in, which is exactly what happened. The configuration is captured outside the closure so the
+// configuration cache does not have to serialise the project.
+def formatterFiles = configurations.formatter
+
+tasks.withType(org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask).configureEach {
+    dependsOn configurations.runtimeClasspath
+
+    // Also pack the formatter in its own directory
+    into(pluginName.map { "${it}/impl" }) {
+        // Note that we don't filter down the jars in the impl directory due to behavior when
+        // the formatter is bootstrapped with jdk16+ exports.
+        from formatterFiles
+    }
+}
+
+// Javadoc fails if there are no public classes to javadoc, so make it stop complaining.
+tasks.named("javadoc", Javadoc) {
+    failOnError = false
+}
+
+// Prevent duplicate class entries in the instrumented jar, which the JetBrains marketplace rejects.
+tasks.named('jar') {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

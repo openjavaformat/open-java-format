@@ -32,6 +32,8 @@ apply plugin: 'com.palantir.idea-language-injector'
 // per project below, so error-prone and the JUnit wiring survive.
 apply plugin: 'com.palantir.baseline-error-prone-root'
 apply plugin: 'com.palantir.baseline-java-versions'
+// Maven Central releases: buildSrc/src/main/groovy/open-java-format.release-conventions.gradle.
+apply plugin: 'open-java-format.release-conventions'
 
 // GitHub Actions sets GITHUB_REF_TYPE=tag on a tag build; otherwise derive the
 // version from git history (needs a full clone: actions/checkout fetch-depth: 0).
@@ -69,7 +71,8 @@ allprojects {
     apply plugin: com.palantir.baseline.plugins.BaselineTesting
     apply plugin: 'com.palantir.java-format'
     apply plugin: 'com.palantir.jakarta-package-alignment'
-    group = 'com.palantir.javaformat'
+    // The fork's Maven group (README, "Coordinates"). The Java packages stay com.palantir.javaformat.
+    group = 'dev.openjavaformat'
     version = rootProject.version
 
     tasks.withType(JavaCompile).configureEach {
@@ -96,14 +99,6 @@ allprojects {
 
 subprojects {
     apply plugin: 'java-library'
-
-    // Publication is plain maven-publish; JReleaser takes it from there.
-    apply plugin: 'maven-publish'
-
-    java {
-        withSourcesJar()
-        withJavadocJar()
-    }
 
     dependencies {
         // Gives a version to the JUnit artifacts that plugins add without one.

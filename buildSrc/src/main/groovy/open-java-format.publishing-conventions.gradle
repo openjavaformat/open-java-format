@@ -1,0 +1,68 @@
+// Applied by every module with a Maven publication: the POM Maven Central requires, and a local
+// `staging` repository that JReleaser signs and uploads from (open-java-format.release-conventions).
+plugins {
+    id 'maven-publish'
+}
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+// Upstream's jars carry an Implementation-Version, and code reads it back: the Gradle plugin resolves
+// the formatter of that version, the IntelliJ plugin reads it off the formatter jar, --version prints it.
+tasks.named('jar', Jar) {
+    manifest {
+        attributes('Implementation-Version': project.version)
+    }
+}
+
+def stagingDeploy = layout.buildDirectory.dir('staging-deploy')
+
+publishing {
+    publications.withType(MavenPublication).configureEach { publication ->
+        pom {
+            // Conventions, not values: java-gradle-plugin names and describes its plugin marker
+            // publications itself.
+            name.convention(provider { "${publication.groupId}:${publication.artifactId}".toString() })
+            description.convention(provider { project.description ?: project.name })
+            url = 'https://github.com/openjavaformat/open-java-format'
+            licenses {
+                license {
+                    name = 'The Apache Software License, Version 2.0'
+                    url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                    distribution = 'repo'
+                }
+            }
+            developers {
+                developer {
+                    name = 'Alexey Abashev'
+                    email = 'alexey@abashev.ru'
+                }
+            }
+            scm {
+                connection = 'scm:git:https://github.com/openjavaformat/open-java-format.git'
+                developerConnection = 'scm:git:ssh://git@github.com/openjavaformat/open-java-format.git'
+                url = 'https://github.com/openjavaformat/open-java-format'
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            name = 'staging'
+            url = stagingDeploy
+        }
+    }
+}
+
+// JReleaser uploads everything it finds in the staging repository, so each staging run starts from an
+// empty one: otherwise artifacts left by an earlier run — a dry run, another version — would go too.
+def cleanStagingDeploy = tasks.register('cleanStagingDeploy', Delete) {
+    delete stagingDeploy
+}
+tasks.withType(PublishToMavenRepository).configureEach {
+    if (name.endsWith('ToStagingRepository')) {
+        dependsOn cleanStagingDeploy
+    }
+}

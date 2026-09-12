@@ -1,1 +1,0 @@
-../../../../palantir-java-format/src/test/resources/com/palantir/javaformat/java/testdata/palantir-deeply-nested-calls.input

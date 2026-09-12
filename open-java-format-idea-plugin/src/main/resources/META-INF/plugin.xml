@@ -1,0 +1,25 @@
+<idea-plugin url="https://github.com/openjavaformat/open-java-format" require-restart="true">
+  <id>open-java-format</id>
+  <name>open-java-format</name>
+  <vendor url="https://github.com/openjavaformat/open-java-format">
+    openjavaformat
+  </vendor>
+
+  <depends>com.intellij.modules.java</depends>
+  <depends>com.intellij.modules.lang</depends>
+  <depends>com.intellij.modules.platform</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <formattingService
+            implementation="com.palantir.javaformat.intellij.PalantirJavaFormatFormattingService"/>
+    <projectConfigurable instance="com.palantir.javaformat.intellij.PalantirJavaFormatConfigurable"
+                         id="open-java-format.settings"
+                         displayName="open-java-format Settings"
+                         nonDefaultProject="true"/>
+    <projectService serviceImplementation="com.palantir.javaformat.intellij.PalantirJavaFormatSettings"/>
+    <postStartupActivity implementation="com.palantir.javaformat.intellij.InitialConfigurationStartupActivity"/>
+    <notificationGroup displayType="BALLOON" id="open-java-format parsing error"
+                       isLogByDefault="false"/>
+  </extensions>
+
+</idea-plugin>

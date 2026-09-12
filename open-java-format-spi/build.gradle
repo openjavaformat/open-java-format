@@ -1,0 +1,26 @@
+apply plugin: 'java-library'
+apply plugin: 'open-java-format.publishing-conventions'
+
+description = 'Service provider interface of open-java-format: FormatterService and the types it uses'
+
+dependencies {
+    api libs.guava
+    api libs.jackson.annotations
+    api libs.jackson.datatype.guava
+
+    testImplementation libs.assertj
+    testImplementation libs.junit.jupiter
+    testImplementation libs.jackson.databind
+}
+
+javaVersion {
+    target = 21
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+}

@@ -1,0 +1,90 @@
+// Applied to the root project: signs the staged publications and uploads them to the Maven Central
+// Portal. `mise run release` runs it; `mise run release:dry-run` rehearses without uploading.
+plugins {
+    id 'base'
+    id 'org.jreleaser'
+}
+
+// What goes to Maven Central. Each of these applies open-java-format.publishing-conventions, which
+// stages its publications in build/staging-deploy.
+//
+// Not released yet: open-java-format-native needs a binary per platform, each from its own CI job,
+// and all of them have to go up in one deployment.
+def releasedProjects = [
+        ':open-java-format-spi',
+        ':open-java-format',
+        ':open-java-format-jdk-bootstrap',
+        ':gradle-open-java-format',
+]
+def stagingRepositories = releasedProjects.collect { path ->
+    relativePath(project(path).layout.buildDirectory.dir('staging-deploy'))
+}
+
+jreleaser {
+    dependsOnAssemble = false
+
+    project {
+        name = 'open-java-format'
+        description = 'A modern, lambda-friendly, 120-character Java formatter'
+        license = 'Apache-2.0'
+        links {
+            homepage = 'https://github.com/openjavaformat/open-java-format'
+        }
+        languages {
+            java {
+                groupId = 'dev.openjavaformat'
+                multiProject = true
+                version = '21'
+            }
+        }
+    }
+
+    release {
+        github {
+            enabled = false
+        }
+    }
+
+    // The key comes from JRELEASER_GPG_SECRET_KEY and JRELEASER_GPG_PASSPHRASE, in the environment or in
+    // ~/.jreleaser/config.properties. There is no public key to check the signatures against, hence
+    // verify = false.
+    signing {
+        pgp {
+            active = 'ALWAYS'
+            armored = true
+            verify = false
+        }
+    }
+
+    deploy {
+        maven {
+            mavenCentral {
+                // The deployer's name selects its credentials — the Central Portal user token, as
+                // JRELEASER_DEPLOY_MAVEN_MAVENCENTRAL_SONATYPE_USERNAME and _PASSWORD.
+                sonatype {
+                    active = 'ALWAYS'
+                    url = 'https://central.sonatype.com/api/v1/publisher'
+                    namespace = 'dev.openjavaformat'
+                    applyMavenCentralRules = true
+                    stagingRepositories.each { stagingRepository(it) }
+                }
+            }
+        }
+    }
+}
+
+// A release cannot be taken back, and the version comes from `git describe`: anywhere but a clean
+// checkout of a release tag it reads like 2.97.0-41-gf6667a2d.dirty. Refuse to upload that.
+def releaseVersion = provider { version.toString() }
+
+tasks.named('jreleaserDeploy') {
+    releasedProjects.each { path ->
+        dependsOn "${path}:publishAllPublicationsToStagingRepository"
+    }
+    doFirst {
+        if (!dryrun.getOrElse(false) && !(releaseVersion.get() ==~ /\d+\.\d+\.\d+/)) {
+            throw new GradleException("Refusing to release ${releaseVersion.get()}: check out a release tag on a "
+                    + 'clean working tree, or pass --dryrun to rehearse without uploading.')
+        }
+    }
+}
