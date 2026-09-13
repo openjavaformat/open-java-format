@@ -1,0 +1,142 @@
+name: Release
+
+# Tags only, and the tag is the version: the build reads it from GITHUB_REF_NAME and jreleaserDeploy
+# refuses anything that is not a clean X.Y.Z.
+#
+# Two deployments per tag, because a published groupId:artifactId:version can never gain files
+# afterwards: the jars go up as one, and every platform's native binary as another. Both are uploaded
+# and validated only — the Portal holds them until someone presses publish.
+#
+# Needs four repository secrets: JRELEASER_MAVENCENTRAL_USERNAME and JRELEASER_MAVENCENTRAL_PASSWORD
+# (the Central Portal user token) plus JRELEASER_GPG_SECRET_KEY and JRELEASER_GPG_PASSPHRASE.
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  jars:
+    name: jars
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install JDK 21
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Stage, sign and upload the jars
+        run: ./gradlew jreleaserDeploy
+        env:
+          JRELEASER_DEPLOY_MAVEN_MAVENCENTRAL_SONATYPE_USERNAME: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
+          JRELEASER_DEPLOY_MAVEN_MAVENCENTRAL_SONATYPE_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
+          JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
+          JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+
+      - name: Keep JReleaser's log
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jreleaser-log-jars
+          path: build/jreleaser/trace.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # One job per platform, as in ci.yml, but here each one hands its binary to the deploy job below
+  # instead of throwing it away.
+  native-images:
+    name: native image (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86-64
+            runner: ubuntu-latest
+          - platform: linux-aarch64
+            runner: ubuntu-24.04-arm
+          - platform: macos-aarch64
+            runner: macos-15
+          - platform: macos-x86-64
+            runner: macos-15-intel
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install GraalVM 25 for the image
+        uses: graalvm/setup-graalvm@5298d94fb55a4f185c602eeac5de1b553882abe2 # v1.6.4
+        with:
+          java-version: '25'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compile the native image
+        run: ./gradlew -PnativeImage=true :open-java-format-native:nativeCompile
+
+      - name: Hand the binary to the deploy job
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-image-${{ matrix.platform }}
+          path: |
+            open-java-format-native/build/native/nativeCompile/open-java-format-*
+            !open-java-format-native/build/native/nativeCompile/*.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  # Not `native`: ci.yml already has a job with that id, and `act --job native` could not tell them apart.
+  native-deploy:
+    name: native deploy
+    needs: native-images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install JDK 21
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # merge-multiple: every platform's binary lands in one directory under the name it was built
+      # with, which is where its Maven classifier is read from.
+      - name: Collect every platform's binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: native-images
+          pattern: native-image-*
+          merge-multiple: true
+
+      - name: Show what was collected
+        run: ls -l native-images
+
+      # No GraalVM here: nothing is compiled, the binaries are published exactly as they arrived.
+      - name: Stage, sign and upload the native images
+        run: ./gradlew -PreleaseTarget=native -PnativeImages=native-images jreleaserDeploy
+        env:
+          JRELEASER_DEPLOY_MAVEN_MAVENCENTRAL_SONATYPE_USERNAME: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
+          JRELEASER_DEPLOY_MAVEN_MAVENCENTRAL_SONATYPE_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
+          JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
+          JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+
+      - name: Keep JReleaser's log
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jreleaser-log-native
+          path: build/jreleaser/trace.log
+          if-no-files-found: ignore
+          retention-days: 7

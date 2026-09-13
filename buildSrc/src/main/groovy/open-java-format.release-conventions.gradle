@@ -5,17 +5,26 @@ plugins {
     id 'org.jreleaser'
 }
 
-// What goes to Maven Central. Each of these applies open-java-format.publishing-conventions, which
-// stages its publications in build/staging-deploy.
+// Two deployments, one version. A published groupId:artifactId:version can never gain files, so every
+// platform's native binary has to travel in a single deployment — and those binaries come from four CI
+// jobs, long after the jars are staged. `-PreleaseTarget=native` deploys the binaries those jobs
+// collected, the default deploys the jars; on a tag both read the same version from it.
 //
-// Not released yet: open-java-format-native needs a binary per platform, each from its own CI job,
-// and all of them have to go up in one deployment.
-def releasedProjects = [
-        ':open-java-format-spi',
-        ':open-java-format',
-        ':open-java-format-jdk-bootstrap',
-        ':gradle-open-java-format',
-]
+// Not released yet: gradle-open-java-format, whose plugin markers and Gradle Plugin Portal listing are
+// a decision of their own. The Eclipse and IntelliJ plugins have no Maven publications at all.
+def releaseTarget = providers.gradleProperty('releaseTarget').getOrElse('jars')
+def releasedProjects
+if (releaseTarget == 'jars') {
+    releasedProjects = [
+            ':open-java-format-spi',
+            ':open-java-format',
+            ':open-java-format-jdk-bootstrap',
+    ]
+} else if (releaseTarget == 'native') {
+    releasedProjects = [':open-java-format-native']
+} else {
+    throw new GradleException("Unknown -PreleaseTarget=${releaseTarget}: use 'jars' or 'native'")
+}
 def stagingRepositories = releasedProjects.collect { path ->
     relativePath(project(path).layout.buildDirectory.dir('staging-deploy'))
 }
@@ -66,6 +75,10 @@ jreleaser {
                     url = 'https://central.sonatype.com/api/v1/publisher'
                     namespace = 'dev.openjavaformat'
                     applyMavenCentralRules = true
+                    // Upload and validate, then stop. The deployment waits in the Portal until someone
+                    // presses publish, so a version stays reversible until every one of its deployments
+                    // is in and has been looked at.
+                    stage = 'UPLOAD'
                     stagingRepositories.each { stagingRepository(it) }
                 }
             }

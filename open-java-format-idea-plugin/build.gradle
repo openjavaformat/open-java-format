@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 /*
  * Copyright 2017 Google Inc. All Rights Reserved.
  *
@@ -57,8 +59,8 @@ dependencies {
         // 2.x no longer ships the test framework implicitly. 'closest' is the plugin's own
         // default version constraint; Groovy cannot see Kotlin default arguments, so it is
         // spelled out here.
-        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform.INSTANCE, 'closest')
-        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Plugin.Java.INSTANCE, 'closest')
+        testFramework(TestFrameworkType.Platform.INSTANCE, 'closest')
+        testFramework(TestFrameworkType.Plugin.Java.INSTANCE, 'closest')
     }
 
     implementation project(':open-java-format-jdk-bootstrap')

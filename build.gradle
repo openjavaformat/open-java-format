@@ -125,7 +125,3 @@ javaVersions {
     libraryTarget = 21
     runtime = 21
 }
-
-// GraalVM for the native image. gradle-jdks used to pin an exact build in gradle/jdks/**;
-// the toolchain spec plus the foojay resolver (settings.gradle) does the same job with the
-// JDK the environment already provides — setup-graalvm in CI, mise locally.

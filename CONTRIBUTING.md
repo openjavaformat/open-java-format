@@ -26,6 +26,6 @@ Tips:
 - run `mise run format` before pushing; the build fails if the repo is not formatted with the
   formatter it builds.
 
-## Working on `:idea-plugin`
+## Working on `:open-java-format-idea-plugin`
 
 Tip: run `mise run idea` to spin up an instance of IntelliJ with the plugin applied.

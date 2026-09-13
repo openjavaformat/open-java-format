@@ -27,21 +27,33 @@ dependencies {
     compileOnly libs.eclipse.jfaceText
     compileOnly libs.eclipse.text
 
-    implementation project(':palantir-java-format')
+    implementation project(':open-java-format')
     implementation libs.jsr305
 }
 
 // The dependencies embedded in the plugin jar. Named once, so the manifest can list exactly what
 // was packaged rather than a guess at what the file names will be.
 def embeddedLibs = configurations.runtimeClasspath.filter { file ->
-    ['functionaljava', 'guava', 'palantir'].any { file.name.startsWith(it) }
+    ['functionaljava', 'guava', 'open-java-format'].any { file.name.startsWith(it) }
 }
 
-tasks.named("jar", Jar) {
-    archiveBaseName = 'palantir-java-format-eclipse-plugin'
+// Generated, not written in MANIFEST.MF, where it sat at 2.38.0 and never followed the build. OSGi
+// takes three numbers and an optional [A-Za-z0-9_-] qualifier, so a `git describe` version such as
+// 2.97.0-41-gf6667a2.dirty has to be reshaped into 2.97.0.41-gf6667a2-dirty.
+def osgiVersion = {
+    def matcher = (project.version.toString() =~ /^(\d+)\.(\d+)\.(\d+)[.-]?(.*)$/)
+    if (!matcher.find()) {
+        throw new GradleException("Cannot derive an OSGi Bundle-Version from '${project.version}'")
+    }
+    def release = "${matcher.group(1)}.${matcher.group(2)}.${matcher.group(3)}"
+    def qualifier = matcher.group(4).replaceAll(/[^A-Za-z0-9_-]/, '-')
+    qualifier.isEmpty() ? release : "${release}.${qualifier}"
+}()
 
+tasks.named("jar", Jar) {
     manifest {
         from 'src/main/resources/META-INF/MANIFEST.MF'
+        attributes('Bundle-Version': osgiVersion)
         // Generated, not hardcoded. There used to be a rename() stripping versions off the
         // embedded jars so their names would match a fixed Bundle-ClassPath, but its pattern only
         // matched plain versions: on any build whose version comes from `git describe`

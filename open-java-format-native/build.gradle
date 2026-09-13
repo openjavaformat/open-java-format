@@ -85,12 +85,36 @@ graalvmNative {
 
 // One publication either way: external-publish's CI-only variant is gone, and JReleaser
 // stages whatever maven-publish produces.
+//
+// -PnativeImages=<dir> publishes every binary in that directory rather than the one compiled here.
+// A released version can never gain files afterwards, so the four per-platform CI jobs hand their
+// binaries to a single deploy job (.github/workflows/release.yml) and all the classifiers go up
+// together. Each classifier is read back out of the file name, exactly as for a local build.
+def collectedNativeImages = providers.gradleProperty('nativeImages').getOrNull()
+
 publishing {
     publications {
         nativeImage(MavenPublication) {
-            artifact(tasks.named('nativeCompile', BuildNativeImageTask.class).map { it.getOutputFile() }) {
-                classifier = String.format("nativeImage-%s", getOsArchName(it.getFile()))
-                extension = getExtension(it.getFile())
+            if (collectedNativeImages == null) {
+                artifact(tasks.named('nativeCompile', BuildNativeImageTask.class).map { it.getOutputFile() }) {
+                    classifier = String.format("nativeImage-%s", getOsArchName(it.getFile()))
+                    extension = getExtension(it.getFile())
+                }
+            } else {
+                def imagesDir = rootProject.file(collectedNativeImages)
+                def binaries = fileTree(imagesDir) {
+                    include 'open-java-format-*'
+                    exclude '**/*.txt'
+                }.files.sort { it.name }
+                if (binaries.isEmpty()) {
+                    throw new GradleException("No native images to publish in ${imagesDir}")
+                }
+                binaries.each { binary ->
+                    artifact(binary) {
+                        classifier = String.format("nativeImage-%s", getOsArchName(binary))
+                        extension = getExtension(binary)
+                    }
+                }
             }
         }
     }

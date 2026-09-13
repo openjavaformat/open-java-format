@@ -49,7 +49,10 @@ set -euo pipefail
 repo="$(git remote get-url origin | sed -E 's#(git@github\\.com:|https://github\\.com/)##; s#\\.git$##')"
 
 apply() {
-  local name="$1" ref="$2" value
+  # Third argument: which secret stores to write to. A plain string rather than a bash array: mise
+  # renders this script through Tera first, and the array-length syntax — a dollar, a brace and a hash —
+  # opens a Tera comment that is never closed, so the whole task fails to render.
+  local name="$1" ref="$2" stores="${3:-actions dependabot}" value
   if [[ "$ref" == *TODO* ]]; then
     echo "– $name: op reference still contains TODO, skipping"; return
   fi
@@ -58,11 +61,24 @@ apply() {
     echo "  Create that item in 1Password (or point the reference at an existing one), then re-run." >&2
     return 1
   fi
-  for store in actions dependabot; do
+  # An op field that exists but was never filled reads as empty, and gh would happily store that: a
+  # blank token or signing key only surfaces much later, as a confusing failure mid-release.
+  if [[ -z "$value" ]]; then
+    echo "✗ $name: $ref is empty — fill it in 1Password first" >&2
+    return 1
+  fi
+  for store in $stores; do
     gh secret set "$name" --app "$store" --repo "$repo" --body "$value"
     echo "✓ $name set ($store)"
   done
 }
 
-apply BOT_PAT 'op://Private/open-java-format/GitHub/bot-pat'
+apply BOT_PAT 'op://Private/open-java-format/GitHub/BOT_PAT'
+
+# What .github/workflows/release.yml signs and uploads with. Actions only: a Dependabot run never
+# releases, and the signing key has no business being readable from one.
+apply JRELEASER_MAVENCENTRAL_USERNAME 'op://Private/open-java-format/GitHub/JRELEASER_MAVENCENTRAL_USERNAME' actions
+apply JRELEASER_MAVENCENTRAL_PASSWORD 'op://Private/open-java-format/GitHub/JRELEASER_MAVENCENTRAL_PASSWORD' actions
+apply JRELEASER_GPG_SECRET_KEY 'op://Private/open-java-format/GitHub/JRELEASER_GPG_SECRET_KEY' actions
+apply JRELEASER_GPG_PASSPHRASE 'op://Private/open-java-format/GitHub/JRELEASER_GPG_PASSPHRASE' actions
 """
