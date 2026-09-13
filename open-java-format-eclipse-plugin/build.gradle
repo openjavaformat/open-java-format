@@ -39,14 +39,21 @@ def embeddedLibs = configurations.runtimeClasspath.filter { file ->
 
 // Generated, not written in MANIFEST.MF, where it sat at 2.38.0 and never followed the build. OSGi
 // takes three numbers and an optional [A-Za-z0-9_-] qualifier, so a `git describe` version such as
-// 2.97.0-41-gf6667a2.dirty has to be reshaped into 2.97.0.41-gf6667a2-dirty.
+// 2.97.0-41-gf6667a2.dirty is reshaped into 2.97.0.41-gf6667a2-dirty.
+//
+// Every checkout has to yield something valid, never an exception: a branch build has no tag to
+// describe from — on CI's shallow clone the version is a bare commit hash — and throwing here failed
+// the evaluation of this project, taking every task in the build down with it. A version that does not
+// start with three numbers becomes the qualifier of 0.0.0 instead.
 def osgiVersion = {
-    def matcher = (project.version.toString() =~ /^(\d+)\.(\d+)\.(\d+)[.-]?(.*)$/)
+    def raw = project.version.toString()
+    def sanitize = { String text -> text.replaceAll(/[^A-Za-z0-9_-]/, '-') }
+    def matcher = (raw =~ /^(\d+)\.(\d+)\.(\d+)[.-]?(.*)$/)
     if (!matcher.find()) {
-        throw new GradleException("Cannot derive an OSGi Bundle-Version from '${project.version}'")
+        return "0.0.0.${sanitize(raw)}"
     }
     def release = "${matcher.group(1)}.${matcher.group(2)}.${matcher.group(3)}"
-    def qualifier = matcher.group(4).replaceAll(/[^A-Za-z0-9_-]/, '-')
+    def qualifier = sanitize(matcher.group(4))
     qualifier.isEmpty() ? release : "${release}.${qualifier}"
 }()
 

@@ -37,7 +37,13 @@ apply plugin: 'open-java-format.release-conventions'
 
 // GitHub Actions sets GITHUB_REF_TYPE=tag on a tag build; otherwise derive the
 // version from git history (needs a full clone: actions/checkout fetch-depth: 0).
-version System.env.GITHUB_REF_TYPE == 'tag' ? System.env.GITHUB_REF_NAME : gitVersion()
+//
+// Read through providers rather than System.env: the configuration cache tracks a provider as an input
+// and invalidates when it changes, while a plain System.env read is invisible to it — a cached
+// configuration then keeps handing out the version of whichever environment happened to fill it.
+def refType = providers.environmentVariable('GITHUB_REF_TYPE')
+def refName = providers.environmentVariable('GITHUB_REF_NAME')
+version refType.getOrElse('') == 'tag' ? refName.get() : gitVersion()
 
 // The GraalVM image is built by its own per-platform CI job, never as a side effect of
 // `./gradlew build`: an aggregate build must not require a GraalVM toolchain on a machine that
