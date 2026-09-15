@@ -16,7 +16,9 @@
 
 package com.palantir.javaformat.gradle.testing;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -25,6 +27,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.Set;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
@@ -46,11 +50,15 @@ public final class GradleTestProject {
      */
     private static final String GRADLE_VERSION = "9.3.1";
 
+    /** Written by java-gradle-plugin: the classpath {@link GradleRunner#withPluginClasspath()} injects. */
+    private static final String PLUGIN_METADATA = "plugin-under-test-metadata.properties";
+
     private final Path projectDir;
     private final Set<String> plugins = new LinkedHashSet<>();
     private final StringBuilder buildGradle = new StringBuilder();
     private final StringBuilder gradleProperties = new StringBuilder();
     private boolean configurationCache;
+    private boolean spotlessOnClasspath = true;
 
     public GradleTestProject(Path projectDir) {
         this.projectDir = projectDir;
@@ -96,6 +104,16 @@ public final class GradleTestProject {
         return this;
     }
 
+    /**
+     * Leaves the Spotless jars out of the classpath injected next to the plugin under test. build.gradle puts them there
+     * so that generated projects can apply Spotless, which gives every other test Spotless classes whether it applies
+     * Spotless or not — unlike a real project that never does.
+     */
+    public GradleTestProject withoutSpotlessOnClasspath() {
+        this.spotlessOnClasspath = false;
+        return this;
+    }
+
     public Path file(String relativePath) {
         return projectDir.resolve(relativePath);
     }
@@ -132,12 +150,27 @@ public final class GradleTestProject {
         List<String> allArguments = new ArrayList<>(Arrays.asList(arguments));
         allArguments.add("--stacktrace");
         allArguments.add(configurationCache ? "--configuration-cache" : "--no-configuration-cache");
-        return GradleRunner.create()
+        GradleRunner runner = GradleRunner.create()
                 .withProjectDir(projectDir.toFile())
-                .withPluginClasspath()
                 .withGradleVersion(GRADLE_VERSION)
                 .withArguments(allArguments)
                 .forwardOutput();
+        return spotlessOnClasspath
+                ? runner.withPluginClasspath()
+                : runner.withPluginClasspath(pluginClasspathWithoutSpotless());
+    }
+
+    private static List<File> pluginClasspathWithoutSpotless() {
+        Properties metadata = new Properties();
+        try (InputStream in = GradleTestProject.class.getClassLoader().getResourceAsStream(PLUGIN_METADATA)) {
+            metadata.load(Objects.requireNonNull(in, PLUGIN_METADATA + " is not on the test classpath"));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not read " + PLUGIN_METADATA, e);
+        }
+        return Arrays.stream(metadata.getProperty("implementation-classpath").split(File.pathSeparator))
+                .map(File::new)
+                .filter(file -> !file.getName().startsWith("spotless-"))
+                .toList();
     }
 
     private void write() {
