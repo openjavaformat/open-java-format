@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: open-java-format
 Bundle-SymbolicName: open-java-format-eclipse-plugin;singleton:=true
-Bundle-RequiredExecutionEnvironment: JavaSE-11
+Bundle-RequiredExecutionEnvironment: JavaSE-21
 Import-Package: org.eclipse.jdt.core.dom,
  org.eclipse.jdt.core.formatter,
  org.eclipse.jface.text,
