@@ -592,7 +592,8 @@ See [open-java-format-eclipse-plugin](./open-java-format-eclipse-plugin).
 Upstream [PR 1211](https://github.com/palantir/palantir-java-format/pull/1211) shipped Java 21
 support. To use the Java 21 formatting capabilities, ensure that either:
 
-- the Gradle daemon and the IntelliJ Project SDK are set to Java 21
+- the Gradle daemon runs on Java 21. The IntelliJ plugin needs no setup: it runs the formatter on
+  the IDE's own runtime, which is Java 21 or later in every IDE it supports
 - or the gradle property `openjavaformat.native.formatter=true` is set. This runs the formatter
   as a native image, independent of the Gradle daemon / IntelliJ project JDK version.
 

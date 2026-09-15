@@ -18,35 +18,23 @@ package com.palantir.javaformat.intellij;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
 import com.intellij.ide.plugins.PluginManager;
-import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.projectRoots.JdkUtil;
-import com.intellij.openapi.projectRoots.Sdk;
-import com.intellij.openapi.roots.ProjectRootManager;
-import com.intellij.openapi.util.BuildNumber;
 import com.intellij.openapi.util.SystemInfo;
 import com.palantir.javaformat.bootstrap.BootstrappingFormatterService;
 import com.palantir.javaformat.bootstrap.NativeImageFormatterService;
 import com.palantir.javaformat.java.FormatterService;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.OptionalInt;
-import java.util.ServiceLoader;
-import java.util.jar.Attributes.Name;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -57,7 +45,7 @@ final class FormatterProvider {
 
     static final String PLUGIN_ID = "open-java-format";
 
-    // Cache to avoid creating a URLClassloader every time we want to format from IntelliJ
+    // Cache to avoid resolving the formatter every time we want to format from IntelliJ
     private final LoadingCache<FormatterCacheKey, Optional<FormatterService>> implementationCache =
             Caffeine.newBuilder().maximumSize(1).build(FormatterProvider::createFormatter);
 
@@ -70,7 +58,6 @@ final class FormatterProvider {
     Optional<FormatterService> get(Project project, PalantirJavaFormatSettings settings) {
         return implementationCache.get(new FormatterCacheKey(
                 project,
-                getSdkVersion(project),
                 settings.getImplementationClassPath(),
                 settings.getNativeImageClassPath(),
                 settings.injectedVersionIsOutdated()));
@@ -82,39 +69,16 @@ final class FormatterProvider {
             log.info("Using the native formatter with classpath: {}", cacheKey.nativeImageClassPath.get());
             return Optional.of(new NativeImageFormatterService(Path.of(cacheKey.nativeImageClassPath.get())));
         }
-        if (cacheKey.jdkMajorVersion.isEmpty()) {
-            return Optional.empty();
-        }
 
-        int jdkMajorVersion = cacheKey.jdkMajorVersion.getAsInt();
+        // The formatter runs in a JVM of its own, started with the "--add-exports" it needs to reach javac.
+        // That JVM is the IDE's own runtime, never the project SDK: every IDE this plugin supports runs on Java 21
+        // or later, which the formatter needs, while a project SDK can be any version.
+        int jdkMajorVersion = Runtime.version().feature();
+        Path jdkPath = Path.of(System.getProperty("java.home"), "bin", SystemInfo.isWindows ? "java.exe" : "java");
         List<Path> implementationClasspath =
                 getImplementationUrls(cacheKey.implementationClassPath, cacheKey.useBundledImplementation);
-
-        // When running with JDK 15+ or using newer language features, we use the bootstrapping formatter which injects
-        // required "--add-exports" args.
-        if (useBootstrappingFormatter(
-                jdkMajorVersion, ApplicationInfo.getInstance().getBuild())) {
-            Path jdkPath = getJdkPath(cacheKey.project);
-            log.info("Using bootstrapping formatter with jdk version {} and path: {}", jdkMajorVersion, jdkPath);
-            return Optional.of(new BootstrappingFormatterService(jdkPath, jdkMajorVersion, implementationClasspath));
-        }
-
-        // Use "in-process" formatter service
-        log.info("Using in-process formatter for jdk version {}", jdkMajorVersion);
-        URL[] implementationUrls = toUrlsUnchecked(implementationClasspath);
-        ClassLoader classLoader = new URLClassLoader(implementationUrls, FormatterService.class.getClassLoader());
-        return ServiceLoader.load(FormatterService.class, classLoader).findFirst();
-    }
-
-    /**
-     * When projects use JDK 15+ as their SDK, they might use newer language features which are only supported by the
-     * bootstrapping formatter.
-     * Separately, starting from 2022.2 (branch number '222'), Intellij now runs with JDK 17 which also requires the
-     * bootstrapping formatter. See https://plugins.jetbrains.com/docs/intellij/build-number-ranges.html for
-     * how the build number is formatted.
-     */
-    private static boolean useBootstrappingFormatter(int jdkMajorVersion, BuildNumber buildNumber) {
-        return jdkMajorVersion >= 15 || buildNumber.getBaselineVersion() >= 222;
+        log.info("Using bootstrapping formatter with jdk version {} and path: {}", jdkMajorVersion, jdkPath);
+        return Optional.of(new BootstrappingFormatterService(jdkPath, jdkMajorVersion, implementationClasspath));
     }
 
     private static List<Path> getProvidedImplementationUrls(List<URI> implementationClasspath) {
@@ -149,68 +113,6 @@ final class FormatterProvider {
                 });
     }
 
-    private static Path getJdkPath(Project project) {
-        return getProjectJdk(project)
-                .map(Sdk::getHomePath)
-                .map(Path::of)
-                .map(sdkHome -> sdkHome.resolve("bin").resolve("java" + (SystemInfo.isWindows ? ".exe" : "")))
-                .filter(Files::exists)
-                .orElseThrow(() ->
-                        new IllegalStateException("Could not determine JDK path for project: " + project.getName()));
-    }
-
-    private static OptionalInt getSdkVersion(Project project) {
-        return getProjectJdk(project)
-                .map(FormatterProvider::parseSdkJavaVersion)
-                .orElseThrow(() ->
-                        // This is not that common as our Gradle infrastructure should setup an SDK, but it does
-                        // happen on occassion and it manifests as the plugin ceasing to format. Give a slight
-                        // nudge for the manual remediation.
-                        new IllegalStateException("Could not determine SDK version for project: " + project.getName()
-                                + ". Ensure you have an SDK set in "
-                                + "'Project Structure' -> 'Project Settings' -> 'Project' -> 'SDK'"));
-    }
-
-    private static OptionalInt parseSdkJavaVersion(Sdk sdk) {
-        // Parses the actual version out of "SDK#getVersionString" which returns 'java version "15"'
-        // or 'openjdk version "15.0.2"'.
-        @SuppressWarnings("for-rollout:deprecation")
-        String version = Preconditions.checkNotNull(
-                JdkUtil.getJdkMainAttribute(sdk, Name.IMPLEMENTATION_VERSION), "JDK version is null");
-        return parseSdkJavaVersion(version);
-    }
-
-    @SuppressWarnings("for-rollout:Slf4jLogsafeArgs")
-    @VisibleForTesting
-    static OptionalInt parseSdkJavaVersion(String version) {
-        int indexOfVersionDelimiter = version.indexOf('.');
-        String normalizedVersion =
-                indexOfVersionDelimiter >= 0 ? version.substring(0, indexOfVersionDelimiter) : version;
-        normalizedVersion = normalizedVersion.replaceAll("-ea", "");
-        try {
-            return OptionalInt.of(Integer.parseInt(normalizedVersion));
-        } catch (NumberFormatException e) {
-            log.error("Could not parse sdk version: {}", version, e);
-            return OptionalInt.empty();
-        }
-    }
-
-    private static Optional<Sdk> getProjectJdk(Project project) {
-        return Optional.ofNullable(ProjectRootManager.getInstance(project).getProjectSdk());
-    }
-
-    private static URL[] toUrlsUnchecked(List<Path> paths) {
-        return paths.stream()
-                .map(path -> {
-                    try {
-                        return path.toUri().toURL();
-                    } catch (IllegalArgumentException | MalformedURLException e) {
-                        throw new RuntimeException("Couldn't convert Path to URL: " + path, e);
-                    }
-                })
-                .toArray(URL[]::new);
-    }
-
     private static List<Path> listDirAsUrlsUnchecked(Path dir) {
         try (Stream<Path> list = Files.list(dir)) {
             return list.collect(Collectors.toList());
@@ -221,19 +123,16 @@ final class FormatterProvider {
 
     private static final class FormatterCacheKey {
         private final Project project;
-        private final OptionalInt jdkMajorVersion;
         private final Optional<List<URI>> implementationClassPath;
         private final Optional<URI> nativeImageClassPath;
         private final boolean useBundledImplementation;
 
         FormatterCacheKey(
                 Project project,
-                OptionalInt jdkMajorVersion,
                 Optional<List<URI>> implementationClassPath,
                 Optional<URI> nativeImageClassPath,
                 boolean useBundledImplementation) {
             this.project = project;
-            this.jdkMajorVersion = jdkMajorVersion;
             this.implementationClassPath = implementationClassPath;
             this.nativeImageClassPath = nativeImageClassPath;
             this.useBundledImplementation = useBundledImplementation;
@@ -248,8 +147,7 @@ final class FormatterProvider {
                 return false;
             }
             FormatterCacheKey that = (FormatterCacheKey) o;
-            return Objects.equals(jdkMajorVersion, that.jdkMajorVersion)
-                    && useBundledImplementation == that.useBundledImplementation
+            return useBundledImplementation == that.useBundledImplementation
                     && Objects.equals(project, that.project)
                     && Objects.equals(implementationClassPath, that.implementationClassPath)
                     && Objects.equals(nativeImageClassPath, that.nativeImageClassPath);
@@ -257,8 +155,7 @@ final class FormatterProvider {
 
         @Override
         public int hashCode() {
-            return Objects.hash(
-                    project, jdkMajorVersion, implementationClassPath, nativeImageClassPath, useBundledImplementation);
+            return Objects.hash(project, implementationClassPath, nativeImageClassPath, useBundledImplementation);
         }
     }
 }

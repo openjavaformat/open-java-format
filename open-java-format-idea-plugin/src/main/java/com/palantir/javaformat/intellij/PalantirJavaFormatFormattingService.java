@@ -25,6 +25,7 @@ import com.intellij.formatting.service.AsyncFormattingRequest;
 import com.intellij.ide.highlighter.JavaFileType;
 import com.intellij.ide.impl.TrustedProjects;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.NlsSafe;
 import com.intellij.openapi.util.TextRange;
@@ -133,6 +134,16 @@ class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService
                 request.onError(
                         Notifications.PARSING_ERROR_TITLE,
                         Notifications.parsingErrorMessage(
+                                request.getContext().getContainingFile().getName()));
+            } catch (ProcessCanceledException e) {
+                throw e;
+            } catch (RuntimeException e) {
+                // Typically the formatter's JVM failing to start or exiting with an error. Left alone, the IDE
+                // swallows it and Reformat looks as if it did nothing.
+                logger.warn("open-java-format could not run the formatter", e);
+                request.onError(
+                        Notifications.GENERIC_ERROR_NOTIFICATION_GROUP,
+                        Notifications.formatterFailedMessage(
                                 request.getContext().getContainingFile().getName()));
             }
         }
