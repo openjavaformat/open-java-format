@@ -51,9 +51,9 @@ public abstract class PalantirJavaFormatIdeaPlugin implements Plugin<Project> {
 
         rootProject.getPlugins().apply(PalantirJavaFormatProviderPlugin.class);
         rootProject.getPluginManager().withPlugin("idea", ideaPlugin -> {
-            TaskProvider<UpdatePalantirJavaFormatIdeaXmlFile> updatePalantirJavaFormatXml = rootProject
+            TaskProvider<UpdatePalantirJavaFormatIdeaXmlFile> updateOpenJavaFormatXml = rootProject
                     .getTasks()
-                    .register("updatePalantirJavaFormatXml", UpdatePalantirJavaFormatIdeaXmlFile.class, task -> {
+                    .register("updateOpenJavaFormatXml", UpdatePalantirJavaFormatIdeaXmlFile.class, task -> {
                         task.getXmlOutputFile().set(rootProject.file(".idea/open-java-format.xml"));
                         task.getImplementationConfig()
                                 .from(rootProject
@@ -84,7 +84,7 @@ public abstract class PalantirJavaFormatIdeaPlugin implements Plugin<Project> {
 
             // Add the task to the Gradle start parameters so it executes automatically.
             StartParameter startParameter = rootProject.getGradle().getStartParameter();
-            List<String> updateTasks = Stream.of(updatePalantirJavaFormatXml, updateWorkspaceXml)
+            List<String> updateTasks = Stream.of(updateOpenJavaFormatXml, updateWorkspaceXml)
                     .map(taskProvider -> String.format(":%s", taskProvider.getName()))
                     .toList();
             List<String> taskNames = ImmutableList.<String>builder()

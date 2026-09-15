@@ -28,6 +28,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import org.gradle.testkit.runner.BuildResult;
+import org.gradle.testkit.runner.BuildTask;
+import org.gradle.testkit.runner.TaskOutcome;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -59,7 +62,13 @@ class PalantirJavaFormatIdeaPluginTest {
                         """,
                         extraGradleProperties.isBlank() ? "" : NATIVE_CONFIG);
 
-        project.succeeds("idea");
+        BuildResult result = project.succeeds("idea");
+
+        // Not requested on the command line: the plugin appends it to the tasks of every build.
+        assertThat(result.task(":updateOpenJavaFormatXml"))
+                .isNotNull()
+                .extracting(BuildTask::getOutcome)
+                .isEqualTo(TaskOutcome.SUCCESS);
 
         assertThat(project.file(".idea/open-java-format.xml")).exists();
 
