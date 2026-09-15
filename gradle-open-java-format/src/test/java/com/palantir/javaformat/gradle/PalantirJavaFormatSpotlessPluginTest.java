@@ -49,8 +49,8 @@ class PalantirJavaFormatSpotlessPluginTest {
     @CsvSource(
             delimiter = '|',
             value = {
-                "                               | 21 | Using the Java-based formatter",
-                "palantir.native.formatter=true | 21 | Using the Java-based formatter"
+                "                                     | 21 | Using the Java-based formatter",
+                "openjavaformat.native.formatter=true | 21 | Using the Java-based formatter"
             })
     void formats_with_spotless_when_spotless_is_applied(
             String extraGradleProperties, String javaVersion, String expectedOutput) {

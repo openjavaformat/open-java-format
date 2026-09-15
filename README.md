@@ -273,6 +273,9 @@ every name below — for its Gradle projects and directories as well as for what
 | Gradle plugin IDs | `com.palantir.java-format`, `-idea`, `-spotless`, `-provider` | `dev.openjavaformat.java-format`, `-idea`, `-spotless`, `-provider` |
 | IntelliJ plugin ID | `palantir-java-format` | `open-java-format` |
 | Eclipse plugin bundle | `palantir-java-format-eclipse-plugin` | `open-java-format-eclipse-plugin` |
+| CLI style flag | `--palantir`, `-palantir` | `--ojf`, `-ojf` |
+| Formatter style | `PALANTIR` | `OJF` |
+| Native formatter Gradle property | `palantir.native.formatter` | `openjavaformat.native.formatter` |
 | Java packages | `com.palantir.javaformat.*` | **unchanged in 2.x** |
 | Version numbers | `2.x` | **the same `2.x`** |
 
@@ -590,8 +593,8 @@ Upstream [PR 1211](https://github.com/palantir/palantir-java-format/pull/1211) s
 support. To use the Java 21 formatting capabilities, ensure that either:
 
 - the Gradle daemon and the IntelliJ Project SDK are set to Java 21
-- or the gradle property `palantir.native.formatter=true` is set. This runs the formatter as a
-  native image, independent of the Gradle daemon / IntelliJ project JDK version.
+- or the gradle property `openjavaformat.native.formatter=true` is set. This runs the formatter
+  as a native image, independent of the Gradle daemon / IntelliJ project JDK version.
 
 ### Native image formatter
 

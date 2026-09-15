@@ -48,7 +48,7 @@ class PalantirJavaFormatIdeaPluginTest {
     private Path projectDir;
 
     @ParameterizedTest(name = "extraGradleProperties={0}")
-    @ValueSource(strings = {"", "palantir.native.formatter=true"})
+    @ValueSource(strings = {"", "openjavaformat.native.formatter=true"})
     void idea_configures_xml_files(String extraGradleProperties) throws IOException {
         GradleTestProject project = new GradleTestProject(projectDir)
                 .plugins("dev.openjavaformat.java-format-idea", "idea")
@@ -83,7 +83,7 @@ class PalantirJavaFormatIdeaPluginTest {
 
         assertThat(allOptions).anyMatch(o -> "implementationClassPath".equals(o.name()));
 
-        if (extraGradleProperties.contains("palantir.native.formatter=true")) {
+        if (extraGradleProperties.contains("openjavaformat.native.formatter=true")) {
             assertThat(allOptions).anyMatch(o -> "nativeImageClassPath".equals(o.name()));
         }
 

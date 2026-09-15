@@ -46,7 +46,7 @@ class PalantirJavaFormatPluginTest {
             delimiter = '|',
             value = {
                 " | Using the Java-based formatter",
-                "palantir.native.formatter=true | Using the native-image formatter"
+                "openjavaformat.native.formatter=true | Using the native-image formatter"
             })
     void formatDiff_updates_only_lines_changed_in_git_diff(String extraGradleProperties, String expectedOutput)
             throws IOException, InterruptedException {

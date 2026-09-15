@@ -48,7 +48,7 @@ public abstract class NativeImageSupport {
 
     private boolean isNativeFlagEnabled() {
         return getProviderFactory()
-                .gradleProperty("palantir.native.formatter")
+                .gradleProperty("openjavaformat.native.formatter")
                 .map(Boolean::parseBoolean)
                 .orElse(false)
                 .get();
