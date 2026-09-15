@@ -29,8 +29,8 @@ import com.google.errorprone.annotations.Immutable;
 public final class JavaFormatterOptions {
 
     public enum Style {
-        /** The default Palantir Java Style configuration. */
-        PALANTIR(2, 120),
+        /** The default Open Java Format Style configuration. */
+        OJF(2, 120),
 
         /** The default Google Java Style configuration. */
         GOOGLE(1, 100),

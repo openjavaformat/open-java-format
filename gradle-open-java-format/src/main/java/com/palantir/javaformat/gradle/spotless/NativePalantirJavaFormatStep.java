@@ -62,7 +62,7 @@ public final class NativePalantirJavaFormatStep {
             logger.info("Using native-image at {}", execFile);
             execSignature = FileSignature.signAsSet(execFile);
             List<String> argumentsWithPathToExe =
-                    List.of(execSignature.getOnlyFile().getAbsolutePath(), "--palantir", "-");
+                    List.of(execSignature.getOnlyFile().getAbsolutePath(), "--ojf", "-");
             return runner.exec(input.getBytes(StandardCharsets.UTF_8), argumentsWithPathToExe)
                     .assertExitZero(StandardCharsets.UTF_8);
         }

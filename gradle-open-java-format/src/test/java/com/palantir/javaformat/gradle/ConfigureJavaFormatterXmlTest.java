@@ -54,7 +54,7 @@ class ConfigureJavaFormatterXmlTest {
     private static final String MISSING_CLASS_PATH = """
         <root>
             <component name="PalantirJavaFormatSettings">
-                <option name="style" value="PALANTIR"/>
+                <option name="style" value="OJF"/>
             </component>
         </root>
         """;
@@ -120,7 +120,7 @@ class ConfigureJavaFormatterXmlTest {
         String expected = """
             <root>
               <component name="PalantirJavaFormatSettings">
-                <option name="style" value="PALANTIR"/>
+                <option name="style" value="OJF"/>
                 <option name="enabled" value="true"/>
                 <option name="implementationClassPath">
                   <list>

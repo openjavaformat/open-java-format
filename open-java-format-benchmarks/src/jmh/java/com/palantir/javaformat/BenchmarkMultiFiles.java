@@ -86,7 +86,7 @@ public class BenchmarkMultiFiles {
         ProcessBuilder p = new ProcessBuilder();
         p.command(Stream.concat(
                         Stream.of(
-                                Path.of(System.getenv("NATIVE_IMAGE_CLASSPATH")).toString(), "-i", "--palantir"),
+                                Path.of(System.getenv("NATIVE_IMAGE_CLASSPATH")).toString(), "-i", "--ojf"),
                         state.filesToFormat.stream())
                 .collect(Collectors.toList()));
         Process process = p.inheritIO().start();
@@ -99,7 +99,7 @@ public class BenchmarkMultiFiles {
     public final void runNestedLevel(MultiLevelStates state) throws InterruptedException, IOException {
         ProcessBuilder p = new ProcessBuilder();
         p.command(List.of(
-                Path.of(System.getenv("NATIVE_IMAGE_CLASSPATH")).toString(), "-i", "--palantir", state.fileToFormat));
+                Path.of(System.getenv("NATIVE_IMAGE_CLASSPATH")).toString(), "-i", "--ojf", state.fileToFormat));
         Process process = p.inheritIO().start();
         assertThat(process.waitFor()).isEqualTo(0);
     }
@@ -121,7 +121,7 @@ public class BenchmarkMultiFiles {
                                 "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
                                 "com.palantir.javaformat.java.Main",
                                 "-i",
-                                "--palantir"),
+                                "--ojf"),
                         state.filesToFormat.stream())
                 .collect(Collectors.toList()));
         Process process = p.inheritIO().start();

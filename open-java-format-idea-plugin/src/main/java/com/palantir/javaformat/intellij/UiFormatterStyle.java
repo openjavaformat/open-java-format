@@ -23,7 +23,7 @@ import java.util.Objects;
 
 /** Configuration options for the formatting style. */
 enum UiFormatterStyle {
-    PALANTIR("Default Palantir Java style", Style.PALANTIR),
+    OJF("Default Open Java Format style", Style.OJF),
     ;
 
     private final String description;

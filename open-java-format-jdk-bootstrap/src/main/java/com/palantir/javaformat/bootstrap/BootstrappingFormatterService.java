@@ -139,8 +139,8 @@ public final class BootstrappingFormatterService implements FormatterService {
             }
 
             return args
-                    // Use palantir style
-                    .add("--palantir")
+                    // Use the open-java-format style
+                    .add("--ojf")
                     // Trailing "-" enables formatting stdin -> stdout
                     .add("-")
                     .build();

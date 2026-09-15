@@ -28,7 +28,7 @@ public final class FormatterServiceImpl implements FormatterService {
 
     public FormatterServiceImpl() {
         JavaFormatterOptions options =
-                JavaFormatterOptions.builder().style(Style.PALANTIR).build();
+                JavaFormatterOptions.builder().style(Style.OJF).build();
         formatter = Formatter.createFormatter(options);
     }
 

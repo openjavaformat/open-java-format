@@ -96,9 +96,9 @@ public final class Main {
             throw new UsageException();
         }
 
-        // TODO(someone): update this to always use Style.PALANTIR
+        // TODO(someone): update this to always use Style.OJF
         JavaFormatterOptions options = JavaFormatterOptions.builder()
-                .style(parameters.aosp() ? Style.AOSP : parameters.palantirStyle() ? Style.PALANTIR : Style.GOOGLE)
+                .style(parameters.aospStyle() ? Style.AOSP : parameters.ojfStyle() ? Style.OJF : Style.GOOGLE)
                 .build();
 
         if (parameters.stdin()) {

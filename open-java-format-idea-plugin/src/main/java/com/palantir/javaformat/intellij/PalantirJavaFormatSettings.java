@@ -148,7 +148,7 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
         private Optional<List<URI>> implementationClassPath = Optional.empty();
         private Optional<URI> nativeImageClassPath = Optional.empty();
 
-        public JavaFormatterOptions.Style style = JavaFormatterOptions.Style.PALANTIR;
+        public JavaFormatterOptions.Style style = JavaFormatterOptions.Style.OJF;
 
         public void setImplementationClassPath(@Nullable List<String> value) {
             implementationClassPath = Optional.ofNullable(value)

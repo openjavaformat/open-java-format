@@ -92,11 +92,11 @@ final class CommandLineOptionsParser {
                 case "--aosp":
                 case "-aosp":
                 case "-a":
-                    optionsBuilder.aosp(true);
+                    optionsBuilder.aospStyle(true);
                     break;
-                case "--palantir":
-                case "-palantir":
-                    optionsBuilder.palantirStyle(true);
+                case "--ojf":
+                case "-ojf":
+                    optionsBuilder.ojfStyle(true);
                     break;
                 case "--version":
                 case "-version":

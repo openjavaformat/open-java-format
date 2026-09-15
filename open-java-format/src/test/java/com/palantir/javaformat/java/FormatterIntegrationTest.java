@@ -74,7 +74,7 @@ public class FormatterIntegrationTest {
         try {
             Formatter formatter = createFormatter();
             String output = formatter.formatSource(input);
-            output = StringWrapper.wrap(Style.PALANTIR.maxLineLength(), output, formatter);
+            output = StringWrapper.wrap(Style.OJF.maxLineLength(), output, formatter);
             if (isRecreate()) {
                 tests.writeFormatterOutput(name, output);
                 return;
@@ -88,7 +88,7 @@ public class FormatterIntegrationTest {
     private static Formatter createFormatter() {
         return new Formatter(
                 JavaFormatterOptions.builder()
-                        .style(JavaFormatterOptions.Style.PALANTIR)
+                        .style(JavaFormatterOptions.Style.OJF)
                         .build(),
                 isDebugMode());
     }

@@ -32,8 +32,8 @@ final class CommandLineOptions {
     private final ImmutableRangeSet<Integer> characterRanges;
     private final ImmutableList<Integer> offsets;
     private final ImmutableList<Integer> lengths;
-    private final boolean aosp;
-    private final boolean palantirStyle;
+    private final boolean aospStyle;
+    private final boolean ojfStyle;
     private final boolean version;
     private final boolean help;
     private final boolean stdin;
@@ -53,8 +53,8 @@ final class CommandLineOptions {
             ImmutableRangeSet<Integer> characterRanges,
             ImmutableList<Integer> offsets,
             ImmutableList<Integer> lengths,
-            boolean aosp,
-            boolean palantirStyle,
+            boolean aospStyle,
+            boolean ojfStyle,
             boolean version,
             boolean help,
             boolean stdin,
@@ -72,8 +72,8 @@ final class CommandLineOptions {
         this.characterRanges = characterRanges;
         this.offsets = offsets;
         this.lengths = lengths;
-        this.aosp = aosp;
-        this.palantirStyle = palantirStyle;
+        this.aospStyle = aospStyle;
+        this.ojfStyle = ojfStyle;
         this.version = version;
         this.help = help;
         this.stdin = stdin;
@@ -118,13 +118,13 @@ final class CommandLineOptions {
     }
 
     /** Use AOSP style instead of Google Style (4-space indentation). */
-    boolean aosp() {
-        return aosp;
+    boolean aospStyle() {
+        return aospStyle;
     }
 
-    /** Use Palantir style instead of Google Style. */
-    boolean palantirStyle() {
-        return palantirStyle;
+    /** Use Open Java Format style instead of Google Style. */
+    boolean ojfStyle() {
+        return ojfStyle;
     }
 
     /** Print the version. */
@@ -197,8 +197,8 @@ final class CommandLineOptions {
         private final ImmutableList.Builder<Integer> offsets = ImmutableList.builder();
         private final ImmutableList.Builder<Integer> lengths = ImmutableList.builder();
         private boolean inPlace = false;
-        private boolean aosp = false;
-        private boolean palantirStyle = false;
+        private boolean aospStyle = false;
+        private boolean ojfStyle = false;
         private boolean version = false;
         private boolean help = false;
         private boolean stdin = false;
@@ -240,13 +240,13 @@ final class CommandLineOptions {
             return this;
         }
 
-        Builder aosp(boolean aosp) {
-            this.aosp = aosp;
+        Builder aospStyle(boolean aosp) {
+            this.aospStyle = aosp;
             return this;
         }
 
-        Builder palantirStyle(boolean palantirStyle) {
-            this.palantirStyle = palantirStyle;
+        Builder ojfStyle(boolean ojfStyle) {
+            this.ojfStyle = ojfStyle;
             return this;
         }
 
@@ -306,7 +306,7 @@ final class CommandLineOptions {
         }
 
         CommandLineOptions build() {
-            Preconditions.checkArgument(!aosp || !palantirStyle, "Cannot use both aosp and palantir style");
+            Preconditions.checkArgument(!aospStyle || !ojfStyle, "Cannot use both aosp and palantir style");
             return new CommandLineOptions(
                     files.build(),
                     inPlace,
@@ -314,8 +314,8 @@ final class CommandLineOptions {
                     characterRanges.build(),
                     offsets.build(),
                     lengths.build(),
-                    aosp,
-                    palantirStyle,
+                    aospStyle,
+                    ojfStyle,
                     version,
                     help,
                     stdin,
