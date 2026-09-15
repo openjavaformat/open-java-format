@@ -65,10 +65,6 @@ dependencies {
 
     implementation project(':open-java-format-jdk-bootstrap')
     implementation libs.caffeine
-    implementation(libs.slsVersions) {
-        // Has class version conflicts with slf4j brought in by Intellij
-        exclude group: 'org.slf4j', module: 'slf4j-api'
-    }
     implementation libs.palantir.platform
 
     formatter project(':open-java-format')

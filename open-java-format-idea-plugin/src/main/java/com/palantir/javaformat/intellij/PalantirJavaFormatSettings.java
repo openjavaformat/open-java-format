@@ -22,7 +22,6 @@ import com.intellij.openapi.components.Storage;
 import com.intellij.openapi.project.Project;
 import com.palantir.javaformat.java.FormatterService;
 import com.palantir.javaformat.java.JavaFormatterOptions;
-import com.palantir.sls.versions.OrderableSlsVersion;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -98,16 +97,15 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
     }
 
     boolean injectedVersionIsOutdated() {
-        Optional<String> formatterVersion = computeFormatterVersion();
-        Optional<OrderableSlsVersion> implementationVersion = OrderableSlsVersion.safeValueOf(
-                getImplementationVersion().map(v -> v.replace(".dirty", "")).orElse(""));
+        Optional<FormatterVersion> formatterVersion = computeFormatterVersion().flatMap(FormatterVersion::parse);
+        Optional<FormatterVersion> implementationVersion =
+                getImplementationVersion().flatMap(FormatterVersion::parse);
 
         if (formatterVersion.isEmpty() || implementationVersion.isEmpty()) {
             return true;
         }
 
-        OrderableSlsVersion injectedVersion = OrderableSlsVersion.valueOf(formatterVersion.get());
-        return injectedVersion.compareTo(implementationVersion.get()) < 0;
+        return formatterVersion.get().compareTo(implementationVersion.get()) < 0;
     }
 
     Optional<String> getImplementationVersion() {

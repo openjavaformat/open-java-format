@@ -14,11 +14,43 @@ run = "act push --dryrun"
 
 [tasks."ci:build"]
 description = "Run the linux jar+native build job locally in Docker (slow: downloads JDKs, runs all tests)"
-run = "act push --job build"
+run = "act push --job build --env JAVA_HOME=/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.12-101.0.LTS/arm64"
 
 [tasks."ci:native"]
 description = "Run the linux-aarch64 native job locally in Docker"
 run = "act push --job native --matrix platform:linux-aarch64"
+
+# ---- Releases ----
+# JReleaser stages, signs and uploads to the Maven Central Portal the modules listed in
+# buildSrc/src/main/groovy/open-java-format.release-conventions.gradle. The PGP key and the Portal
+# token come from JRELEASER_* variables or ~/.jreleaser/config.properties. Only a clean checkout of a
+# release tag is accepted. Run these through mise, not ./gradlew: JReleaser's POM check finds Java
+# through JAVA_HOME, which mise sets, and without it logs an error and carries on unchecked.
+#
+# These deploy the jars. The native images are a deployment of their own — one binary per platform,
+# built by four CI jobs and uploaded together by .github/workflows/release.yml on a tag, because a
+# published version can never gain files afterwards.
+
+[tasks.release]
+description = "Stage, sign, and upload the release to the Maven Central Portal (publishing is a click there)"
+run = "./gradlew clean jreleaserDeploy"
+
+[tasks."release:dry-run"]
+description = "Rehearse the release: stage, sign and check the artifacts, upload nothing"
+run = "./gradlew clean jreleaserDeploy --dryrun"
+
+# The Gradle plugins go to the Gradle Plugin Portal instead, by hand and last: they depend on the version's
+# jars, so publish only once that deployment is live on Maven Central. The key and secret are
+# gradle.publish.key and gradle.publish.secret in ~/.gradle/gradle.properties. The Portal never takes a
+# version back; publishPlugins refuses anything but a release tag's version.
+
+[tasks."release:gradle-plugin"]
+description = "Publish the Gradle plugins to the Gradle Plugin Portal (once the jars are live on Maven Central)"
+run = "./gradlew :gradle-open-java-format:publishPlugins"
+
+[tasks."release:gradle-plugin:validate"]
+description = "Check the Gradle plugins' Portal metadata, publish nothing"
+run = "./gradlew :gradle-open-java-format:publishPlugins --validate-only"
 
 # ---- GitHub Actions secrets ----
 # Read from 1Password at apply time; nothing secret is stored in the repo. Requires gh

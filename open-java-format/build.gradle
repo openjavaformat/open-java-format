@@ -47,6 +47,26 @@ tasks.named('jar', Jar) {
     }
 }
 
+// One jar to download and run as `java -jar open-java-format-<version>-all.jar`, on Java 21 or later: the classes
+// of every runtime dependency unpacked into it, the manifest of the jar above — Add-Exports included, so no JVM
+// flags are needed — plus a Main-Class. The draft GitHub release carries it; Maven Central does not.
+tasks.register('allJar', Jar) {
+    description = 'Assembles a runnable jar with every runtime dependency inside.'
+    group = 'build'
+    archiveClassifier = 'all'
+    manifest {
+        from tasks.named('jar', Jar).get().manifest
+        attributes('Main-Class': application.mainClass.get())
+    }
+    from sourceSets.main.output
+    from(configurations.runtimeClasspath.elements.map { elements -> elements.collect { zipTree(it.asFile) } })
+    // The dependencies' signatures would no longer match, and module descriptors mean nothing on the class path.
+    // What stays duplicated is licence and service files; the formatter registers its Jackson modules itself, so
+    // keeping the first copy is harmless.
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', '**/module-info.class'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 // false positives due to org.junit.runners.* in the test cases
 tasks.named("checkJUnitDependencies") {
     enabled = false

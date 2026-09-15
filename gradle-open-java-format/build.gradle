@@ -1,4 +1,6 @@
-apply plugin: 'java-gradle-plugin'
+// For the Gradle Plugin Portal: publishPlugins, run by hand once the version's jars are published on Maven
+// Central — the plugin depends on them. It applies java-gradle-plugin and maven-publish itself.
+apply plugin: 'com.gradle.plugin-publish'
 apply plugin: 'groovy'
 apply plugin: 'open-java-format.publishing-conventions'
 
@@ -154,5 +156,17 @@ tasks.named("test").configure {
         exclude '**/PalantirJavaFormatIdeaPluginTest.class'
         exclude '**/PalantirJavaFormatSpotlessPluginTest.class'
         exclude '**/FormatDiffTest.class'
+    }
+}
+
+// The Portal never takes a version back, so only a release version goes up — X.Y.Z or X.Y.Z.N, as for Maven
+// Central in open-java-format.release-conventions. --validate-only checks the metadata of any version.
+def portalVersion = provider { project.version.toString() }
+tasks.named('publishPlugins') {
+    doFirst {
+        if (!validateOnly.getOrElse(false) && !(portalVersion.get() ==~ /\d+\.\d+\.\d+(\.\d+)?/)) {
+            throw new GradleException("Refusing to publish ${portalVersion.get()} to the Gradle Plugin Portal: check "
+                    + 'out a release tag on a clean working tree, or pass --validate-only.')
+        }
     }
 }

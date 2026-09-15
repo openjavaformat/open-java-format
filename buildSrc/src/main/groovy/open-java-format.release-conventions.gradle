@@ -10,8 +10,13 @@ plugins {
 // jobs, long after the jars are staged. `-PreleaseTarget=native` deploys the binaries those jobs
 // collected, the default deploys the jars; on a tag both read the same version from it.
 //
-// Not released yet: gradle-open-java-format, whose plugin markers and Gradle Plugin Portal listing are
-// a decision of their own. The Eclipse and IntelliJ plugins have no Maven publications at all.
+// `-PreleaseTarget=github` deploys nothing. It is for `jreleaserRelease`, which opens a draft GitHub
+// release on the tag with what Maven Central does not carry — the runnable formatter jar, the IntelliJ
+// plugin zip, the Eclipse plugin jar and every platform's native binary as a plain download — each file
+// signed, plus a checksum file.
+//
+// gradle-open-java-format is not released here: its plugins go to the Gradle Plugin Portal by hand, with
+// `mise run release:gradle-plugin`, once the jars they depend on are published.
 def releaseTarget = providers.gradleProperty('releaseTarget').getOrElse('jars')
 def releasedProjects
 if (releaseTarget == 'jars') {
@@ -22,11 +27,30 @@ if (releaseTarget == 'jars') {
     ]
 } else if (releaseTarget == 'native') {
     releasedProjects = [':open-java-format-native']
+} else if (releaseTarget == 'github') {
+    releasedProjects = []
 } else {
-    throw new GradleException("Unknown -PreleaseTarget=${releaseTarget}: use 'jars' or 'native'")
+    throw new GradleException("Unknown -PreleaseTarget=${releaseTarget}: use 'jars', 'native' or 'github'")
 }
 def stagingRepositories = releasedProjects.collect { path ->
     relativePath(project(path).layout.buildDirectory.dir('staging-deploy'))
+}
+
+// The GitHub release takes the binaries the per-platform jobs collected from -PnativeImages=<dir>, exactly
+// as the native deployment does.
+def nativeBinaries = []
+if (releaseTarget == 'github') {
+    def collectedNativeImages = providers.gradleProperty('nativeImages').getOrNull()
+    if (collectedNativeImages == null) {
+        throw new GradleException('-PreleaseTarget=github needs -PnativeImages=<dir> holding the native binaries')
+    }
+    nativeBinaries = fileTree(file(collectedNativeImages)) {
+        include 'open-java-format-*'
+        exclude '**/*.txt'
+    }.files.sort { it.name }
+    if (nativeBinaries.isEmpty()) {
+        throw new GradleException("No native images to release in ${collectedNativeImages}")
+    }
 }
 
 jreleaser {
@@ -50,7 +74,38 @@ jreleaser {
 
     release {
         github {
-            enabled = false
+            enabled = releaseTarget == 'github'
+            // The tag is pushed by hand and is the version; the release only attaches to it.
+            skipTag = true
+            tagName = '{{projectVersion}}'
+            releaseName = '{{projectVersion}}'
+            // Published by hand after a look, like the deployments waiting in the Portal.
+            draft = true
+            changelog {
+                formatted = 'ALWAYS'
+                format = '- {{commitShortHash}} {{commitTitle}}'
+            }
+        }
+    }
+
+    // Name templates, not Gradle's version: the root project sets its version only after applying this
+    // plugin. The jars and the zip are built by the tasks jreleaserRelease depends on below.
+    files {
+        nativeBinaries.each { binary ->
+            artifact {
+                path = binary.absolutePath
+            }
+        }
+        if (releaseTarget == 'github') {
+            artifact {
+                path = 'open-java-format/build/libs/open-java-format-{{projectVersion}}-all.jar'
+            }
+            artifact {
+                path = 'open-java-format-idea-plugin/build/distributions/open-java-format-idea-plugin-{{projectVersion}}.zip'
+            }
+            artifact {
+                path = 'open-java-format-eclipse-plugin/build/libs/open-java-format-eclipse-plugin-{{projectVersion}}.jar'
+            }
         }
     }
 
@@ -71,7 +126,8 @@ jreleaser {
                 // The deployer's name selects its credentials — the Central Portal user token, as
                 // JRELEASER_DEPLOY_MAVEN_MAVENCENTRAL_SONATYPE_USERNAME and _PASSWORD.
                 sonatype {
-                    active = 'ALWAYS'
+                    // Nothing is deployed when the target is the GitHub release.
+                    active = releaseTarget == 'github' ? 'NEVER' : 'ALWAYS'
                     url = 'https://central.sonatype.com/api/v1/publisher'
                     namespace = 'dev.openjavaformat'
                     applyMavenCentralRules = true
@@ -86,18 +142,31 @@ jreleaser {
     }
 }
 
-// A release cannot be taken back, and the version comes from `git describe`: anywhere but a clean
-// checkout of a release tag it reads like 2.97.0-41-gf6667a2d.dirty. Refuse to upload that.
-def releaseVersion = provider { version.toString() }
-
 tasks.named('jreleaserDeploy') {
     releasedProjects.each { path ->
         dependsOn "${path}:publishAllPublicationsToStagingRepository"
     }
-    doFirst {
-        if (!dryrun.getOrElse(false) && !(releaseVersion.get() ==~ /\d+\.\d+\.\d+/)) {
-            throw new GradleException("Refusing to release ${releaseVersion.get()}: check out a release tag on a "
-                    + 'clean working tree, or pass --dryrun to rehearse without uploading.')
+}
+
+tasks.named('jreleaserRelease') {
+    if (releaseTarget == 'github') {
+        dependsOn ':open-java-format:allJar', ':open-java-format-idea-plugin:buildPlugin',
+                ':open-java-format-eclipse-plugin:jar'
+    }
+}
+
+// A release cannot be taken back, and the version comes from `git describe`: anywhere but a clean
+// checkout of a release tag it reads like 2.97.0-41-gf6667a2d.dirty. Refuse to upload that. A release is
+// upstream's X.Y.Z, optionally with a build number of our own after it: 2.98.0.1.
+def releaseVersion = provider { version.toString() }
+
+['jreleaserDeploy', 'jreleaserRelease'].each { taskName ->
+    tasks.named(taskName) {
+        doFirst {
+            if (!dryrun.getOrElse(false) && !(releaseVersion.get() ==~ /\d+\.\d+\.\d+(\.\d+)?/)) {
+                throw new GradleException("Refusing to release ${releaseVersion.get()}: check out a release tag on a "
+                        + 'clean working tree, or pass --dryrun to rehearse without uploading.')
+            }
         }
     }
 }
