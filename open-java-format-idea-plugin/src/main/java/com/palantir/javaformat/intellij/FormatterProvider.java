@@ -49,10 +49,11 @@ final class FormatterProvider {
     private final LoadingCache<FormatterCacheKey, Optional<FormatterService>> implementationCache =
             Caffeine.newBuilder().maximumSize(1).build(FormatterProvider::createFormatter);
 
-    @SuppressWarnings("for-rollout:deprecation")
     static IdeaPluginDescriptor getPluginDescriptor() {
         return Preconditions.checkNotNull(
-                PluginManager.getPlugin(PluginId.getId(PLUGIN_ID)), "Couldn't find our own plugin: %s", PLUGIN_ID);
+                PluginManager.getInstance().findEnabledPlugin(PluginId.getId(PLUGIN_ID)),
+                "Couldn't find our own plugin: %s",
+                PLUGIN_ID);
     }
 
     Optional<FormatterService> get(Project project, PalantirJavaFormatSettings settings) {
@@ -89,8 +90,7 @@ final class FormatterProvider {
     private static List<Path> getBundledImplementationUrls() {
         // Load from the jars bundled with the plugin.
         IdeaPluginDescriptor ourPlugin = getPluginDescriptor();
-        @SuppressWarnings("for-rollout:deprecation")
-        Path implDir = ourPlugin.getPath().toPath().resolve("impl");
+        Path implDir = ourPlugin.getPluginPath().resolve("impl");
         log.debug("Using open-java-format implementation bundled with plugin: {}", implDir);
         return listDirAsUrlsUnchecked(implDir);
     }

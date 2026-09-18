@@ -47,6 +47,9 @@ class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService
     @Override
     protected FormattingTask createFormattingTask(@NotNull AsyncFormattingRequest request) {
         Project project = request.getContext().getProject();
+        // The marketplace verifier reports this class as experimental, and newer IDEs also deprecate it. It stays:
+        // its replacement, com.intellij.ide.trustedProjects.TrustedProjects, is @ApiStatus.Internal — a worse thing
+        // for a plugin to call.
         if (!TrustedProjects.isTrusted(project)) {
             logger.warn("open-java-format: skipping formatting for untrusted project: " + project.getName());
             request.onError(
