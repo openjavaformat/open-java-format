@@ -5,6 +5,15 @@
     openjavaformat
   </vendor>
 
+  <!-- The plugin page on the JetBrains Marketplace, and the only copy of the description: the
+       Gradle build no longer sets one. Only tags the marketplace renders: p, a, b, code, ul, ol, li. -->
+  <description><![CDATA[
+    <p>Formats Java code with <a href="https://github.com/openjavaformat/open-java-format">open-java-format</a>, a maintained fork of palantir-java-format: 120 columns, 4-space indents and lambda-friendly line breaking.</p>
+    <p>With the plugin enabled, <b>Reformat Code</b> runs open-java-format instead of the IDE's built-in Java formatter, so the IDE and your build produce identical files. The IDE's own Java code style settings no longer apply.</p>
+    <p>The formatter runs in a process of its own, on the IDE's runtime, so the project SDK can be any version. A project that applies the <code>dev.openjavaformat.java-format</code> Gradle plugin takes the formatter version from the build; every other project uses the version bundled with this plugin.</p>
+    <p>Requires IntelliJ IDEA 2024.2 or later, or another IDE with Java support such as Android Studio.</p>
+  ]]></description>
+
   <depends>com.intellij.modules.java</depends>
   <depends>com.intellij.modules.lang</depends>
   <depends>com.intellij.modules.platform</depends>

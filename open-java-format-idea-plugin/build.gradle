@@ -92,7 +92,8 @@ intellijPlatform {
 
     pluginConfiguration {
         name = 'open-java-format'
-        description = "Formats source code using the open-java-format tool."
+        // No description here: patchPluginXml would overwrite the one in plugin.xml, which is the
+        // marketplace listing and is written in HTML.
         ideaVersion {
             sinceBuild = '242' // JBR 21: the first IDEs that can load this plugin's bytecode
             untilBuild = provider { null }
