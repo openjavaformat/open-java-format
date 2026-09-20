@@ -1,7 +1,7 @@
 <p align="center">
 <a href="https://github.com/openjavaformat/open-java-format/actions/workflows/ci.yml"><img src="https://github.com/openjavaformat/open-java-format/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License"/></a>
-<a href="MANIFESTO.md"><img src="https://img.shields.io/badge/read-the%20manifesto-informational" alt="Manifesto"/></a>
+<a href="https://openjavaformat.dev/manifesto/"><img src="https://img.shields.io/badge/read-the%20manifesto-informational" alt="Manifesto"/></a>
 <a href="#roadmap"><img src="https://img.shields.io/badge/status-bootstrapping%20(phase%201%2F5)-orange" alt="Status"/></a>
 <a href="https://central.sonatype.com/search?q=com.palantir.javaformat"><img src="https://img.shields.io/maven-central/v/com.palantir.javaformat/palantir-java-format?label=upstream" alt="Upstream release"/></a>
 </p>
@@ -18,7 +18,7 @@ _A modern, lambda-friendly, 120-character Java formatter — built in the open._
 > What changes is **who builds the artifacts, in the open, and who can get a fix merged.**
 >
 > **Today you should keep using upstream.** This README is the plan for making that unnecessary.
-> See the [roadmap](#roadmap) for where we are, and the [manifesto](MANIFESTO.md) for why.
+> See the [roadmap](#roadmap) for where we are, and the [manifesto](https://openjavaformat.dev/manifesto/) for why.
 
 **Quick links:** [Why this fork](#why-this-fork-exists) · [Roadmap](#roadmap) ·
 [Compatibility promise](#compatibility-promise) · [Coordinates](#coordinates-old--new) ·
@@ -76,7 +76,7 @@ taken away from anyone. We are not reacting to a relicensing and we have nothing
 a **governance and supply-chain fork**, which is a harder story to tell and a better one to be
 honest about.
 
-**The full set of commitments is in [MANIFESTO.md](MANIFESTO.md).** In one screen:
+**The full set of commitments is in the [manifesto](https://openjavaformat.dev/manifesto/).** In one screen:
 
 1. Formatting is shared infrastructure.
 2. The name must be neutral.
@@ -108,7 +108,7 @@ about the formatter's behaviour. Phase 4 is where this project starts having opi
 - [x] Fork the repository
 - [x] Catalogue everything that only works inside Palantir (below)
 - [x] Decide the project name, Maven group and GitHub org — `openjavaformat`, `openjavaformat.com`
-- [x] Write down the compatibility promise and the manifesto (this document + `MANIFESTO.md`)
+- [x] Write down the compatibility promise and the manifesto (this document + the [manifesto](https://openjavaformat.dev/manifesto/))
 
 ### Phase 1 — Build everything in the open
 
@@ -313,7 +313,7 @@ and the objection is to *control* — of the build, the release keys, the name a
 That makes our job harder than OpenTofu's. A licence fork can point at a diff in a `LICENSE` file
 and everyone immediately understands. We have to make a positive case instead: a build you can
 audit, binaries you can verify, and a review queue that answers you. Which is exactly why the
-[manifesto](MANIFESTO.md) is a set of promises rather than a list of grievances — the OpenTofu
+[manifesto](https://openjavaformat.dev/manifesto/) is a set of promises rather than a list of grievances — the OpenTofu
 document was, in its first form, an ultimatum to HashiCorp, and we have nobody to issue one to.
 
 The other lesson from all nine: **compatibility is the migration strategy.** Valkey, MariaDB and
