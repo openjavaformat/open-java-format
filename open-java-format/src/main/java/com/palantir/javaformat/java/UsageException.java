@@ -39,10 +39,6 @@ final class UsageException extends Exception {
         "    Format stdin -> stdout",
         "  --assume-filename, -assume-filename",
         "    File name to use for diagnostics when formatting standard input (default is <stdin>).",
-        "  --aosp, -aosp, -a",
-        "    Use AOSP (Android Open Source Project) style instead of Google Style (4-space indentation).",
-        "  --ojf, -ojf",
-        "    Use OJF (open-java-format) style instead of Google Style.",
         "  --fix-imports-only",
         "    Fix import order and remove any unused imports, but do no other formatting.",
         "  --skip-sorting-imports",
@@ -78,15 +74,36 @@ final class UsageException extends Exception {
         "If -i is given with -, the result is sent to stdout.",
         "The --lines, --offset, and --length flags may be given more than once.",
         "The --offset and --length flags must be given an equal number of times.",
-        "If --lines, --offset, or --length are given, only one file (or -) may be given."
+        "If --lines, --offset, or --length are given, only one file (or -) may be given.",
+        "The exit code is 2 if a file could not be read, parsed or written, whatever the options."
     };
 
+    private final boolean error;
+
+    /** The user asked for the usage text. */
     UsageException() {
         super(buildMessage(null));
+        this.error = false;
     }
 
+    /** The arguments were wrong. */
     UsageException(String message) {
+        this(message, true);
+    }
+
+    private UsageException(String message, boolean error) {
         super(buildMessage(checkNotNull(message)));
+        this.error = error;
+    }
+
+    /** No files were given. That is not an error: a script may well find no Java files to pass on. */
+    static UsageException nothingToDo(String message) {
+        return new UsageException(message, false);
+    }
+
+    /** True when the arguments were wrong, so that nothing was formatted or checked. */
+    boolean isError() {
+        return error;
     }
 
     private static String buildMessage(@Nullable String message) {

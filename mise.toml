@@ -28,7 +28,7 @@ run = "act push --job native --matrix platform:linux-aarch64"
 # through JAVA_HOME, which mise sets, and without it logs an error and carries on unchecked.
 #
 # These deploy the jars. The native images are a deployment of their own — one binary per platform,
-# built by four CI jobs and uploaded together by .github/workflows/release.yml on a tag, because a
+# built by one CI job per platform and uploaded together by .github/workflows/release.yml on a tag, because a
 # published version can never gain files afterwards.
 
 [tasks.release]

@@ -146,10 +146,10 @@ public class MainTest {
                     + " eiusmod tempor incididunt ut labore et dolore magna aliqua",
             " */",
             "class Test {",
-            "  /**",
-            "   * creates entropy",
-            "   */",
-            "  public static void main(String... args) {}",
+            "    /**",
+            "     * creates entropy",
+            "     */",
+            "    public static void main(String... args) {}",
             "}",
             "",
         };
@@ -253,7 +253,7 @@ public class MainTest {
             "import java.util.ArrayList;",
             "",
             "class Test {",
-            "  ArrayList<String> a = new ArrayList<>();",
+            "    ArrayList<String> a = new ArrayList<>();",
             "ArrayList<String> b = new ArrayList<>();",
             "}",
         };
@@ -285,7 +285,7 @@ public class MainTest {
                     new PrintWriter(out, true),
                     new PrintWriter(err, true),
                     new ByteArrayInputStream(joiner.join(input).getBytes(UTF_8)));
-            assertThat(main.format("-")).isEqualTo(1);
+            assertThat(main.format("-")).isEqualTo(2);
             assertThat(err.toString()).contains("<stdin>:4:3: error: class, interface");
 
         } finally {
@@ -403,7 +403,7 @@ public class MainTest {
                 b.toAbsolutePath().toString());
 
         // Formatter returns failure if a file was not present.
-        assertThat(exitCode).isEqualTo(1);
+        assertThat(exitCode).isEqualTo(2);
 
         // Present files were correctly formatted.
         assertThat(out.toString()).isEqualTo("class A {}\nclass B {}\n");
@@ -437,6 +437,92 @@ public class MainTest {
     }
 
     @Test
+    public void styleIsAlwaysOjf() throws Exception {
+        String input = "class T {\nvoid f() {\nint x;\n}\n}\n";
+        String expected = "class T {\n    void f() {\n        int x;\n    }\n}\n";
+
+        StringWriter out = new StringWriter();
+        StringWriter err = new StringWriter();
+        Main main = new Main(
+                new PrintWriter(out, true),
+                new PrintWriter(err, true),
+                new ByteArrayInputStream(input.getBytes(UTF_8)));
+        assertThat(main.format("-")).isEqualTo(0);
+        assertThat(out.toString()).isEqualTo(expected);
+        assertThat(err.toString()).isEmpty();
+    }
+
+    @Test
+    public void styleFlagIsIgnoredWithAWarning() throws Exception {
+        String input = "class T {\nvoid f() {\nint x;\n}\n}\n";
+        String expected = "class T {\n    void f() {\n        int x;\n    }\n}\n";
+
+        for (String flag : new String[] {"--aosp", "-aosp", "-a", "--ojf", "-ojf"}) {
+            StringWriter out = new StringWriter();
+            StringWriter err = new StringWriter();
+            Main main = new Main(
+                    new PrintWriter(out, true),
+                    new PrintWriter(err, true),
+                    new ByteArrayInputStream(input.getBytes(UTF_8)));
+            assertThat(main.format(flag, "-")).isEqualTo(0);
+            assertThat(out.toString()).isEqualTo(expected);
+            assertThat(err.toString()).contains("warning: flag \"" + flag + "\" is not supported");
+            assertThat(err.toString()).contains("remove it from the command line");
+        }
+    }
+
+    @Test
+    public void unknownFlagIsAnError() throws Exception {
+        Path path = Files.createFile(testFolder.resolve("Test.java"));
+        Files.write(path, "class Test {\n}\n".getBytes(UTF_8));
+        Process process =
+                formatterMain("--palantir", path.toAbsolutePath().toString()).start();
+        process.waitFor();
+        String err = new String(ByteStreams.toByteArray(process.getErrorStream()), UTF_8);
+        // A check that never ran must not pass for one that found nothing.
+        assertThat(err).contains("unexpected flag: --palantir");
+        assertThat(process.exitValue()).isEqualTo(2);
+    }
+
+    @Test
+    public void noFilesIsNotAnError() throws Exception {
+        // What a script gets when it passes on an empty list, as in $(git ls-files '*.java').
+        Process process = formatterMain("--ojf", "--replace").start();
+        process.waitFor();
+        String err = new String(ByteStreams.toByteArray(process.getErrorStream()), UTF_8);
+        assertThat(err).contains("no files were provided");
+        assertThat(process.exitValue()).isEqualTo(0);
+    }
+
+    @Test
+    public void helpIsNotAnError() throws Exception {
+        Process process = formatterMain("--help").start();
+        process.waitFor();
+        String err = new String(ByteStreams.toByteArray(process.getErrorStream()), UTF_8);
+        assertThat(err).contains("Usage: open-java-format");
+        assertThat(process.exitValue()).isEqualTo(0);
+    }
+
+    @Test
+    public void exitIfChangedLosesToParseError() throws Exception {
+        Path unformatted = Files.createFile(testFolder.resolve("Unformatted.java"));
+        Files.write(unformatted, "class Unformatted {\n}\n".getBytes(UTF_8));
+        Path broken = Files.createFile(testFolder.resolve("Broken.java"));
+        Files.write(broken, "class Broken {\n".getBytes(UTF_8));
+
+        StringWriter out = new StringWriter();
+        StringWriter err = new StringWriter();
+        Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
+
+        // 1 means "not formatted" and 2 means "could not format", so that a caller can tell them apart.
+        assertThat(main.format("-n", "--set-exit-if-changed", unformatted.toString()))
+                .isEqualTo(1);
+        assertThat(main.format("-n", "--set-exit-if-changed", unformatted.toString(), broken.toString()))
+                .isEqualTo(2);
+        assertThat(err.toString()).contains("Broken.java:1:16: error: reached end of file");
+    }
+
+    @Test
     public void assumeFilename_error() throws Exception {
         String[] input = {
             "class Test {}}",
@@ -447,7 +533,7 @@ public class MainTest {
                 new PrintWriter(out, true),
                 new PrintWriter(err, true),
                 new ByteArrayInputStream(joiner.join(input).getBytes(UTF_8)));
-        assertThat(main.format("--assume-filename=Foo.java", "-")).isEqualTo(1);
+        assertThat(main.format("--assume-filename=Foo.java", "-")).isEqualTo(2);
         assertThat(err.toString()).contains("Foo.java:1:15: error: class, interface");
     }
 
@@ -472,13 +558,14 @@ public class MainTest {
         String[] input = {
             "class T {", //
             "  String s = \"one long incredibly unbroken sentence moving from topic to topic so that no"
-                    + " one had a chance to interrupt\";",
+                    + " one had a chance to interrupt, and it kept going well past the column limit\";",
             "}"
         };
         String[] expected = {
             "class T {",
-            "  String s = \"one long incredibly unbroken sentence moving from topic to topic so that no one had a\"",
-            "      + \" chance to interrupt\";",
+            "    String s = \"one long incredibly unbroken sentence moving from topic to topic so that no one had a"
+                    + " chance to\"",
+            "            + \" interrupt, and it kept going well past the column limit\";",
             "}",
             "",
         };
@@ -497,14 +584,14 @@ public class MainTest {
         String[] input = {
             "class T {", //
             "  String s = \"one long incredibly unbroken sentence moving from topic to topic so that no"
-                    + " one had a chance to interrupt\";",
+                    + " one had a chance to interrupt, and it kept going well past the column limit\";",
             "}"
         };
         String[] expected = {
             "class T {",
-            "  String s =",
-            "      \"one long incredibly unbroken sentence moving from topic to topic so that no"
-                    + " one had a chance to interrupt\";",
+            "    String s =",
+            "            \"one long incredibly unbroken sentence moving from topic to topic so that no"
+                    + " one had a chance to interrupt, and it kept going well past the column limit\";",
             "}",
             "",
         };

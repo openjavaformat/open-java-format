@@ -37,8 +37,10 @@ public abstract class NativeImageSupport {
     /**
      * The platforms a native image is published for, and therefore the only ones where it can be
      * resolved. macOS is supported on both architectures: the x86-64 image used to be excluded
-     * because nobody built it, and .github/workflows/ci.yml now does. Windows and musl are still
-     * absent for the same reason — no job produces them.
+     * because nobody built it, and .github/workflows/ci.yml now does. musl is still absent for the
+     * same reason — no job produces it. Windows x86-64 is built and published, but not used here yet:
+     * {@link ExecutableTransform} sets POSIX permissions, which NTFS does not have, and the tests of
+     * this plugin have never run on Windows.
      */
     private boolean isNativeImageSupported() {
         return getOs().getOperatingSystem()

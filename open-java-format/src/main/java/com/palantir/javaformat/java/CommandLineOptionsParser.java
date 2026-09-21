@@ -92,11 +92,11 @@ final class CommandLineOptionsParser {
                 case "--aosp":
                 case "-aosp":
                 case "-a":
-                    optionsBuilder.aospStyle(true);
-                    break;
                 case "--ojf":
                 case "-ojf":
-                    optionsBuilder.ojfStyle(true);
+                    // There is one style. The old style flags are accepted so that a script keeps working, and
+                    // Main warns about each of them.
+                    optionsBuilder.addUnsupportedFlag(flag);
                     break;
                 case "--version":
                 case "-version":

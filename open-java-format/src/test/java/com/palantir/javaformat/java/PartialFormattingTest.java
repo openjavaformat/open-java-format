@@ -338,7 +338,7 @@ public final class PartialFormattingTest {
         String expectedOutput = lines(
                 "class Foo{", //
                 "int xxx;",
-                "  int yyy;",
+                "    int yyy;",
                 "int zzz;",
                 "}",
                 "");
@@ -367,8 +367,8 @@ public final class PartialFormattingTest {
         String expectedOutput = lines(
                 "class Foo{", //
                 "int xxx;",
-                "  int yyy;",
-                "  int zzz;",
+                "    int yyy;",
+                "    int zzz;",
                 "}",
                 "");
 
@@ -405,8 +405,8 @@ public final class PartialFormattingTest {
                 "{",
                 "// asd",
                 "int x = 1;",
-                "    // asd",
-                "    int y = 2;",
+                "        // asd",
+                "        int y = 2;",
                 "// asd",
                 "int z = 3;",
                 "// asd",
@@ -448,8 +448,8 @@ public final class PartialFormattingTest {
                 "{",
                 "// asd",
                 "int x = 1;",
-                "    // asd",
-                "    int y = 2;",
+                "        // asd",
+                "        int y = 2;",
                 "// asd",
                 "int z = 3;",
                 "// asd",
@@ -493,8 +493,8 @@ public final class PartialFormattingTest {
                 "int x = 1;",
                 "// asd",
                 "int y = 2;",
-                "    // asd",
-                "    int z = 3;",
+                "        // asd",
+                "        int z = 3;",
                 "// asd",
                 "}",
                 "}",
@@ -753,7 +753,7 @@ public final class PartialFormattingTest {
                 "");
         String expectedOutput = lines(
                 "public class MyTest {", //
-                "  int y = 1;",
+                "    int y = 1;",
                 "}",
                 "",
                 "");
@@ -775,10 +775,10 @@ public final class PartialFormattingTest {
                 "");
         String expectedOutput = lines(
                 "public class MyTest {",
-                "  /* This is a",
-                "  poorly indented",
-                "             comment*/",
-                "  int x;",
+                "    /* This is a",
+                "    poorly indented",
+                "               comment*/",
+                "    int x;",
                 "}",
                 "",
                 "");
@@ -848,7 +848,7 @@ public final class PartialFormattingTest {
                 "");
         String expectedOutput = lines(
                 "class Foo{", //
-                "  int xxx; // asd",
+                "    int xxx; // asd",
                 "}",
                 "");
 
@@ -962,7 +962,7 @@ public final class PartialFormattingTest {
                 "}");
         String expectedOutput = lines(
                 "class Foo {", //
-                "  int x = 1;",
+                "    int x = 1;",
                 "}",
                 "");
 
@@ -986,7 +986,7 @@ public final class PartialFormattingTest {
                 "}");
         String expectedOutput = lines(
                 "class Foo {", //
-                "  int x = 1;",
+                "    int x = 1;",
                 "}",
                 "");
 
@@ -1280,7 +1280,7 @@ public final class PartialFormattingTest {
         String[] expected = {
             "enum E {", //
             "ONE,",
-            "  TWO,",
+            "    TWO,",
             "THREE;",
             "}",
         };
@@ -1309,7 +1309,7 @@ public final class PartialFormattingTest {
         String[] expected = {
             "class T {", //
             "final private int a = 0;",
-            "  private final int b = 0;",
+            "    private final int b = 0;",
             "final private int c = 0;",
             "}",
         };
@@ -1340,7 +1340,7 @@ public final class PartialFormattingTest {
         };
         String[] expected = {
             "class foo {",
-            "  foo(int aaaaaaaaaaaaaaa, int ccccccccccccc) {",
+            "    foo(int aaaaaaaaaaaaaaa, int ccccccccccccc) {",
             "    int a = 0;",
             "    int c = 0;",
             "  }",
@@ -1351,7 +1351,11 @@ public final class PartialFormattingTest {
         int start = in.indexOf(lines(",", "      int ccccccccccccc"));
         assertThat(in.substring(start, start + 1)).isEqualTo(",");
 
-        assertThat(Formatter.create().formatSource(in, ImmutableList.of(Range.closedOpen(start, start))))
+        // The command line always formats in the open-java-format style, so the library gets the same style here.
+        Formatter formatter = Formatter.createFormatter(JavaFormatterOptions.builder()
+                .style(JavaFormatterOptions.Style.OJF)
+                .build());
+        assertThat(formatter.formatSource(in, ImmutableList.of(Range.closedOpen(start, start))))
                 .isEqualTo(lines(expected));
 
         assertThat(formatMain(lines(input), "-offset", String.valueOf(start), "-length", "0"))
@@ -1482,7 +1486,7 @@ public final class PartialFormattingTest {
                 "  {",
                 "    int x = 1;",
                 "",
-                "    int y = 2;",
+                "        int y = 2;",
                 "  }",
                 "}",
                 "");
@@ -1620,8 +1624,8 @@ public final class PartialFormattingTest {
                 "");
         String expectedOutput = lines(
                 "class Foo {", //
-                "  private Foo() {}",
-                "  ;",
+                "    private Foo() {}",
+                "    ;",
                 "}",
                 "");
 

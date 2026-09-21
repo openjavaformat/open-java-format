@@ -45,36 +45,6 @@ public final class FormatterTest {
     public Path testFolder;
 
     @Test
-    public void testFormatAosp() throws Exception {
-        // don't forget to misspell "long", or you will be mystified for a while
-        String input = "class A{void b(){while(true){weCanBeCertainThatThisWillEndUpGettingWrapped("
-                + "because, it, is, just, so, very, very, very, very, looong);}}}";
-        @SuppressWarnings("for-rollout:StringConcatToTextBlock")
-        String expectedOutput = Joiner.on("\n")
-                .join(
-                        "class A {",
-                        "    void b() {",
-                        "        while (true) {",
-                        "            weCanBeCertainThatThisWillEndUpGettingWrapped(",
-                        "                    because, it, is, just, so, very, very, very, very, looong);",
-                        "        }",
-                        "    }",
-                        "}",
-                        "");
-
-        Path path = testFolder.resolve("A.java");
-        Files.write(path, input.getBytes(StandardCharsets.UTF_8));
-
-        StringWriter out = new StringWriter();
-        StringWriter err = new StringWriter();
-
-        Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
-        String[] args = {"--aosp", path.toString()};
-        assertThat(main.format(args)).isEqualTo(0);
-        assertThat(out.toString()).isEqualTo(expectedOutput);
-    }
-
-    @Test
     public void testFormatNonJavaFiles() throws Exception {
         StringWriter out = new StringWriter();
         StringWriter err = new StringWriter();
@@ -85,7 +55,7 @@ public final class FormatterTest {
         assertThat(err.toString()).contains("Skipping non-Java file: " + "foo.go");
 
         // format still fails on missing files
-        assertThat(main.format("Foo.java")).isEqualTo(1);
+        assertThat(main.format("Foo.java")).isEqualTo(2);
         assertThat(err.toString()).contains("Foo.java: could not read file: ");
     }
 
@@ -94,7 +64,7 @@ public final class FormatterTest {
         @SuppressWarnings("for-rollout:StringConcatToTextBlock")
         String input = "class Foo{\n" + "void f\n" + "() {\n" + "}\n" + "}\n";
         @SuppressWarnings("for-rollout:StringConcatToTextBlock")
-        String expectedOutput = "class Foo {\n" + "  void f() {}\n" + "}\n";
+        String expectedOutput = "class Foo {\n" + "    void f() {}\n" + "}\n";
 
         InputStream in = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
         StringWriter out = new StringWriter();
@@ -115,7 +85,7 @@ public final class FormatterTest {
         @SuppressWarnings("for-rollout:StringConcatToTextBlock")
         String input = "class Foo{\n" + "void f\n" + "() {\n" + "}\n" + "}\n\n\n\n\n\n";
         @SuppressWarnings("for-rollout:StringConcatToTextBlock")
-        String expectedOutput = "class Foo {\n" + "  void f() {}\n" + "}\n";
+        String expectedOutput = "class Foo {\n" + "    void f() {}\n" + "}\n";
 
         Path path = testFolder.resolve("Foo.java");
         Files.write(path, input.getBytes(StandardCharsets.UTF_8));
@@ -141,7 +111,7 @@ public final class FormatterTest {
 
         Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
         String[] args = {"--offset", "0", "--length", "9999", path.toString()};
-        assertThat(main.format(args)).isEqualTo(1);
+        assertThat(main.format(args)).isEqualTo(2);
         assertThat(err.toString()).contains("error: invalid length 9999, offset + length (9999) is outside the file");
     }
 

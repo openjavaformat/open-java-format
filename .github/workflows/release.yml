@@ -63,6 +63,10 @@ jobs:
     name: native image (${{ matrix.platform }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
+    # bash on Windows too, as in ci.yml.
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -75,6 +79,8 @@ jobs:
             runner: macos-15
           - platform: macos-x86-64
             runner: macos-15-intel
+          - platform: windows-x86-64
+            runner: windows-latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

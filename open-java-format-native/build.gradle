@@ -87,7 +87,7 @@ graalvmNative {
 // stages whatever maven-publish produces.
 //
 // -PnativeImages=<dir> publishes every binary in that directory rather than the one compiled here.
-// A released version can never gain files afterwards, so the four per-platform CI jobs hand their
+// A released version can never gain files afterwards, so the per-platform CI jobs hand their
 // binaries to a single deploy job (.github/workflows/release.yml) and all the classifiers go up
 // together. Each classifier is read back out of the file name, exactly as for a local build.
 def collectedNativeImages = providers.gradleProperty('nativeImages').getOrNull()
@@ -120,8 +120,10 @@ publishing {
     }
 }
 
+// A binary is named open-java-format-<os>_<arch>, and native-image adds .exe on Windows. The .exe stays
+// out of the classifier: it is the extension.
 private static String getExtension(File file) {
-    Pattern pattern = Pattern.compile("open-java-format-(.*)_(.*)\$");
+    Pattern pattern = Pattern.compile("open-java-format-(.*)_(.*?)(\\.exe)?\$");
     Matcher matcher = pattern.matcher(file.name)
     if (matcher.find()) {
         return OperatingSystem.fromStringThrowing(matcher.group(1))
@@ -131,7 +133,7 @@ private static String getExtension(File file) {
 }
 
 private static String getOsArchName(File file) {
-    Pattern pattern = Pattern.compile("open-java-format-(.*)_(.*)\$");
+    Pattern pattern = Pattern.compile("open-java-format-(.*)_(.*?)(\\.exe)?\$");
     Matcher matcher = pattern.matcher(file.name)
     if (matcher.find()) {
         return matcher.group(1) + "_" + matcher.group(2)

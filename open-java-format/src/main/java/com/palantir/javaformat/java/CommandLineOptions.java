@@ -14,7 +14,6 @@
 
 package com.palantir.javaformat.java;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableRangeSet;
 import java.util.Optional;
@@ -32,8 +31,7 @@ final class CommandLineOptions {
     private final ImmutableRangeSet<Integer> characterRanges;
     private final ImmutableList<Integer> offsets;
     private final ImmutableList<Integer> lengths;
-    private final boolean aospStyle;
-    private final boolean ojfStyle;
+    private final ImmutableList<String> unsupportedFlags;
     private final boolean version;
     private final boolean help;
     private final boolean stdin;
@@ -53,8 +51,7 @@ final class CommandLineOptions {
             ImmutableRangeSet<Integer> characterRanges,
             ImmutableList<Integer> offsets,
             ImmutableList<Integer> lengths,
-            boolean aospStyle,
-            boolean ojfStyle,
+            ImmutableList<String> unsupportedFlags,
             boolean version,
             boolean help,
             boolean stdin,
@@ -72,8 +69,7 @@ final class CommandLineOptions {
         this.characterRanges = characterRanges;
         this.offsets = offsets;
         this.lengths = lengths;
-        this.aospStyle = aospStyle;
-        this.ojfStyle = ojfStyle;
+        this.unsupportedFlags = unsupportedFlags;
         this.version = version;
         this.help = help;
         this.stdin = stdin;
@@ -117,14 +113,9 @@ final class CommandLineOptions {
         return lengths;
     }
 
-    /** Use AOSP style instead of Google Style (4-space indentation). */
-    boolean aospStyle() {
-        return aospStyle;
-    }
-
-    /** Use Open Java Format style instead of Google Style. */
-    boolean ojfStyle() {
-        return ojfStyle;
+    /** Flags that are accepted and ignored, in the order they were given: the style flags of earlier versions. */
+    ImmutableList<String> unsupportedFlags() {
+        return unsupportedFlags;
     }
 
     /** Print the version. */
@@ -197,8 +188,7 @@ final class CommandLineOptions {
         private final ImmutableList.Builder<Integer> offsets = ImmutableList.builder();
         private final ImmutableList.Builder<Integer> lengths = ImmutableList.builder();
         private boolean inPlace = false;
-        private boolean aospStyle = false;
-        private boolean ojfStyle = false;
+        private final ImmutableList.Builder<String> unsupportedFlags = ImmutableList.builder();
         private boolean version = false;
         private boolean help = false;
         private boolean stdin = false;
@@ -240,13 +230,8 @@ final class CommandLineOptions {
             return this;
         }
 
-        Builder aospStyle(boolean aosp) {
-            this.aospStyle = aosp;
-            return this;
-        }
-
-        Builder ojfStyle(boolean ojfStyle) {
-            this.ojfStyle = ojfStyle;
+        Builder addUnsupportedFlag(String flag) {
+            this.unsupportedFlags.add(flag);
             return this;
         }
 
@@ -306,7 +291,6 @@ final class CommandLineOptions {
         }
 
         CommandLineOptions build() {
-            Preconditions.checkArgument(!aospStyle || !ojfStyle, "Cannot use both aosp and palantir style");
             return new CommandLineOptions(
                     files.build(),
                     inPlace,
@@ -314,8 +298,7 @@ final class CommandLineOptions {
                     characterRanges.build(),
                     offsets.build(),
                     lengths.build(),
-                    aospStyle,
-                    ojfStyle,
+                    unsupportedFlags.build(),
                     version,
                     help,
                     stdin,

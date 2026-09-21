@@ -41,7 +41,7 @@ public class CommandLineOptionsParserTest {
         CommandLineOptions options = CommandLineOptionsParser.parse(Collections.<String>emptyList());
         assertThat(options.files()).isEmpty();
         assertThat(options.stdin()).isFalse();
-        assertThat(options.aospStyle()).isFalse();
+        assertThat(options.unsupportedFlags()).isEmpty();
         assertThat(options.help()).isFalse();
         assertThat(options.lengths()).isEmpty();
         assertThat(options.lines().asRanges()).isEmpty();
@@ -70,9 +70,10 @@ public class CommandLineOptionsParserTest {
     }
 
     @Test
-    public void aosp() {
-        assertThat(CommandLineOptionsParser.parse(Arrays.asList("-aosp")).aospStyle())
-                .isTrue();
+    public void styleFlagsAreUnsupported() {
+        assertThat(CommandLineOptionsParser.parse(Arrays.asList("-aosp", "--aosp", "-a", "--ojf", "-ojf"))
+                        .unsupportedFlags())
+                .containsExactly("-aosp", "--aosp", "-a", "--ojf", "-ojf");
     }
 
     @Test

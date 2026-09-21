@@ -6,8 +6,8 @@ plugins {
 }
 
 // Two deployments, one version. A published groupId:artifactId:version can never gain files, so every
-// platform's native binary has to travel in a single deployment — and those binaries come from four CI
-// jobs, long after the jars are staged. `-PreleaseTarget=native` deploys the binaries those jobs
+// platform's native binary has to travel in a single deployment — and those binaries come from one CI
+// job per platform, long after the jars are staged. `-PreleaseTarget=native` deploys the binaries those jobs
 // collected, the default deploys the jars; on a tag both read the same version from it.
 //
 // `-PreleaseTarget=github` deploys nothing. It is for `jreleaserRelease`, which opens a draft GitHub

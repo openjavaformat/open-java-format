@@ -43,6 +43,10 @@ jobs:
     needs: build
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
+    # bash on Windows too, so that every step reads the same on every runner.
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -55,6 +59,8 @@ jobs:
             runner: macos-15
           - platform: macos-x86-64
             runner: macos-15-intel
+          - platform: windows-x86-64
+            runner: windows-latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -67,12 +73,28 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compile the native image
-        run: | 
-          ./gradlew -PnativeImage=true \
-              :open-java-format-native:nativeCompile \
-              :open-java-format-jdk-bootstrap:test \
-              :gradle-open-java-format:test
-          
+        run: ./gradlew -PnativeImage=true :open-java-format-native:nativeCompile
+
+      # The binary itself on a file that needs formatting, a formatted one and one that does not parse.
+      # For the Windows binary this is the only check.
+      - name: Smoke-test the binary
+        run: |
+          binary="$PWD/$(ls open-java-format-native/build/native/nativeCompile/open-java-format-* | grep -v '\.txt$')"
+          mkdir smoke-test && cd smoke-test
+          "$binary" --version
+          printf 'class A{int x;}\n' > A.java
+          "$binary" --replace A.java
+          printf 'class A {\n    int x;\n}\n' | diff - A.java
+          "$binary" --dry-run --set-exit-if-changed A.java
+          printf 'class B {\n' > B.java
+          set +e; "$binary" B.java; status=$?; set -e
+          test "$status" -eq 2
+
+      # The Gradle plugin does not run a native image on Windows, and its tests have never run there.
+      - name: Test the plugins against the image
+        if: runner.os != 'Windows'
+        run: ./gradlew -PnativeImage=true :open-java-format-jdk-bootstrap:test :gradle-open-java-format:test
+
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@a9170d5795813c01ab4901ffb045b52bab4ab09d # v6.5.0
         if: ${{ !cancelled() }}

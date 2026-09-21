@@ -41,6 +41,15 @@ public final class Main {
     private static final int MAX_THREADS = 20;
     private static final String STDIN_FILENAME = "<stdin>";
 
+    /** A file is not formatted, and {@code --set-exit-if-changed} was given. */
+    private static final int EXIT_CHANGED = 1;
+
+    /**
+     * A file could not be read, parsed or written. This is not {@link #EXIT_CHANGED}, so that a caller can tell "not
+     * formatted" from "could not format". It is also the exit code that makes an agent hook hand stderr to the model.
+     */
+    private static final int EXIT_ERROR = 2;
+
     static String versionString() {
         return "open-java-format: Version " + Main.class.getPackage().getImplementationVersion();
     }
@@ -71,7 +80,8 @@ public final class Main {
             result = formatter.format(args);
         } catch (UsageException e) {
             err.print(e.getMessage());
-            result = 0;
+            // A removed or mistyped flag must not pass for a check that found nothing.
+            result = e.isError() ? EXIT_ERROR : 0;
         } finally {
             err.flush();
             out.flush();
@@ -96,10 +106,12 @@ public final class Main {
             throw new UsageException();
         }
 
-        // TODO(someone): update this to always use Style.OJF
-        JavaFormatterOptions options = JavaFormatterOptions.builder()
-                .style(parameters.aospStyle() ? Style.AOSP : parameters.ojfStyle() ? Style.OJF : Style.GOOGLE)
-                .build();
+        for (String flag : parameters.unsupportedFlags()) {
+            errWriter.println("warning: flag \"" + flag + "\" is not supported, the style is always open-java-format;"
+                    + " remove it from the command line to get rid of this message");
+        }
+        JavaFormatterOptions options =
+                JavaFormatterOptions.builder().style(Style.OJF).build();
 
         if (parameters.stdin()) {
             return formatStdin(parameters, options);
@@ -116,6 +128,7 @@ public final class Main {
         Map<Path, String> inputs = new LinkedHashMap<>();
         Map<Path, Future<String>> results = new LinkedHashMap<>();
         boolean allOk = true;
+        boolean anyChanged = false;
 
         for (String fileName : parameters.files()) {
             if (!fileName.endsWith(".java")) {
@@ -160,7 +173,7 @@ public final class Main {
             }
             boolean changed = !formatted.equals(inputs.get(path));
             if (changed && parameters.setExitIfChanged()) {
-                allOk = false;
+                anyChanged = true;
             }
             if (parameters.inPlace()) {
                 if (!changed) {
@@ -181,7 +194,7 @@ public final class Main {
                 outWriter.write(formatted);
             }
         }
-        return allOk ? 0 : 1;
+        return exitCode(allOk, anyChanged);
     }
 
     private int formatStdin(CommandLineOptions parameters, JavaFormatterOptions options) {
@@ -193,11 +206,12 @@ public final class Main {
         }
         String stdinFilename = parameters.assumeFilename().orElse(STDIN_FILENAME);
         boolean ok = true;
+        boolean anyChanged = false;
         try {
             String output = new FormatFileCallable(parameters, input, options).call();
             boolean changed = !input.equals(output);
             if (changed && parameters.setExitIfChanged()) {
-                ok = false;
+                anyChanged = true;
             }
             if (parameters.dryRun()) {
                 if (changed) {
@@ -213,7 +227,15 @@ public final class Main {
             ok = false;
             // TODO(cpovirk): Catch other types of exception (as we do in the formatFiles case).
         }
-        return ok ? 0 : 1;
+        return exitCode(ok, anyChanged);
+    }
+
+    /** An error wins over {@code --set-exit-if-changed}: the caller has to hear about the file that did not parse. */
+    private static int exitCode(boolean allOk, boolean anyChanged) {
+        if (!allOk) {
+            return EXIT_ERROR;
+        }
+        return anyChanged ? EXIT_CHANGED : 0;
     }
 
     /** Parses and validates command-line flags. */
@@ -233,7 +255,7 @@ public final class Main {
         }
 
         if (parameters.inPlace() && parameters.files().isEmpty()) {
-            throw new UsageException("in-place formatting was requested but no files were provided");
+            throw UsageException.nothingToDo("in-place formatting was requested but no files were provided");
         }
         if (parameters.isSelection() && filesToFormat != 1) {
             throw new UsageException("partial formatting is only support for a single file");
@@ -242,7 +264,7 @@ public final class Main {
             throw new UsageException("-offsets and -lengths flags must be provided in matching pairs");
         }
         if (filesToFormat <= 0 && !parameters.version() && !parameters.help()) {
-            throw new UsageException("no files were provided");
+            throw UsageException.nothingToDo("no files were provided");
         }
         if (parameters.stdin() && !parameters.files().isEmpty()) {
             throw new UsageException("cannot format from standard input and files simultaneously");
