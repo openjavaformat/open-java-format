@@ -85,6 +85,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # The Java 21 toolchain for the jars, through JDK21_HOME, as in ci.yml: Gradle does not find the
+      # runner's own JDK 21 on Windows. Installed before GraalVM, so that Gradle still runs on GraalVM.
+      - name: Install JDK 21 for the jars
+        id: jdk21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
       - name: Install GraalVM 25 for the image
         uses: graalvm/setup-graalvm@5298d94fb55a4f185c602eeac5de1b553882abe2 # v1.6.4
         with:
@@ -94,6 +103,8 @@ jobs:
 
       - name: Compile the native image
         run: ./gradlew -PnativeImage=true :open-java-format-native:nativeCompile
+        env:
+          JDK21_HOME: ${{ steps.jdk21.outputs.path }}
 
       - name: Hand the binary to the deploy job
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
