@@ -48,7 +48,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        jdk: [25, 26, 27]
+        include:
+          - jdk: 25
+            gradle_args: ''
+            gradle_args_reason: ''
+          - jdk: 26
+            gradle_args: ''
+            gradle_args_reason: ''
+          - jdk: 27
+            gradle_args: -x :gradle-open-java-format:test
+            gradle_args_reason: >-
+              Gradle 9.7.1 does not run on Java 27 yet, and the Gradle plugin's tests run their TestKit builds on
+              the test JVM, where they fail with "Unsupported class file major version 71". Those tests are left
+              out until the wrapper's Gradle supports Java 27.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -66,10 +78,17 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Explain the extra Gradle arguments
+        if: ${{ matrix.gradle_args != '' }}
+        env:
+          GRADLE_ARGS: ${{ matrix.gradle_args }}
+          REASON: ${{ matrix.gradle_args_reason }}
+        run: echo "::notice title=JDK ${{ matrix.jdk }} runs with $GRADLE_ARGS::$REASON"
+
       # Gradle does not look into the runner's tool cache, so it is told where the test JDK is.
       - name: Build
         run: >-
-          ./gradlew test -PjavaRuntime=${{ matrix.jdk }}
+          ./gradlew test -PjavaRuntime=${{ matrix.jdk }} ${{ matrix.gradle_args }}
           -Porg.gradle.java.installations.paths=${{ steps.test-jdk.outputs.path }}
 
       - name: Publish Test Report
