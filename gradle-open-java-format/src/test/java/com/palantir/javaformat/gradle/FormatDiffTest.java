@@ -32,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -112,7 +113,7 @@ class FormatDiffTest {
     }
 
     private static List<Path> getClasspath() throws IOException {
-        return Splitter.on(':')
+        return Splitter.on(File.pathSeparatorChar)
                 .trimResults()
                 .omitEmptyStrings()
                 .splitToStream(Files.readString(CLASSPATH_FILE.toPath()))
@@ -122,6 +123,10 @@ class FormatDiffTest {
 
     private static Path javaBinPath() {
         String javaHome = Preconditions.checkNotNull(System.getProperty("java.home"), "java.home property not set");
-        return Path.of(javaHome).resolve("bin").resolve("java");
+        return Path.of(javaHome).resolve("bin").resolve("java" + (isWindows() ? ".exe" : ""));
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name").toLowerCase(Locale.ROOT).startsWith("windows");
     }
 }
