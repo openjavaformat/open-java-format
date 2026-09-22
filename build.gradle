@@ -87,6 +87,9 @@ allprojects {
 
     tasks.withType(Test).configureEach {
         jvmArgs(javacInternalExports.collect { "--add-exports=${it}=ALL-UNNAMED".toString() })
+        // The short form gave CI logs only "FormatterException at FormatterIntegrationTest.java:76", never what
+        // the formatter complained about, nor the output of a TestKit build that failed.
+        testLogging.exceptionFormat = 'full'
     }
 
     tasks.withType(Javadoc).configureEach {
