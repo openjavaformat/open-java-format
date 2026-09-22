@@ -90,7 +90,8 @@ class PalantirJavaFormatSpotlessPluginTest {
 
         BuildResult result = project.succeeds("spotlessApply", "--info");
 
-        assertThat(project.readFile(MAIN_JAVA)).isEqualTo(validJavaFile());
+        // Spotless writes the platform's line endings, CRLF on Windows.
+        assertThat(project.readFile(MAIN_JAVA)).isEqualToNormalizingNewlines(validJavaFile());
         assertThat(result.getOutput()).contains(expectedOutput);
     }
 

@@ -51,8 +51,10 @@ class FormatDiffTest {
 
     @Test
     void parsing_git_diff_output_works() throws IOException {
+        // A Windows checkout gives the fixture CRLF line endings, while git prints a diff with LF.
         String example1 = Files.readString(
-                Paths.get("src/test/resources/com/palantir/javaformat/java/FormatDiffCliTest/example1.patch"));
+                        Paths.get("src/test/resources/com/palantir/javaformat/java/FormatDiffCliTest/example1.patch"))
+                .replace("\r\n", "\n");
 
         List<String> strings = FormatDiff.parseGitDiffOutput(example1)
                 .map(FormatDiff.SingleFileDiff::toString)
