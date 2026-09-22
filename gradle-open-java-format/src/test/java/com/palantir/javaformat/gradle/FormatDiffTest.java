@@ -62,8 +62,9 @@ class FormatDiffTest {
         assertThat(strings)
                 .containsExactly(
                         "SingleFileDiff{path=build.gradle, lineRanges=[[24..25), [29..30)]}",
-                        "SingleFileDiff{path=tracing/src/test/java/com/palantir/tracing/TracersTest.java, "
-                                + "lineRanges=[[659..660), [675..676)]}");
+                        // The path is a Path, which prints with backslashes on Windows.
+                        "SingleFileDiff{path=" + Path.of("tracing/src/test/java/com/palantir/tracing/TracersTest.java")
+                                + ", lineRanges=[[659..660), [675..676)]}");
     }
 
     @ParameterizedTest
