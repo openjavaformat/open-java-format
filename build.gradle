@@ -127,9 +127,11 @@ subprojects {
     }
 }
 
+// The JDK the tests run on, and with it the javac whose internals the formatter parses with. The code is
+// compiled for 21 whatever this says. CI's `jdk` jobs pass -PjavaRuntime=25 and so on.
+ext.javaRuntime = providers.gradleProperty('javaRuntime').getOrElse('21')
+
 javaVersions {
     libraryTarget = 21
-    // The JDK the tests run on, and with it the javac whose internals the formatter parses with. The code is
-    // compiled for 21 whatever this says. CI's `jdk` jobs pass -PjavaRuntime=25 and so on.
-    runtime = providers.gradleProperty('javaRuntime').getOrElse('21')
+    runtime = javaRuntime
 }

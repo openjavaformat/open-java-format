@@ -76,6 +76,9 @@ tasks.named("test") {
     // Run all classes and tests in parallel
     // https://junit.org/junit5/docs/current/user-guide/#writing-tests-parallel-execution
     systemProperty 'junit.jupiter.execution.parallel.mode.default', 'concurrent'
+    // FormatterVersionTest fails when the tests run on another JDK than the one asked for, so a CI leg
+    // cannot pass on the wrong JDK and skip the tests that need a newer parser.
+    systemProperty 'expectedJavaVersion', rootProject.ext.javaRuntime
 }
 
 javaVersion {

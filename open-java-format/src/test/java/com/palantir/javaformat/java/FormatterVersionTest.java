@@ -22,15 +22,15 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 /**
- * Guards the {@code testJdkNN} legs: without this, a leg that resolves to a JDK older than the one it asked for skips
- * the {@code ModuleImport} golden and the module import tests, and still passes.
+ * Guards CI's {@code jdk} legs: without this, a leg that runs on an older JDK than the one it asked for with
+ * {@code -PjavaRuntime} skips the {@code ModuleImport} golden and the module import tests, and still passes.
  */
 public class FormatterVersionTest {
 
     @Test
     public void runsOnTheJdkTheTestTaskAskedFor() {
         String expected = System.getProperty("expectedJavaVersion");
-        Assumptions.assumeTrue(expected != null, "expectedJavaVersion is set only by the testJdkNN tasks");
+        Assumptions.assumeTrue(expected != null, "expectedJavaVersion is set by the Gradle build");
         assertThat(Formatter.getRuntimeVersion()).isEqualTo(Integer.parseInt(expected));
     }
 }
