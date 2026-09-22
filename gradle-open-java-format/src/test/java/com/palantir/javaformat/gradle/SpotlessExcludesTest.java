@@ -29,7 +29,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class SpotlessExcludesTest {
 
-    private static final String CLASSPATH_FILE = new File("build/impl.classpath").getAbsolutePath();
+    // Forward slashes: the path goes into a Groovy string, where a Windows backslash would start an escape.
+    private static final String CLASSPATH_FILE =
+            new File("build/impl.classpath").getAbsolutePath().replace('\\', '/');
 
     private static final String SOURCE_FILE =
             """
@@ -51,7 +53,7 @@ class SpotlessExcludesTest {
                 .buildGradle(
                         """
                         dependencies {
-                            palantirJavaFormat files(file("%s").text.split(':'))
+                            palantirJavaFormat files(file("%s").text.split(File.pathSeparator))
                         }
                         """,
                         CLASSPATH_FILE);

@@ -56,7 +56,9 @@ public abstract class ExecutableTransform implements TransformAction<TransformPa
     @Override
     public void transform(TransformOutputs outputs) {
         File inputFile = getInputArtifact().get().getAsFile();
-        File outputFile = outputs.file(inputFile.getName() + ".executable");
+        // The Windows binary keeps its name, so that it still ends in .exe like any Windows program.
+        String name = inputFile.getName().endsWith(".exe") ? inputFile.getName() : inputFile.getName() + ".executable";
+        File outputFile = outputs.file(name);
         try {
             Files.copy(inputFile.toPath(), outputFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             makeFileExecutable(outputFile.toPath());
@@ -67,6 +69,10 @@ public abstract class ExecutableTransform implements TransformAction<TransformPa
     }
 
     private static void makeFileExecutable(Path pathToExe) {
+        // Windows file systems have no POSIX permissions, and an .exe needs none to run.
+        if (!pathToExe.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+            return;
+        }
         try {
             Set<PosixFilePermission> existingPermissions = Files.getPosixFilePermissions(pathToExe);
             Files.setPosixFilePermissions(

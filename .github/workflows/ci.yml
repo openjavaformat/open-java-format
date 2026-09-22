@@ -88,7 +88,6 @@ jobs:
           JDK21_HOME: ${{ steps.jdk21.outputs.path }}
 
       # The binary itself on a file that needs formatting, a formatted one and one that does not parse.
-      # For the Windows binary this is the only check.
       - name: Smoke-test the binary
         run: |
           binary="$PWD/$(ls open-java-format-native/build/native/nativeCompile/open-java-format-* | grep -v '\.txt$')"
@@ -102,9 +101,7 @@ jobs:
           set +e; "$binary" B.java; status=$?; set -e
           test "$status" -eq 2
 
-      # The Gradle plugin does not run a native image on Windows, and its tests have never run there.
       - name: Test the plugins against the image
-        if: runner.os != 'Windows'
         run: ./gradlew -PnativeImage=true :open-java-format-jdk-bootstrap:test :gradle-open-java-format:test
         env:
           JDK21_HOME: ${{ steps.jdk21.outputs.path }}

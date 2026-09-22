@@ -16,6 +16,7 @@
 
 package com.palantir.javaformat.gradle;
 
+import com.palantir.platform.Architecture;
 import com.palantir.platform.GradleOperatingSystem;
 import com.palantir.platform.OperatingSystem;
 import javax.inject.Inject;
@@ -37,14 +38,14 @@ public abstract class NativeImageSupport {
     /**
      * The platforms a native image is published for, and therefore the only ones where it can be
      * resolved. macOS is supported on both architectures: the x86-64 image used to be excluded
-     * because nobody built it, and .github/workflows/ci.yml now does. musl is still absent for the
-     * same reason — no job produces it. Windows x86-64 is built and published, but not used here yet:
-     * {@link ExecutableTransform} sets POSIX permissions, which NTFS does not have, and the tests of
-     * this plugin have never run on Windows.
+     * because nobody built it, and .github/workflows/ci.yml now does. Windows has an image for
+     * x86-64 only, and musl none: no job produces them.
      */
     private boolean isNativeImageSupported() {
         return getOs().getOperatingSystem()
-                .map(os -> os.equals(OperatingSystem.LINUX_GLIBC) || os.equals(OperatingSystem.MACOS))
+                .map(os -> os.equals(OperatingSystem.LINUX_GLIBC)
+                        || os.equals(OperatingSystem.MACOS)
+                        || (os.equals(OperatingSystem.WINDOWS) && Architecture.get() == Architecture.X86_64))
                 .get();
     }
 

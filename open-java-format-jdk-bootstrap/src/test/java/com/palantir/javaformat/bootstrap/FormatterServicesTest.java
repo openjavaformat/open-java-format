@@ -26,6 +26,7 @@ import com.palantir.javaformat.Utils;
 import com.palantir.javaformat.java.FormatterException;
 import com.palantir.javaformat.java.FormatterService;
 import com.palantir.javaformat.java.Replacement;
+import java.io.File;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -116,7 +117,7 @@ final class FormatterServicesTest {
 
     private static List<Path> getClasspath() {
         String classpath = System.getProperty("java.class.path");
-        return Splitter.on(':')
+        return Splitter.on(File.pathSeparatorChar)
                 .trimResults()
                 .omitEmptyStrings()
                 .splitToStream(classpath)

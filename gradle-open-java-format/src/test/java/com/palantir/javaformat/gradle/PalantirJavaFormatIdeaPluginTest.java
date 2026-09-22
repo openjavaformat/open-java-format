@@ -37,7 +37,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class PalantirJavaFormatIdeaPluginTest {
 
-    private static final String NATIVE_IMAGE_FILE = new File("build/nativeImage.path").getAbsolutePath();
+    // Forward slashes: the path goes into a Groovy string, where a Windows backslash would start an escape.
+    private static final String NATIVE_IMAGE_FILE =
+            new File("build/nativeImage.path").getAbsolutePath().replace('\\', '/');
 
     private static final String NATIVE_CONFIG =
             "palantirJavaFormatNative files(file(\"" + NATIVE_IMAGE_FILE + "\").text)";

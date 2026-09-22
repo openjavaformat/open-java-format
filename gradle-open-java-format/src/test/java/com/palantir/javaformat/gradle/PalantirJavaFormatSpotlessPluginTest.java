@@ -28,9 +28,12 @@ import org.junit.jupiter.params.provider.CsvSource;
 class PalantirJavaFormatSpotlessPluginTest {
 
     /** ./gradlew writeImplClasspath generates this file. */
-    private static final String CLASSPATH_FILE = new File("build/impl.classpath").getAbsolutePath();
+    // Forward slashes: the path goes into a Groovy string, where a Windows backslash would start an escape.
+    private static final String CLASSPATH_FILE =
+            new File("build/impl.classpath").getAbsolutePath().replace('\\', '/');
 
-    private static final String NATIVE_IMAGE_FILE = new File("build/nativeImage.path").getAbsolutePath();
+    private static final String NATIVE_IMAGE_FILE =
+            new File("build/nativeImage.path").getAbsolutePath().replace('\\', '/');
 
     private static final String NATIVE_CONFIG =
             "palantirJavaFormatNative files(file(\"" + NATIVE_IMAGE_FILE + "\").text)";
@@ -78,7 +81,7 @@ class PalantirJavaFormatSpotlessPluginTest {
                 .buildGradle(
                         """
                         dependencies {
-                            palantirJavaFormat files(file("%s").text.split(':'))
+                            palantirJavaFormat files(file("%s").text.split(File.pathSeparator))
                             %s
                         }
                         """,
@@ -87,7 +90,8 @@ class PalantirJavaFormatSpotlessPluginTest {
 
         BuildResult result = project.succeeds("spotlessApply", "--info");
 
-        assertThat(project.readFile(MAIN_JAVA)).isEqualTo(validJavaFile());
+        // Spotless writes the platform's line endings, CRLF on Windows.
+        assertThat(project.readFile(MAIN_JAVA)).isEqualToNormalizingNewlines(validJavaFile());
         assertThat(result.getOutput()).contains(expectedOutput);
     }
 

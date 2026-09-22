@@ -32,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,8 +51,10 @@ class FormatDiffTest {
 
     @Test
     void parsing_git_diff_output_works() throws IOException {
+        // A Windows checkout gives the fixture CRLF line endings, while git prints a diff with LF.
         String example1 = Files.readString(
-                Paths.get("src/test/resources/com/palantir/javaformat/java/FormatDiffCliTest/example1.patch"));
+                        Paths.get("src/test/resources/com/palantir/javaformat/java/FormatDiffCliTest/example1.patch"))
+                .replace("\r\n", "\n");
 
         List<String> strings = FormatDiff.parseGitDiffOutput(example1)
                 .map(FormatDiff.SingleFileDiff::toString)
@@ -59,8 +62,9 @@ class FormatDiffTest {
         assertThat(strings)
                 .containsExactly(
                         "SingleFileDiff{path=build.gradle, lineRanges=[[24..25), [29..30)]}",
-                        "SingleFileDiff{path=tracing/src/test/java/com/palantir/tracing/TracersTest.java, "
-                                + "lineRanges=[[659..660), [675..676)]}");
+                        // The path is a Path, which prints with backslashes on Windows.
+                        "SingleFileDiff{path=" + Path.of("tracing/src/test/java/com/palantir/tracing/TracersTest.java")
+                                + ", lineRanges=[[659..660), [675..676)]}");
     }
 
     @ParameterizedTest
@@ -112,7 +116,7 @@ class FormatDiffTest {
     }
 
     private static List<Path> getClasspath() throws IOException {
-        return Splitter.on(':')
+        return Splitter.on(File.pathSeparatorChar)
                 .trimResults()
                 .omitEmptyStrings()
                 .splitToStream(Files.readString(CLASSPATH_FILE.toPath()))
@@ -122,6 +126,10 @@ class FormatDiffTest {
 
     private static Path javaBinPath() {
         String javaHome = Preconditions.checkNotNull(System.getProperty("java.home"), "java.home property not set");
-        return Path.of(javaHome).resolve("bin").resolve("java");
+        return Path.of(javaHome).resolve("bin").resolve("java" + (isWindows() ? ".exe" : ""));
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name").toLowerCase(Locale.ROOT).startsWith("windows");
     }
 }

@@ -109,8 +109,10 @@ dependencies {
 
 tasks.register("copyNativeImage", Copy.class) {
     from(configurations.formatterNativeImage)
+    // Named like the published artifact, whose extension is its artifact type: bin, and exe on Windows.
+    // The plugin's ExecutableTransform starts from that type, so a Windows binary must keep .exe.
     rename { fileName ->
-        String.format("%s.bin", fileName)
+        fileName.endsWith('.exe') ? fileName : String.format("%s.bin", fileName)
     }
     into("$buildDir/nativeImage")
 }
