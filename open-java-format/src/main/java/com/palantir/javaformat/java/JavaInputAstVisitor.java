@@ -3576,15 +3576,17 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
                 {
                     builder.open(ZERO);
                     {
-                        if (typeWithDims.isPresent() && typeWithDims.get().node != null) {
+                        // `var` first: from JDK 27 (JDK-8268850) its type is a VarTypeTree rather than null,
+                        // and this visitor, compiled against JDK 21, has no visitVarType to print it.
+                        if (isVar) {
+                            token("var");
+                        } else if (typeWithDims.isPresent() && typeWithDims.get().node != null) {
                             scan(typeWithDims.get().node, null);
                             int totalDims = dims.size();
                             builder.open(plusFour);
                             maybeAddDims(dims);
                             builder.close();
                             baseDims = totalDims - dims.size();
-                        } else if (isVar) {
-                            token("var");
                         } else {
                             scan(type, null);
                         }
