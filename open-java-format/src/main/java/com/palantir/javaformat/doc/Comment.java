@@ -88,8 +88,13 @@ public final class Comment extends Doc implements Op {
             CommentsHelper commentsHelper, int maxWidth, State state, Obs.ExplorationNode observationNode) {
         String text = commentsHelper.rewrite(tok, maxWidth, state.column());
         @SuppressWarnings("for-rollout:NullAway")
-        int firstLineLength = text.length() - Iterators.getLast(Newlines.lineOffsetIterator(text));
-        return state.withColumn(state.column() + firstLineLength)
+        int lastLineStart = Iterators.getLast(Newlines.lineOffsetIterator(text));
+        int lastLineLength = text.length() - lastLineStart;
+        // rewrite() indents every line after the first to state.column(), so after a comment that spans lines the
+        // column is the length of its last line. Adding state.column() to it as well doubled the column for each
+        // further comment on that line.
+        int column = lastLineStart == 0 ? state.column() + lastLineLength : lastLineLength;
+        return state.withColumn(column)
                 .addNewLines(Iterators.size(Newlines.lineOffsetIterator(text)))
                 .withTokState(this, ImmutableTokState.of(text));
     }

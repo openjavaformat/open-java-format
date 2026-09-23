@@ -491,4 +491,21 @@ public final class FormatterTest {
 
         assertTimeoutPreemptively(Duration.ofSeconds(10), () -> formatter.formatSource(input));
     }
+
+    @Test
+    void indentsCommentsThatShareALineLinearly() throws FormatterException {
+        // Commented-out code that had javadoc in it puts many multi-line comments on one line: "*//** javadoc *//*".
+        // Each comment's continuation lines are indented to the column where the comment starts, and the column after
+        // a comment used to be counted from where it started plus its last line, which already holds that indent. So
+        // every comment started twice as far right as the one before, and these sixteen came out as 4.3 MB.
+        StringBuilder input = new StringBuilder("/*\nclass X {\n");
+        for (int i = 0; i < 16; i++) {
+            input.append("\t*//** javadoc *//*\n\tpublic void foo(Bar bar) {}\n\n");
+        }
+        input.append("}*/\n");
+        Formatter formatter = Formatter.createFormatter(
+                JavaFormatterOptions.builder().style(Style.OJF).build());
+
+        assertThat(formatter.formatSource(input.toString()).length()).isLessThan(10_000);
+    }
 }
