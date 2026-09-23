@@ -1,5 +1,6 @@
-// For the Gradle Plugin Portal: publishPlugins, run by hand once the version's jars are published on Maven
-// Central — the plugin depends on them. It applies java-gradle-plugin and maven-publish itself.
+// For the Gradle Plugin Portal: publishPlugins, run by the release workflow once Maven Central serves the
+// version's jars and native images — the plugins depend on them. The key comes from GRADLE_PUBLISH_KEY and
+// GRADLE_PUBLISH_SECRET. It applies java-gradle-plugin and maven-publish itself.
 apply plugin: 'com.gradle.plugin-publish'
 apply plugin: 'groovy'
 apply plugin: 'open-java-format.publishing-conventions'

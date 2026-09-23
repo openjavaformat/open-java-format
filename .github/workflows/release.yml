@@ -1,18 +1,20 @@
 name: Release
 
-# Tags only, and the tag is the version: the build reads it from GITHUB_REF_NAME and jreleaserDeploy
-# refuses anything that is not a clean X.Y.Z or X.Y.Z.N.
+# Tags only, and the tag is the version: the build reads it from GITHUB_REF_NAME, and jreleaserDeploy and
+# publishPlugins refuse anything that is not a clean X.Y.Z or X.Y.Z.N.
 #
 # Two deployments per tag, because a published groupId:artifactId:version can never gain files
-# afterwards: the jars go up as one, and every platform's native binary as another. Both are uploaded
-# and validated only — the Portal holds them until someone presses publish.
+# afterwards: the jars go up as one, and every platform's native binary as another. Each is uploaded and
+# validated first, and the publish job publishes both only once both are in. A version whose native build
+# fails publishes nothing, and its deployments can be dropped in the Portal.
 #
-# After both, a draft GitHub release on the tag collects the runnable jar, the IDE plugins and the native
-# binaries.
+# Once Maven Central serves both, the Gradle plugins go to the Gradle Plugin Portal. After publishing, a
+# draft GitHub release on the tag collects the runnable jar, the IDE plugins and the native binaries.
 #
-# Needs four repository secrets: JRELEASER_MAVENCENTRAL_USERNAME and JRELEASER_MAVENCENTRAL_PASSWORD
-# (the Central Portal user token) plus JRELEASER_GPG_SECRET_KEY and JRELEASER_GPG_PASSPHRASE. The draft
-# release uses the workflow's own GITHUB_TOKEN.
+# Needs six repository secrets: JRELEASER_MAVENCENTRAL_USERNAME and JRELEASER_MAVENCENTRAL_PASSWORD (the
+# Central Portal user token), JRELEASER_GPG_SECRET_KEY and JRELEASER_GPG_PASSPHRASE, and
+# GRADLE_PUBLISH_KEY and GRADLE_PUBLISH_SECRET (the Gradle Plugin Portal key). The draft release uses the
+# workflow's own GITHUB_TOKEN.
 on:
   push:
     tags:
@@ -29,6 +31,8 @@ jobs:
   jars:
     name: jars
     runs-on: ubuntu-latest
+    outputs:
+      deployment-id: ${{ steps.deployment.outputs.id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -47,6 +51,16 @@ jobs:
           JRELEASER_DEPLOY_MAVEN_MAVENCENTRAL_SONATYPE_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+
+      - name: Hand the deployment to the publish job
+        id: deployment
+        run: |
+          id="$(sed -n 's/^deployMavenCentralSonatypeDeploymentId=//p' build/jreleaser/output.properties)"
+          if [ -z "$id" ]; then
+            echo "No deployment ID in build/jreleaser/output.properties"
+            exit 1
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
 
       - name: Keep JReleaser's log
         if: ${{ failure() }}
@@ -121,6 +135,8 @@ jobs:
     name: native deploy
     needs: native-images
     runs-on: ubuntu-latest
+    outputs:
+      deployment-id: ${{ steps.deployment.outputs.id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -144,7 +160,7 @@ jobs:
       - name: Show what was collected
         run: ls -l native-images
 
-      # No GraalVM here: nothing is compiled, the binaries are published exactly as they arrived.
+      # No GraalVM here: nothing is compiled, the binaries are uploaded exactly as they arrived.
       - name: Stage, sign and upload the native images
         run: ./gradlew -PreleaseTarget=native -PnativeImages=native-images jreleaserDeploy
         env:
@@ -152,6 +168,16 @@ jobs:
           JRELEASER_DEPLOY_MAVEN_MAVENCENTRAL_SONATYPE_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+
+      - name: Hand the deployment to the publish job
+        id: deployment
+        run: |
+          id="$(sed -n 's/^deployMavenCentralSonatypeDeploymentId=//p' build/jreleaser/output.properties)"
+          if [ -z "$id" ]; then
+            echo "No deployment ID in build/jreleaser/output.properties"
+            exit 1
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
 
       - name: Keep JReleaser's log
         if: ${{ failure() }}
@@ -162,13 +188,92 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # Both deployments are uploaded and validated by now. Publishing one is a JReleaser run given its ID,
+  # which builds nothing. One leg per deployment, so that a re-run repeats only the leg that failed.
+  publish:
+    name: publish (${{ matrix.deployment }})
+    needs: [jars, native-deploy]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - deployment: jars
+            id: ${{ needs.jars.outputs.deployment-id }}
+          - deployment: native
+            id: ${{ needs.native-deploy.outputs.deployment-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install JDK 21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Publish the deployment
+        run: ./gradlew jreleaserDeploy
+        env:
+          JRELEASER_MAVENCENTRAL_DEPLOYMENT_ID: ${{ matrix.id }}
+          JRELEASER_DEPLOY_MAVEN_MAVENCENTRAL_SONATYPE_USERNAME: ${{ secrets.JRELEASER_MAVENCENTRAL_USERNAME }}
+          JRELEASER_DEPLOY_MAVEN_MAVENCENTRAL_SONATYPE_PASSWORD: ${{ secrets.JRELEASER_MAVENCENTRAL_PASSWORD }}
+          JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
+          JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+
+      - name: Keep JReleaser's log
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jreleaser-log-publish-${{ matrix.deployment }}
+          path: build/jreleaser/trace.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # The plugins depend on the version's jars and native images, so they go up only once Maven Central
+  # serves both, which takes some minutes after the publish job. The Gradle Plugin Portal never takes a
+  # version back.
+  gradle-plugins:
+    name: Gradle plugins
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install JDK 21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Wait for Maven Central to serve the version
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          for artifact in open-java-format open-java-format-native; do
+            url="https://repo1.maven.org/maven2/dev/openjavaformat/${artifact}/${VERSION}/${artifact}-${VERSION}.pom"
+            until curl --silent --fail --head --output /dev/null "$url"; do
+              echo "Waiting for ${url}"
+              sleep 30
+            done
+          done
+
+      - name: Publish the Gradle plugins
+        run: ./gradlew :gradle-open-java-format:publishPlugins
+        env:
+          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
+          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+
   # What Maven Central does not carry — the runnable formatter jar, the IntelliJ plugin zip, the Eclipse
   # plugin jar, and every platform's native binary as a plain download — goes into a draft GitHub release
-  # on the tag, each file signed with the release key. Only once both deployments are in; publishing the
-  # draft is a click on GitHub, and a re-run fails while a release for the tag exists.
+  # on the tag, each file signed with the release key. Only once both deployments are published; publishing
+  # the draft is a click on GitHub, and a re-run fails while a release for the tag exists.
   github-release:
     name: draft GitHub release
-    needs: [jars, native-deploy]
+    needs: publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
