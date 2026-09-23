@@ -14,9 +14,7 @@
 
 package com.palantir.javaformat.java;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
-import com.google.common.base.CharMatcher;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Range;
@@ -24,10 +22,13 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 
 /** A parser for {@link CommandLineOptions}. */
@@ -35,15 +36,29 @@ final class CommandLineOptionsParser {
 
     private static final Splitter COMMA_SPLITTER = Splitter.on(',');
     private static final Splitter COLON_SPLITTER = Splitter.on(':');
-    private static final Splitter ARG_SPLITTER =
-            Splitter.on(CharMatcher.breakingWhitespace()).omitEmptyStrings().trimResults();
+
+    /**
+     * Splits the arguments of a parameter file on whitespace (including tabs and line breaks), and lets an argument be
+     * quoted so that it keeps the whitespace inside it unchanged.
+     *
+     * <p>The regex matches either a quoted string (single or double quotes are allowed) or a plain unquoted string.
+     * Double quotes may appear inside a single-quoted string and vice versa, and are then kept as they are. For
+     * simplicity, escaped quotes are not handled.
+     */
+    private static final Pattern ARG_MATCHER = Pattern.compile(
+            "\"([^\"]*)(?:\"|$)" // group 1: string in double quotes (or until EOF), with whitespace allowed
+                    + "|" // OR
+                    + "'([^']*)(?:'|$)" // group 2: string in single quotes (or until EOF), with whitespace allowed
+                    + "|" // OR
+                    + "([^\\s\"']+)" // group 3: unquoted string, without whitespace and without any quotes
+            );
 
     /** Parses {@link CommandLineOptions}. */
     @SuppressWarnings("for-rollout:NullAway")
     static CommandLineOptions parse(Iterable<String> options) {
         CommandLineOptions.Builder optionsBuilder = CommandLineOptions.builder();
         List<String> expandedOptions = new ArrayList<>();
-        expandParamsFiles(options, expandedOptions);
+        expandParamsFiles(options, expandedOptions, new ArrayDeque<>());
         Iterator<String> it = expandedOptions.iterator();
         while (it.hasNext()) {
             String option = it.next();
@@ -226,7 +241,7 @@ final class CommandLineOptionsParser {
      * Pre-processes an argument list, expanding arguments of the form {@code @filename} by reading the content of the
      * file and appending whitespace-delimited options to {@code arguments}.
      */
-    private static void expandParamsFiles(Iterable<String> args, List<String> expanded) {
+    private static void expandParamsFiles(Iterable<String> args, List<String> expanded, Deque<String> paramFilesStack) {
         for (String arg : args) {
             if (arg.isEmpty()) {
                 continue;
@@ -236,14 +251,35 @@ final class CommandLineOptionsParser {
             } else if (arg.startsWith("@@")) {
                 expanded.add(arg.substring(1));
             } else {
-                Path path = Paths.get(arg.substring(1));
-                try {
-                    String sequence = new String(Files.readAllBytes(path), UTF_8);
-                    expandParamsFiles(ARG_SPLITTER.split(sequence), expanded);
-                } catch (IOException e) {
-                    throw new UncheckedIOException(path + ": could not read file: " + e.getMessage(), e);
+                String filename = arg.substring(1);
+                if (paramFilesStack.contains(filename)) {
+                    throw new IllegalArgumentException("parameter file was included recursively: " + filename);
+                }
+                paramFilesStack.push(filename);
+                expandParamsFiles(getParamsFromFile(filename), expanded, paramFilesStack);
+                String finishedFilename = paramFilesStack.pop();
+                Preconditions.checkState(filename.equals(finishedFilename));
+            }
+        }
+    }
+
+    /** Reads the parameters from a file, keeping quoted parameters whole. */
+    private static List<String> getParamsFromFile(String filename) {
+        String fileContent;
+        try {
+            fileContent = Files.readString(Path.of(filename));
+        } catch (IOException e) {
+            throw new UncheckedIOException(filename + ": could not read file: " + e.getMessage(), e);
+        }
+        List<String> paramsFromFile = new ArrayList<>();
+        Matcher m = ARG_MATCHER.matcher(fileContent);
+        while (m.find()) {
+            for (int i = 1; i <= m.groupCount(); i++) {
+                if (m.group(i) != null) { // only one group matches: double quotes, single quotes or unquoted string.
+                    paramsFromFile.add(m.group(i));
                 }
             }
         }
+        return paramsFromFile;
     }
 }
