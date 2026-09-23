@@ -120,11 +120,18 @@ public final class Main {
         }
     }
 
-    @SuppressWarnings("for-rollout:RedundantControlFlow")
     private int formatFiles(CommandLineOptions parameters, JavaFormatterOptions options) {
         int numThreads = Math.min(MAX_THREADS, parameters.files().size());
-        ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        // Closing the pool ends its threads, so that a tool that runs Main in-process does not keep them. The close
+        // waits for the submitted tasks, which formatFiles has already waited for.
+        try (ExecutorService executorService = Executors.newFixedThreadPool(numThreads)) {
+            return formatFiles(parameters, options, executorService);
+        }
+    }
 
+    @SuppressWarnings("for-rollout:RedundantControlFlow")
+    private int formatFiles(
+            CommandLineOptions parameters, JavaFormatterOptions options, ExecutorService executorService) {
         Map<Path, String> inputs = new LinkedHashMap<>();
         Map<Path, Future<String>> results = new LinkedHashMap<>();
         boolean allOk = true;
