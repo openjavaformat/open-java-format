@@ -84,13 +84,15 @@ private static void configureResolvedVersionsWithVersionMapping(Project project)
 
 ## Coming from palantir-java-format
 
-- **Identical output.** 2.98.0.1 is the code of palantir-java-format 2.98.0, renamed and rebuilt in
-  the open. The fourth number counts builds of an upstream version.
+- **Same output, except for bug fixes.** 2.98.0.x is the code of palantir-java-format 2.98.0, renamed
+  and rebuilt in the open. Its output is the same except where it fixes a bug, and
+  [Migrate](https://openjavaformat.dev/migrate/) lists those fixes. The fourth number counts builds of
+  an upstream version.
 - **Identical Java packages.** `com.palantir.javaformat.*` stays for the whole 2.x line, so your code
   and the SPI keep working.
 - **One-line migration.** Change the coordinates below. Nothing else.
 
-Changes to the formatter's output wait for 3.0.
+Other changes to the formatter's output wait for 3.0.
 
 | | palantir-java-format | open-java-format |
 |---|---|---|
