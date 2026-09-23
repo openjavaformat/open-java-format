@@ -31,7 +31,7 @@ jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", ver
 jackson-dataformat-xml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-xml", version = "2.22.2" }
 jackson-datatype-guava = { module = "com.fasterxml.jackson.datatype:jackson-datatype-guava", version = "2.22.2" }
 jackson-datatype-jdk8 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jdk8", version = "2.22.2" }
-jackson-module-parameterNames = { module = "com.fasterxml.jackson.module:jackson-module-parameter-names", version = "2.22.1" }
+jackson-module-parameterNames = { module = "com.fasterxml.jackson.module:jackson-module-parameter-names", version = "2.22.2" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version = "1.37" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version = "1.37" }
 jsr305 = { module = "com.google.code.findbugs:jsr305", version = "3.0.2" }
