@@ -280,7 +280,7 @@ public final class Main {
             throw new UsageException("--assume-filename is only supported when formatting standard input");
         }
         if (parameters.dryRun() && parameters.inPlace()) {
-            throw new UsageException("cannot use --dry-run and --in-place at the same time");
+            throw new UsageException("cannot use --dry-run and --replace at the same time");
         }
         return parameters;
     }
