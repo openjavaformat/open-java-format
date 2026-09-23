@@ -266,6 +266,46 @@ public class MainTest {
         assertThat(out.toString()).isEqualTo(joiner.join(expected));
     }
 
+    // An unused import between two blank lines must not leave both of them behind: one run of the command line gives
+    // what a second run would, and what the entry point of the Gradle and Spotless step gives (#37, from
+    // google/google-java-format#1436).
+    @Test
+    public void unusedImportRemovalLeavesOneBlankLine() throws Exception {
+        String[] input = {
+            "package com.example;",
+            "",
+            "import static io.grpc.MethodDescriptor.generateFullMethodName;",
+            "",
+            "/**",
+            " * Javadoc for class.",
+            " */",
+            "public class TestBug {",
+            "}",
+            "",
+        };
+        String[] expected = {
+            "package com.example;", //
+            "",
+            "/**",
+            " * Javadoc for class.",
+            " */",
+            "public class TestBug {}",
+            "",
+        };
+        StringWriter out = new StringWriter();
+        Main main = new Main(
+                new PrintWriter(out, true),
+                new PrintWriter(new BufferedWriter(new OutputStreamWriter(System.err, UTF_8)), true),
+                new ByteArrayInputStream(joiner.join(input).getBytes(UTF_8)));
+        assertThat(main.format("-")).isEqualTo(0);
+        assertThat(out.toString()).isEqualTo(joiner.join(expected));
+
+        Formatter formatter = Formatter.createFormatter(JavaFormatterOptions.builder()
+                .style(JavaFormatterOptions.Style.OJF)
+                .build());
+        assertThat(formatter.formatSourceAndFixImports(joiner.join(input))).isEqualTo(joiner.join(expected));
+    }
+
     // test that errors are reported on the right line when imports are removed
     @Test
     public void importRemoveErrorParseError() throws Exception {

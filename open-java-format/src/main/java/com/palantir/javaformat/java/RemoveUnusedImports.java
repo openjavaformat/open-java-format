@@ -226,6 +226,7 @@ public class RemoveUnusedImports {
             Set<String> usedNames,
             Multimap<String, Range<Integer>> usedInJavadoc) {
         RangeMap<Integer, String> replacements = TreeRangeMap.create();
+        String sep = Newlines.guessLineSeparator(contents);
         for (JCImport importTree : unit.getImports()) {
             String simpleName = getSimpleName(importTree);
             if (!isUnused(unit, usedNames, usedInJavadoc, importTree, simpleName)) {
@@ -234,16 +235,62 @@ public class RemoveUnusedImports {
             // delete the import
             int endPosition = importTree.getEndPosition(unit.endPositions);
             endPosition = Math.max(CharMatcher.isNot(' ').indexIn(contents, endPosition), endPosition);
-            String sep = Newlines.guessLineSeparator(contents);
             if (endPosition + sep.length() < contents.length()
                     && contents.subSequence(endPosition, endPosition + sep.length())
                             .toString()
                             .equals(sep)) {
                 endPosition += sep.length();
             }
-            replacements.put(Range.closedOpen(importTree.getStartPosition(), endPosition), "");
+            // putCoalescing merges adjacent unused imports into one range, so the blank-line cleanup below sees the
+            // whole deleted import block (TreeRangeMap.put does not coalesce).
+            replacements.putCoalescing(Range.closedOpen(importTree.getStartPosition(), endPosition), "");
         }
-        return replacements;
+        // Removing a whole import block can leave the blank line that preceded it stacked on the blank line that
+        // followed it (package, blank, imports, blank, type). Collapse one of them, so a single formatting pass leaves
+        // one blank line, as the second one did.
+        return collapseBlankLinesAroundDeletedImports(contents, replacements, sep);
+    }
+
+    /**
+     * Extends contiguous deleted-import ranges so that a blank line that both preceded and followed the imports is not
+     * left doubled after the deletion.
+     */
+    private static RangeMap<Integer, String> collapseBlankLinesAroundDeletedImports(
+            String contents, RangeMap<Integer, String> replacements, String sep) {
+        if (replacements.asMapOfRanges().isEmpty()) {
+            return replacements;
+        }
+        RangeMap<Integer, String> adjusted = TreeRangeMap.create();
+        for (Range<Integer> range : replacements.asMapOfRanges().keySet()) {
+            int start = range.lowerEndpoint();
+            int end = range.upperEndpoint();
+            // Eat one trailing blank line when the deletion sits between blank lines, or at the start of the file,
+            // where a leading blank line would otherwise remain after the last import is removed.
+            if (isBlankLineAfter(contents, end, sep) && (start == 0 || isBlankLineBefore(contents, start, sep))) {
+                end += sep.length();
+            }
+            adjusted.putCoalescing(Range.closedOpen(start, end), "");
+        }
+        return adjusted;
+    }
+
+    /** True if {@code pos} is immediately preceded by an empty line. */
+    private static boolean isBlankLineBefore(String contents, int pos, String sep) {
+        if (pos < sep.length() || !contents.regionMatches(pos - sep.length(), sep, 0, sep.length())) {
+            return false;
+        }
+        int endOfPreviousLine = pos - sep.length();
+        if (endOfPreviousLine == 0) {
+            // The file begins with a blank line before the deleted import.
+            return true;
+        }
+        return endOfPreviousLine >= sep.length()
+                && contents.regionMatches(endOfPreviousLine - sep.length(), sep, 0, sep.length());
+    }
+
+    /** True if {@code pos} is immediately followed by an empty line (a line break). */
+    private static boolean isBlankLineAfter(String contents, int pos, String sep) {
+        return pos + sep.length() <= contents.length() && contents.regionMatches(pos, sep, 0, sep.length());
     }
 
     private static String getSimpleName(ImportTree importTree) {
