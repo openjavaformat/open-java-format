@@ -87,6 +87,9 @@ allprojects {
 
     tasks.withType(Test).configureEach {
         jvmArgs(javacInternalExports.collect { "--add-exports=${it}=ALL-UNNAMED".toString() })
+        // The short form gave CI logs only "FormatterException at FormatterIntegrationTest.java:76", never what
+        // the formatter complained about, nor the output of a TestKit build that failed.
+        testLogging.exceptionFormat = 'full'
     }
 
     tasks.withType(Javadoc).configureEach {
@@ -127,7 +130,11 @@ subprojects {
     }
 }
 
+// The JDK the tests run on, and with it the javac whose internals the formatter parses with. The code is
+// compiled for 21 whatever this says. CI's `jdk` jobs pass -PjavaRuntime=25 and so on.
+ext.javaRuntime = providers.gradleProperty('javaRuntime').getOrElse('21')
+
 javaVersions {
     libraryTarget = 21
-    runtime = 21
+    runtime = javaRuntime
 }

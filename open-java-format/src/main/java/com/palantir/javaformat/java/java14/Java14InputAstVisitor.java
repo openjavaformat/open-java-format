@@ -113,12 +113,20 @@ public class Java14InputAstVisitor extends JavaInputAstVisitor {
         return null;
     }
 
+    /**
+     * Is {@code type} the {@code var} of a binding pattern? Older JDKs leave such a pattern without a type, JDK 27
+     * (JDK-8268850) gives it a VarTypeTree, which does not exist on JDK 21, so it is matched by {@link Tree.Kind} name.
+     */
+    private static boolean isVarType(Tree type) {
+        return type.getKind().name().equals("VAR_TYPE");
+    }
+
     private void visitBindingPattern(ModifiersTree modifiers, Tree type, Name name) {
         builder.open(plusFour);
         if (modifiers != null) {
             builder.addAll(visitModifiers(modifiers, Direction.HORIZONTAL, Optional.empty()));
         }
-        if (type == null) {
+        if (type == null || isVarType(type)) {
             token("var");
         } else {
             scan(type, null);
@@ -349,23 +357,6 @@ public class Java14InputAstVisitor extends JavaInputAstVisitor {
                 || node.getBody() instanceof SwitchExpressionTree;
         visitLambdaExpression(node, statementBody);
         return null;
-    }
-
-    @SuppressWarnings("for-rollout:NullAway")
-    private static Method maybeGetMethod(Class<?> c, String name) {
-        try {
-            return c.getMethod(name);
-        } catch (ReflectiveOperationException e) {
-            return null;
-        }
-    }
-
-    private static Object invoke(Method m, Object target) {
-        try {
-            return m.invoke(target);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e.getMessage(), e);
-        }
     }
 
     @SuppressWarnings({"NullableProblems", "for-rollout:NullAway"})

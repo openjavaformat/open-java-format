@@ -119,6 +119,10 @@ mise trust && mise install
 ./gradlew test      # what the CI build job runs
 ```
 
+`-PjavaRuntime=25` runs the same tests on JDK 25, as CI's `jdk` jobs do for 25, 26 and 27. The code
+is compiled for Java 21 either way. Gradle has to find that JDK: installed with mise, or named with
+`-Porg.gradle.java.installations.paths=/path/to/jdk`.
+
 Nothing inside the build downloads a JDK. `gradle.properties` turns toolchain auto-download off and
 reads the installations from `JDK21_HOME` and `GRAALVM_HOME`, so a missing JDK is an error you can
 read rather than a silent download.

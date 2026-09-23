@@ -42,7 +42,6 @@ import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 import com.sun.tools.javac.tree.JCTree.JCFieldAccess;
 import com.sun.tools.javac.tree.JCTree.JCIdent;
-import com.sun.tools.javac.tree.JCTree.JCImport;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Options;
 import java.lang.reflect.Method;
@@ -227,13 +226,16 @@ public class RemoveUnusedImports {
             Multimap<String, Range<Integer>> usedInJavadoc) {
         RangeMap<Integer, String> replacements = TreeRangeMap.create();
         String sep = Newlines.guessLineSeparator(contents);
-        for (JCImport importTree : unit.getImports()) {
+        // From JDK 23 on, getImports() also returns JCModuleImport, which is not a JCImport, so iterate
+        // over their common supertype and use ImportTree, which both implement.
+        for (JCTree importDecl : unit.getImports()) {
+            ImportTree importTree = (ImportTree) importDecl;
             String simpleName = getSimpleName(importTree);
             if (!isUnused(unit, usedNames, usedInJavadoc, importTree, simpleName)) {
                 continue;
             }
             // delete the import
-            int endPosition = importTree.getEndPosition(unit.endPositions);
+            int endPosition = Trees.getEndPosition(importDecl, unit);
             endPosition = Math.max(CharMatcher.isNot(' ').indexIn(contents, endPosition), endPosition);
             if (endPosition + sep.length() < contents.length()
                     && contents.subSequence(endPosition, endPosition + sep.length())
@@ -243,7 +245,7 @@ public class RemoveUnusedImports {
             }
             // putCoalescing merges adjacent unused imports into one range, so the blank-line cleanup below sees the
             // whole deleted import block (TreeRangeMap.put does not coalesce).
-            replacements.putCoalescing(Range.closedOpen(importTree.getStartPosition(), endPosition), "");
+            replacements.putCoalescing(Range.closedOpen(importDecl.getStartPosition(), endPosition), "");
         }
         // Removing a whole import block can leave the blank line that preceded it stacked on the blank line that
         // followed it (package, blank, imports, blank, type). Collapse one of them, so a single formatting pass leaves
@@ -293,6 +295,16 @@ public class RemoveUnusedImports {
         return pos + sep.length() <= contents.length() && contents.regionMatches(pos, sep, 0, sep.length());
     }
 
+    // ImportTree#isModule() (JEP 511) exists from JDK 23 on; this module compiles with a JDK 21
+    // compiler, so it can't be referenced directly. Same idiom as CASE_TREE_GET_LABELS above.
+    private static final Method IMPORT_TREE_IS_MODULE =
+            JavaInputAstVisitor.maybeGetMethod(ImportTree.class, "isModule");
+
+    private static boolean isModuleImport(ImportTree importTree) {
+        return IMPORT_TREE_IS_MODULE != null
+                && Boolean.TRUE.equals(JavaInputAstVisitor.invoke(IMPORT_TREE_IS_MODULE, importTree));
+    }
+
     private static String getSimpleName(ImportTree importTree) {
         return importTree.getQualifiedIdentifier() instanceof JCIdent
                 ? ((JCIdent) importTree.getQualifiedIdentifier()).getName().toString()
@@ -307,6 +319,11 @@ public class RemoveUnusedImports {
             Multimap<String, Range<Integer>> usedInJavadoc,
             ImportTree importTree,
             String simpleName) {
+        if (isModuleImport(importTree)) {
+            // A module import binds every exported package of the module, so this scanner can't tell
+            // whether it's needed - same as the `.*` wildcard imports below. Never remove it.
+            return false;
+        }
         String qualifier = ((JCFieldAccess) importTree.getQualifiedIdentifier())
                 .getExpression()
                 .toString();

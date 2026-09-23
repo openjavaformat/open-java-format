@@ -37,6 +37,68 @@ jobs:
           annotate_only: true
           job_summary: true
 
+  # The tests of `build` on the newer JDKs, in parallel with everything else: nothing waits for these
+  # jobs and nothing they build is kept. The code is still compiled for Java 21 by JDK 21, as in the
+  # release; -PjavaRuntime moves only the test JVMs, and with them the javac whose internals the
+  # formatter parses with. The IntelliJ plugin's tests stay on the runtime of the IDE they start.
+  # JDK 21 itself is `build`, the check the main branch requires.
+  jdk:
+    name: build (JDK ${{ matrix.jdk }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - jdk: 25
+            gradle_args: ''
+            gradle_args_reason: ''
+          - jdk: 26
+            gradle_args: ''
+            gradle_args_reason: ''
+          - jdk: 27
+            gradle_args: -x :gradle-open-java-format:test
+            gradle_args_reason: >-
+              Gradle 9.7.1 does not run on Java 27 yet, and the Gradle plugin's tests run their TestKit builds on
+              the test JVM, where they fail with "Unsupported class file major version 71". Those tests are left
+              out until the wrapper's Gradle supports Java 27.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install JDK ${{ matrix.jdk }} for the tests
+        id: test-jdk
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.jdk }}
+
+      # Installed last, so that it is the JAVA_HOME Gradle runs and compiles on.
+      - name: Install JDK 21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Explain the extra Gradle arguments
+        if: ${{ matrix.gradle_args != '' }}
+        env:
+          GRADLE_ARGS: ${{ matrix.gradle_args }}
+          REASON: ${{ matrix.gradle_args_reason }}
+        run: echo "::notice title=JDK ${{ matrix.jdk }} runs with $GRADLE_ARGS::$REASON"
+
+      # Gradle does not look into the runner's tool cache, so it is told where the test JDK is.
+      - name: Build
+        run: >-
+          ./gradlew test -PjavaRuntime=${{ matrix.jdk }} ${{ matrix.gradle_args }}
+          -Porg.gradle.java.installations.paths=${{ steps.test-jdk.outputs.path }}
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@a9170d5795813c01ab4901ffb045b52bab4ab09d # v6.5.0
+        if: ${{ !cancelled() }}
+        with:
+          report_paths: '**/build/test-results/test/*.xml'
+          annotate_only: true
+          job_summary: true
+
   # One explicit job per target, so every binary we ship is traceable to a named run.
   native:
     name: native (${{ matrix.platform }})
@@ -87,7 +149,8 @@ jobs:
         env:
           JDK21_HOME: ${{ steps.jdk21.outputs.path }}
 
-      # The binary itself on a file that needs formatting, a formatted one and one that does not parse.
+      # The binary itself on a file that needs formatting, a formatted one, one that does not parse and
+      # one in Java 25 syntax.
       - name: Smoke-test the binary
         run: |
           binary="$PWD/$(ls open-java-format-native/build/native/nativeCompile/open-java-format-* | grep -v '\.txt$')"
@@ -100,6 +163,10 @@ jobs:
           printf 'class B {\n' > B.java
           set +e; "$binary" B.java; status=$?; set -e
           test "$status" -eq 2
+          # Java 25 syntax: a compact source file with a module import and an unnamed pattern.
+          printf 'import module java.base;\nrecord Box(int a,int b){}\nvoid main(){Object o=new Box(1,2);if(o instanceof Box(_,_)){IO.println(List.of(1));}}\n' > C.java
+          "$binary" --replace C.java
+          printf 'import module java.base;\n\nrecord Box(int a, int b) {}\n\nvoid main() {\n    Object o = new Box(1, 2);\n    if (o instanceof Box(_, _)) {\n        IO.println(List.of(1));\n    }\n}\n' | diff - C.java
 
       - name: Test the plugins against the image
         run: ./gradlew -PnativeImage=true :open-java-format-jdk-bootstrap:test :gradle-open-java-format:test
