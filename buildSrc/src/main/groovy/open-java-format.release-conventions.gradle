@@ -12,9 +12,9 @@ plugins {
 // collected, the default deploys the jars; on a tag both read the same version from it.
 //
 // `-PreleaseTarget=github` deploys nothing. It is for `jreleaserRelease`, which opens a draft GitHub
-// release on the tag with what Maven Central does not carry — the runnable formatter jar, the IntelliJ
-// plugin zip, the Eclipse plugin jar and every platform's native binary as a plain download — each file
-// signed, plus a checksum file.
+// release on the tag with what Maven Central does not carry — the runnable formatter jar, the Gradle
+// plugins' jar, the IntelliJ plugin zip, the Eclipse plugin jar and every platform's native binary as a
+// plain download — each file signed, plus a checksum file.
 //
 // Publishing is a run of its own: with JRELEASER_MAVENCENTRAL_DEPLOYMENT_ID set, JReleaser publishes that
 // deployment, which an earlier run uploaded and the Portal validated, and nothing is built. The ID has to
@@ -22,8 +22,9 @@ plugins {
 // uploads both deployments first and publishes them only once both are in, so a version whose native
 // build fails publishes nothing.
 //
-// gradle-open-java-format is not released here: the release workflow publishes its plugins to the Gradle
-// Plugin Portal once Maven Central serves the jars and native images they depend on.
+// gradle-open-java-format is not deployed here: the release workflow publishes its plugins to the Gradle
+// Plugin Portal once Maven Central serves the jars and native images they depend on. The GitHub release
+// carries its jar too, built from the same tag.
 def releaseTarget = providers.gradleProperty('releaseTarget').getOrElse('jars')
 def deploymentToPublish = providers.environmentVariable('JRELEASER_MAVENCENTRAL_DEPLOYMENT_ID').getOrNull()
 def releasedProjects
@@ -109,6 +110,9 @@ jreleaser {
                 path = 'open-java-format/build/libs/open-java-format-{{projectVersion}}-all.jar'
             }
             artifact {
+                path = 'gradle-open-java-format/build/libs/gradle-open-java-format-{{projectVersion}}.jar'
+            }
+            artifact {
                 path = 'open-java-format-idea-plugin/build/distributions/open-java-format-idea-plugin-{{projectVersion}}.zip'
             }
             artifact {
@@ -163,8 +167,8 @@ tasks.named('jreleaserDeploy') {
 
 tasks.named('jreleaserRelease') {
     if (releaseTarget == 'github') {
-        dependsOn ':open-java-format:allJar', ':open-java-format-idea-plugin:buildPlugin',
-                ':open-java-format-eclipse-plugin:jar'
+        dependsOn ':open-java-format:allJar', ':gradle-open-java-format:jar',
+                ':open-java-format-idea-plugin:buildPlugin', ':open-java-format-eclipse-plugin:jar'
     }
 }
 

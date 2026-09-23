@@ -23,7 +23,7 @@ and published from this repository.
 | [Maven Central](https://central.sonatype.com/namespace/dev.openjavaformat) | `dev.openjavaformat:open-java-format`, with `-spi`, `-native` and `-jdk-bootstrap` |
 | [Gradle Plugin Portal](https://plugins.gradle.org/plugin/dev.openjavaformat.java-format) | `dev.openjavaformat.java-format` |
 | [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34359-open-java-format) | the IntelliJ IDEA plugin |
-| [GitHub Releases](https://github.com/openjavaformat/open-java-format/releases/latest) | native binaries, a runnable jar, the IntelliJ and Eclipse plugins, every file signed |
+| [GitHub Releases](https://github.com/openjavaformat/open-java-format/releases/latest) | native binaries, a runnable jar, the Gradle, IntelliJ and Eclipse plugins, every file signed |
 
 Why the project exists is in the [manifesto](https://openjavaformat.dev/manifesto/).
 
