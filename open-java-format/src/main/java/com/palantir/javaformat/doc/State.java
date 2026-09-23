@@ -26,6 +26,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.Objects;
 import org.immutables.value.Value;
 import org.immutables.value.Value.Parameter;
 
@@ -219,6 +220,27 @@ public abstract class State {
                 .from(this)
                 .tokStates(tokStates().set(comment, tokState))
                 .build();
+    }
+
+    /**
+     * The part of this state that laying out a level from here reads. It leaves out the line count, which is only ever
+     * compared with another count from the same starting point; the branching coefficient, which nothing reads; and the
+     * states of breaks, levels and comments, since a layout only reads those of the docs it has laid out itself.
+     */
+    LayoutInputs layoutInputs() {
+        return new LayoutInputs(lastIndent(), indent(), column(), mustBreak(), breakTagsTaken());
+    }
+
+    /** See {@link #layoutInputs()}. */
+    record LayoutInputs(int lastIndent, int indent, int column, boolean mustBreak, Set<BreakTag> breakTagsTaken) {
+        /**
+         * Leaves out the taken break tags: hashing them on every lookup costs more than comparing them on the lookups
+         * that match everything else. Equality still compares them.
+         */
+        @Override
+        public int hashCode() {
+            return Objects.hash(lastIndent, indent, column, mustBreak);
+        }
     }
 
     public static class Builder extends ImmutableState.Builder {}

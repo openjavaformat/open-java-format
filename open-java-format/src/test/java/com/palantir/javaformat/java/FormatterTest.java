@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertWithMessage;
 import static com.palantir.javaformat.java.JavaFormatterOptions.Style;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Range;
@@ -32,6 +33,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -472,5 +474,38 @@ public final class FormatterTest {
                 .that(formatter.getFormatReplacements(
                         formattedClass, List.of(Range.closedOpen(0, formattedClass.length()))))
                 .isNotEmpty();
+    }
+
+    @Test
+    void formatsDeeplyNestedCallsQuickly() {
+        // Nine nested Map.ofEntries(Map.entry(...)) are one more than fit in 120 columns with each argument kept on its
+        // call's line. Every such attempt then failed, but only after laying out everything inside it, and each level
+        // above repeated it for every layout it tried: formatting took time exponential in the depth.
+        String call = "Map.ofEntries(Map.entry(\"key0\", \"value0\"), Map.entry(\"key1\", \"value1\"))";
+        for (int depth = 0; depth < 9; depth++) {
+            call = "Map.ofEntries(Map.entry(\"key" + depth + "\", " + call + "))";
+        }
+        String input = "class DeepNesting {\n    Object foo() {\n        return " + call + ";\n    }\n}\n";
+        Formatter formatter = Formatter.createFormatter(
+                JavaFormatterOptions.builder().style(Style.OJF).build());
+
+        assertTimeoutPreemptively(Duration.ofSeconds(10), () -> formatter.formatSource(input));
+    }
+
+    @Test
+    void indentsCommentsThatShareALineLinearly() throws FormatterException {
+        // Commented-out code that had javadoc in it puts many multi-line comments on one line: "*//** javadoc *//*".
+        // Each comment's continuation lines are indented to the column where the comment starts, and the column after
+        // a comment used to be counted from where it started plus its last line, which already holds that indent. So
+        // every comment started twice as far right as the one before, and these sixteen came out as 4.3 MB.
+        StringBuilder input = new StringBuilder("/*\nclass X {\n");
+        for (int i = 0; i < 16; i++) {
+            input.append("\t*//** javadoc *//*\n\tpublic void foo(Bar bar) {}\n\n");
+        }
+        input.append("}*/\n");
+        Formatter formatter = Formatter.createFormatter(
+                JavaFormatterOptions.builder().style(Style.OJF).build());
+
+        assertThat(formatter.formatSource(input.toString()).length()).isLessThan(10_000);
     }
 }

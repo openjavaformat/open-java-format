@@ -1,5 +1,6 @@
 // Applied to the root project: signs the staged publications and uploads them to the Maven Central
-// Portal. `mise run release` runs it; `mise run release:dry-run` rehearses without uploading.
+// Portal. The release workflow, .github/workflows/release.yml, runs it on a tag; --dryrun rehearses
+// without uploading.
 plugins {
     id 'base'
     id 'org.jreleaser'
@@ -11,13 +12,21 @@ plugins {
 // collected, the default deploys the jars; on a tag both read the same version from it.
 //
 // `-PreleaseTarget=github` deploys nothing. It is for `jreleaserRelease`, which opens a draft GitHub
-// release on the tag with what Maven Central does not carry — the runnable formatter jar, the IntelliJ
-// plugin zip, the Eclipse plugin jar and every platform's native binary as a plain download — each file
-// signed, plus a checksum file.
+// release on the tag with what Maven Central does not carry — the runnable formatter jar, the Gradle
+// plugins' jar, the IntelliJ plugin zip, the Eclipse plugin jar and every platform's native binary as a
+// plain download — each file signed, plus a checksum file.
 //
-// gradle-open-java-format is not released here: its plugins go to the Gradle Plugin Portal by hand, with
-// `mise run release:gradle-plugin`, once the jars they depend on are published.
+// Publishing is a run of its own: with JRELEASER_MAVENCENTRAL_DEPLOYMENT_ID set, JReleaser publishes that
+// deployment, which an earlier run uploaded and the Portal validated, and nothing is built. The ID has to
+// be an environment variable: JReleaser 1.26 drops a deploymentId set in the DSL. The release workflow
+// uploads both deployments first and publishes them only once both are in, so a version whose native
+// build fails publishes nothing.
+//
+// gradle-open-java-format is not deployed here: the release workflow publishes its plugins to the Gradle
+// Plugin Portal once Maven Central serves the jars and native images they depend on. The GitHub release
+// carries its jar too, built from the same tag.
 def releaseTarget = providers.gradleProperty('releaseTarget').getOrElse('jars')
+def deploymentToPublish = providers.environmentVariable('JRELEASER_MAVENCENTRAL_DEPLOYMENT_ID').getOrNull()
 def releasedProjects
 if (releaseTarget == 'jars') {
     releasedProjects = [
@@ -79,7 +88,7 @@ jreleaser {
             skipTag = true
             tagName = '{{projectVersion}}'
             releaseName = '{{projectVersion}}'
-            // Published by hand after a look, like the deployments waiting in the Portal.
+            // Published by hand after a look.
             draft = true
             changelog {
                 formatted = 'ALWAYS'
@@ -99,6 +108,9 @@ jreleaser {
         if (releaseTarget == 'github') {
             artifact {
                 path = 'open-java-format/build/libs/open-java-format-{{projectVersion}}-all.jar'
+            }
+            artifact {
+                path = 'gradle-open-java-format/build/libs/gradle-open-java-format-{{projectVersion}}.jar'
             }
             artifact {
                 path = 'open-java-format-idea-plugin/build/distributions/open-java-format-idea-plugin-{{projectVersion}}.zip'
@@ -131,10 +143,12 @@ jreleaser {
                     url = 'https://central.sonatype.com/api/v1/publisher'
                     namespace = 'dev.openjavaformat'
                     applyMavenCentralRules = true
-                    // Upload and validate, then stop. The deployment waits in the Portal until someone
-                    // presses publish, so a version stays reversible until every one of its deployments
-                    // is in and has been looked at.
-                    stage = 'UPLOAD'
+                    // Upload and wait for the Portal to validate the deployment, then stop; its ID goes to
+                    // build/jreleaser/output.properties as deployMavenCentralSonatypeDeploymentId. Given
+                    // an ID, publish that deployment instead, and end once publishing has started rather
+                    // than waiting, up to half an hour, for Maven Central to serve the files.
+                    stage = deploymentToPublish == null ? 'UPLOAD' : 'PUBLISH'
+                    skipPublicationCheck = true
                     stagingRepositories.each { stagingRepository(it) }
                 }
             }
@@ -143,15 +157,18 @@ jreleaser {
 }
 
 tasks.named('jreleaserDeploy') {
-    releasedProjects.each { path ->
-        dependsOn "${path}:publishAllPublicationsToStagingRepository"
+    // Publishing a deployment that is already uploaded needs nothing built.
+    if (deploymentToPublish == null) {
+        releasedProjects.each { path ->
+            dependsOn "${path}:publishAllPublicationsToStagingRepository"
+        }
     }
 }
 
 tasks.named('jreleaserRelease') {
     if (releaseTarget == 'github') {
-        dependsOn ':open-java-format:allJar', ':open-java-format-idea-plugin:buildPlugin',
-                ':open-java-format-eclipse-plugin:jar'
+        dependsOn ':open-java-format:allJar', ':gradle-open-java-format:jar',
+                ':open-java-format-idea-plugin:buildPlugin', ':open-java-format-eclipse-plugin:jar'
     }
 }
 

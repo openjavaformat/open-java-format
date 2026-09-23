@@ -35,6 +35,8 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.EnumSet;
 import java.util.Locale;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
@@ -89,6 +91,29 @@ public class MainTest {
         Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
         assertThat(main.format("-version")).isEqualTo(0);
         assertThat(err.toString()).contains("open-java-format: Version ");
+    }
+
+    // Main used to leave its thread pool running after format returned. The command line does not notice, because it
+    // exits, but anything that runs Main in-process kept the idle threads (#40, from google/google-java-format#384).
+    @Test
+    public void formatLeavesNoPoolThreadRunning() throws Exception {
+        Path path = Files.writeString(testFolder.resolve("A.java"), "class A {}\n");
+        Main main = new Main(
+                new PrintWriter(new StringWriter(), true), new PrintWriter(new StringWriter(), true), System.in);
+        // The pool's threads join the thread group of the thread that creates the pool.
+        ThreadGroup group = new ThreadGroup("formatLeavesNoPoolThreadRunning");
+        FutureTask<Integer> format = new FutureTask<>(() -> main.format(path.toString()));
+        new Thread(group, format).start();
+        assertThat(format.get()).isEqualTo(0);
+
+        Thread[] threads = new Thread[group.activeCount() + 16];
+        int count = group.enumerate(threads);
+        for (int i = 0; i < count; i++) {
+            threads[i].join(TimeUnit.SECONDS.toMillis(10));
+            assertWithMessage(threads[i].getName() + " is still running")
+                    .that(threads[i].isAlive())
+                    .isFalse();
+        }
     }
 
     @Test
@@ -264,6 +289,46 @@ public class MainTest {
                 new ByteArrayInputStream(joiner.join(input).getBytes(UTF_8)));
         assertThat(main.format("-", "-lines", "4")).isEqualTo(0);
         assertThat(out.toString()).isEqualTo(joiner.join(expected));
+    }
+
+    // An unused import between two blank lines must not leave both of them behind: one run of the command line gives
+    // what a second run would, and what the entry point of the Gradle and Spotless step gives (#37, from
+    // google/google-java-format#1436).
+    @Test
+    public void unusedImportRemovalLeavesOneBlankLine() throws Exception {
+        String[] input = {
+            "package com.example;",
+            "",
+            "import static io.grpc.MethodDescriptor.generateFullMethodName;",
+            "",
+            "/**",
+            " * Javadoc for class.",
+            " */",
+            "public class TestBug {",
+            "}",
+            "",
+        };
+        String[] expected = {
+            "package com.example;", //
+            "",
+            "/**",
+            " * Javadoc for class.",
+            " */",
+            "public class TestBug {}",
+            "",
+        };
+        StringWriter out = new StringWriter();
+        Main main = new Main(
+                new PrintWriter(out, true),
+                new PrintWriter(new BufferedWriter(new OutputStreamWriter(System.err, UTF_8)), true),
+                new ByteArrayInputStream(joiner.join(input).getBytes(UTF_8)));
+        assertThat(main.format("-")).isEqualTo(0);
+        assertThat(out.toString()).isEqualTo(joiner.join(expected));
+
+        Formatter formatter = Formatter.createFormatter(JavaFormatterOptions.builder()
+                .style(JavaFormatterOptions.Style.OJF)
+                .build());
+        assertThat(formatter.formatSourceAndFixImports(joiner.join(input))).isEqualTo(joiner.join(expected));
     }
 
     // test that errors are reported on the right line when imports are removed
@@ -603,6 +668,27 @@ public class MainTest {
                 in);
         assertThat(main.format("--skip-reflowing-long-strings", "-")).isEqualTo(0);
         assertThat(out.toString()).isEqualTo(joiner.join(expected));
+    }
+
+    // A comment between two imports goes with the import after it, where it used to fail the whole file with "Imports
+    // not contiguous" (#39, from google/google-java-format#424). A second run leaves the result alone.
+    @Test
+    public void commentBetweenImportsMovesWithTheImportAfterIt() throws Exception {
+        String[] input = {
+            "import b.B;", "", "// why we need A", "import a.A;", "", "class T {", "    A a;", "    B b;", "}", "",
+        };
+        String[] expected = {
+            "// why we need A", "import a.A;", "import b.B;", "", "class T {", "    A a;", "    B b;", "}", "",
+        };
+        for (String[] source : ImmutableList.of(input, expected)) {
+            StringWriter out = new StringWriter();
+            Main main = new Main(
+                    new PrintWriter(out, true),
+                    new PrintWriter(new BufferedWriter(new OutputStreamWriter(System.err, UTF_8)), true),
+                    new ByteArrayInputStream(joiner.join(source).getBytes(UTF_8)));
+            assertThat(main.format("-")).isEqualTo(0);
+            assertThat(out.toString()).isEqualTo(joiner.join(expected));
+        }
     }
 
     private static ProcessBuilder formatterMain(String... args) {

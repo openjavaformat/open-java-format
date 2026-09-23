@@ -41,9 +41,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -66,6 +68,13 @@ public final class Level extends Doc {
 
     @SuppressWarnings("Immutable") // Effectively immutable
     private final ImmutableSupplier<Integer> memoizedMaxDepth = Suppliers.memoize(() -> computeMaxDepth(docs))::get;
+
+    /**
+     * Where {@link #tryBreakLastLevel} has already failed. An attempt can lay out all of the last inner level before it
+     * fails, and each level above repeats it for every layout it tries, so without this deeply nested calls took time
+     * exponential in their depth to format.
+     */
+    private final Set<LastLevelAttempt> failedLastLevelAttempts = new HashSet<>();
 
     /** The immutable characteristics of this level determined before the level contents are available. */
     private final OpenOp openOp;
@@ -364,8 +373,20 @@ public final class Level extends Doc {
         }
         Level innerLevel = ((Level) getLast(docs));
 
-        return tryBreakInnerLevel(commentsHelper, maxWidth, state, explorationNode, innerLevel, isSimpleInliningSoFar);
+        LastLevelAttempt attempt = new LastLevelAttempt(maxWidth, isSimpleInliningSoFar, state.layoutInputs());
+        if (failedLastLevelAttempts.contains(attempt)) {
+            return Optional.empty();
+        }
+        Optional<State> result =
+                tryBreakInnerLevel(commentsHelper, maxWidth, state, explorationNode, innerLevel, isSimpleInliningSoFar);
+        if (result.isEmpty()) {
+            failedLastLevelAttempts.add(attempt);
+        }
+        return result;
     }
+
+    /** A call of {@link #tryBreakLastLevel}, by everything besides this level that decides its outcome. */
+    private record LastLevelAttempt(int maxWidth, boolean isSimpleInliningSoFar, State.LayoutInputs inputs) {}
 
     @SuppressWarnings("for-rollout:NullAway")
     private Optional<State> tryInlineSuffix(

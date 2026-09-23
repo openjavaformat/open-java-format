@@ -56,8 +56,25 @@ public final class StringWrapper {
 
     public static final String TEXT_BLOCK_DELIMITER = "\"\"\"";
 
+    /**
+     * How many times {@link #wrapOnce} may be re-run while it is still changing the source. The indentation chosen
+     * for a text block is derived from the layout around it, which this pass can itself move, so a single round is
+     * not always a fixed point and the formatter would not be idempotent. See
+     * <a href="https://github.com/palantir/open-java-format/issues/1343">#1343</a>.
+     */
+    private static final int MAX_ROUNDS = 5;
+
     /** Reflows string literals in the given Java source code that extend past the given column limit. */
     static String wrap(final int columnLimit, String input, Formatter formatter) throws FormatterException {
+        String result = wrapOnce(columnLimit, input, formatter);
+        for (int round = 1; round < MAX_ROUNDS && !result.equals(input); round++) {
+            input = result;
+            result = wrapOnce(columnLimit, input, formatter);
+        }
+        return result;
+    }
+
+    private static String wrapOnce(final int columnLimit, String input, Formatter formatter) throws FormatterException {
         if (!needWrapping(columnLimit, input)) {
             // fast path
             return input;
@@ -432,7 +449,7 @@ public final class StringWrapper {
     }
 
     static int hasEscapedWhitespaceAt(String input, int idx) {
-        if (input.startsWith("\\t", idx)) {
+        if (input.startsWith("\\t", idx) && !isEscaped(input, idx)) {
             return 2;
         }
         return -1;
@@ -446,7 +463,19 @@ public final class StringWrapper {
         if (input.startsWith("\\n", idx)) {
             offset += 2;
         }
-        return offset > 0 ? offset : -1;
+        return offset > 0 && !isEscaped(input, idx) ? offset : -1;
+    }
+
+    /**
+     * Whether the character at {@code idx} is escaped by the backslashes before it. In {@code \\t} the second backslash
+     * is, so it starts no escape sequence of its own and the {@code t} is an ordinary letter.
+     */
+    private static boolean isEscaped(String input, int idx) {
+        int backslashes = 0;
+        while (idx - backslashes > 0 && input.charAt(idx - backslashes - 1) == '\\') {
+            backslashes++;
+        }
+        return backslashes % 2 == 1;
     }
 
     /**
@@ -486,7 +515,7 @@ public final class StringWrapper {
                 String text = input.removeFirst();
                 line.add(text);
                 length += text.length();
-                if (text.endsWith("\\n") || text.endsWith("\\r")) {
+                if (hasEscapedNewlineAt(text, text.length() - 2) != -1) {
                     break;
                 }
             }

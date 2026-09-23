@@ -16,6 +16,7 @@ package com.palantir.javaformat.java;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 
 import com.google.common.collect.Range;
@@ -174,6 +175,61 @@ public class CommandLineOptionsParserTest {
 
         CommandLineOptions options = CommandLineOptionsParser.parse(Arrays.asList(args));
         assertThat(options.files()).containsExactly("L", "M", "ℕ", "@O", "P", "Q");
+    }
+
+    @Test
+    public void paramsFileWithNesting() throws IOException {
+        Path outer = Files.createFile(testFolder.resolve("outer"));
+        Path exit = Files.createFile(testFolder.resolve("exit"));
+        Path nested1 = Files.createFile(testFolder.resolve("nested1"));
+        Path nested2 = Files.createFile(testFolder.resolve("nested2"));
+        Path nested3 = Files.createFile(testFolder.resolve("nested3"));
+
+        String[] args = {"--dry-run", "@" + exit, "L", "@" + outer, "U"};
+
+        Files.write(exit, "--set-exit-if-changed".getBytes(UTF_8));
+        Files.write(outer, ("M\n@" + nested1.toAbsolutePath() + "\nT").getBytes(UTF_8));
+        Files.write(nested1, ("ℕ\n@" + nested2.toAbsolutePath() + "\nS").getBytes(UTF_8));
+        Files.write(nested2, ("O\n@" + nested3.toAbsolutePath() + "\nR").getBytes(UTF_8));
+        Files.write(nested3, "P\n\n   \n@@Q\n".getBytes(UTF_8));
+
+        CommandLineOptions options = CommandLineOptionsParser.parse(Arrays.asList(args));
+        assertThat(options.files()).containsExactly("L", "M", "ℕ", "O", "P", "@Q", "R", "S", "T", "U");
+    }
+
+    @Test
+    public void paramsFileWithRecursion() throws IOException {
+        Path outer = Files.createFile(testFolder.resolve("outer"));
+        Path exit = Files.createFile(testFolder.resolve("exit"));
+        Path nested1 = Files.createFile(testFolder.resolve("nested1"));
+        Path nested2 = Files.createFile(testFolder.resolve("nested2"));
+
+        String[] args = {"--dry-run", "@" + exit, "L", "@" + outer, "U"};
+
+        Files.write(exit, "--set-exit-if-changed".getBytes(UTF_8));
+        Files.write(outer, ("M\n@" + nested1.toAbsolutePath() + "\nT").getBytes(UTF_8));
+        Files.write(nested1, ("ℕ\n@" + nested2.toAbsolutePath() + "\nS").getBytes(UTF_8));
+        Files.write(nested2, ("O\n@" + nested1.toAbsolutePath() + "\nR").getBytes(UTF_8));
+
+        assertThatThrownBy(() -> CommandLineOptionsParser.parse(Arrays.asList(args)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("parameter file was included recursively: ");
+    }
+
+    @Test
+    public void paramsFileWithQuotesAndWhitespaces() throws IOException {
+        Path outer = Files.createFile(testFolder.resolve("outer with whitespace"));
+        Path exit = Files.createFile(testFolder.resolve("exit with whitespace"));
+        Path nested = Files.createFile(testFolder.resolve("nested with whitespace"));
+
+        String[] args = {"--dry-run", "@" + exit, "L +w", "@" + outer, "Q +w"};
+
+        Files.write(exit, "--set-exit-if-changed 'K +w".getBytes(UTF_8));
+        Files.write(outer, ("\"'M' +w\"\n\"@" + nested.toAbsolutePath() + "\"\n'\"P\" +w'").getBytes(UTF_8));
+        Files.write(nested, "\"ℕ +w\"\n\n   \n\"@@O +w".getBytes(UTF_8));
+
+        CommandLineOptions options = CommandLineOptionsParser.parse(Arrays.asList(args));
+        assertThat(options.files()).containsExactly("K +w", "L +w", "'M' +w", "ℕ +w", "@O +w", "\"P\" +w", "Q +w");
     }
 
     @Test

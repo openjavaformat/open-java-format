@@ -2,7 +2,11 @@ plugins {
     id 'groovy-gradle-plugin'
 }
 
+// JReleaser's plugin marker and jreleaser-gradle-plugin live on the Gradle Plugin Portal only; everything they
+// depend on is on Maven Central, which the Portal merely proxies. That proxy once answered 404 for
+// jreleaser-engine and failed a CI build, so Central comes first and is asked directly, as in the root buildscript.
 repositories {
+    mavenCentral()
     gradlePluginPortal()
 }
 

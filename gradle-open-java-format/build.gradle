@@ -1,7 +1,10 @@
-// For the Gradle Plugin Portal: publishPlugins, run by hand once the version's jars are published on Maven
-// Central — the plugin depends on them. It applies java-gradle-plugin and maven-publish itself.
+// For the Gradle Plugin Portal: publishPlugins, run by the release workflow once Maven Central serves the
+// version's jars and native images — the plugins depend on them. The key comes from GRADLE_PUBLISH_KEY and
+// GRADLE_PUBLISH_SECRET. It applies java-gradle-plugin and maven-publish itself, and once the signing
+// plugin is applied it signs what it uploads.
 apply plugin: 'com.gradle.plugin-publish'
 apply plugin: 'groovy'
+apply plugin: 'signing'
 apply plugin: 'open-java-format.publishing-conventions'
 
 description = 'Gradle plugins for open-java-format: formatting tasks, the Spotless step and IntelliJ configuration'
@@ -161,11 +164,27 @@ tasks.named("test").configure {
     }
 }
 
-// The Portal never takes a version back, so only a release version goes up — X.Y.Z or X.Y.Z.N, as for Maven
-// Central in open-java-format.release-conventions. --validate-only checks the metadata of any version.
+// Signed with the release key, which also signs the Maven Central artifacts and the GitHub release. Only the
+// release job has it, in JRELEASER_GPG_SECRET_KEY and JRELEASER_GPG_PASSPHRASE; anywhere else nothing is
+// signed.
+def signingKey = providers.environmentVariable('JRELEASER_GPG_SECRET_KEY').getOrNull()
+def signed = signingKey != null
+signing {
+    required = false
+    if (signed) {
+        useInMemoryPgpKeys(signingKey, providers.environmentVariable('JRELEASER_GPG_PASSPHRASE').get())
+    }
+}
+
+// The Portal never takes a version back, so only a signed release version goes up — X.Y.Z or X.Y.Z.N, as for
+// Maven Central in open-java-format.release-conventions. --validate-only checks the metadata of any version.
 def portalVersion = provider { project.version.toString() }
 tasks.named('publishPlugins') {
     doFirst {
+        if (!validateOnly.getOrElse(false) && !signed) {
+            throw new GradleException('Refusing to publish unsigned plugins to the Gradle Plugin Portal: set '
+                    + 'JRELEASER_GPG_SECRET_KEY and JRELEASER_GPG_PASSPHRASE, or pass --validate-only.')
+        }
         if (!validateOnly.getOrElse(false) && !(portalVersion.get() ==~ /\d+\.\d+\.\d+(\.\d+)?/)) {
             throw new GradleException("Refusing to publish ${portalVersion.get()} to the Gradle Plugin Portal: check "
                     + 'out a release tag on a clean working tree, or pass --validate-only.')

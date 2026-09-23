@@ -270,6 +270,74 @@ public class RemoveUnusedImportsTest {
                     "import module java.base;", "import java.util.List;", "class T { List<String> xs; }",
                 },
             },
+            // An unused import between blank lines takes one of them with it (#37, from
+            // google/google-java-format#1436 and google/google-java-format#1437).
+            {
+                {
+                    "package com.example;",
+                    "",
+                    "import static io.grpc.MethodDescriptor.generateFullMethodName;",
+                    "",
+                    "/**",
+                    " * Javadoc for class.",
+                    " */",
+                    "public class TestBug {}",
+                },
+                {
+                    "package com.example;", //
+                    "",
+                    "/**",
+                    " * Javadoc for class.",
+                    " */",
+                    "public class TestBug {}",
+                },
+            },
+            {
+                {
+                    "package com.example;",
+                    "",
+                    "import com.foo.Unused1;",
+                    "import com.foo.Unused2;",
+                    "",
+                    "public class TestBug {}",
+                },
+                {
+                    "package com.example;", //
+                    "",
+                    "public class TestBug {}",
+                },
+            },
+            {
+                {
+                    "import com.foo.Unused;", //
+                    "",
+                    "public class TestBug {}",
+                },
+                {
+                    "public class TestBug {}",
+                },
+            },
+            {
+                {
+                    "package com.example;",
+                    "",
+                    "import java.util.List;",
+                    "import com.foo.Unused;",
+                    "",
+                    "public class TestBug {",
+                    "    List<String> xs;",
+                    "}",
+                },
+                {
+                    "package com.example;",
+                    "",
+                    "import java.util.List;",
+                    "",
+                    "public class TestBug {",
+                    "    List<String> xs;",
+                    "}",
+                },
+            },
         };
         ImmutableList.Builder<Object[]> builder = ImmutableList.builder();
         for (String[][] inputAndOutput : inputsOutputs) {

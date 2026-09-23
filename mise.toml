@@ -20,38 +20,6 @@ run = "act push --job build --env JAVA_HOME=/opt/hostedtoolcache/Java_Temurin-Ho
 description = "Run the linux-aarch64 native job locally in Docker"
 run = "act push --job native --matrix platform:linux-aarch64"
 
-# ---- Releases ----
-# JReleaser stages, signs and uploads to the Maven Central Portal the modules listed in
-# buildSrc/src/main/groovy/open-java-format.release-conventions.gradle. The PGP key and the Portal
-# token come from JRELEASER_* variables or ~/.jreleaser/config.properties. Only a clean checkout of a
-# release tag is accepted. Run these through mise, not ./gradlew: JReleaser's POM check finds Java
-# through JAVA_HOME, which mise sets, and without it logs an error and carries on unchecked.
-#
-# These deploy the jars. The native images are a deployment of their own — one binary per platform,
-# built by one CI job per platform and uploaded together by .github/workflows/release.yml on a tag, because a
-# published version can never gain files afterwards.
-
-[tasks.release]
-description = "Stage, sign, and upload the release to the Maven Central Portal (publishing is a click there)"
-run = "./gradlew clean jreleaserDeploy"
-
-[tasks."release:dry-run"]
-description = "Rehearse the release: stage, sign and check the artifacts, upload nothing"
-run = "./gradlew clean jreleaserDeploy --dryrun"
-
-# The Gradle plugins go to the Gradle Plugin Portal instead, by hand and last: they depend on the version's
-# jars, so publish only once that deployment is live on Maven Central. The key and secret are
-# gradle.publish.key and gradle.publish.secret in ~/.gradle/gradle.properties. The Portal never takes a
-# version back; publishPlugins refuses anything but a release tag's version.
-
-[tasks."release:gradle-plugin"]
-description = "Publish the Gradle plugins to the Gradle Plugin Portal (once the jars are live on Maven Central)"
-run = "./gradlew :gradle-open-java-format:publishPlugins"
-
-[tasks."release:gradle-plugin:validate"]
-description = "Check the Gradle plugins' Portal metadata, publish nothing"
-run = "./gradlew :gradle-open-java-format:publishPlugins --validate-only"
-
 # ---- GitHub Actions secrets ----
 # Read from 1Password at apply time; nothing secret is stored in the repo. Requires gh
 # (authenticated with admin on this repository) and the 1Password CLI (`op signin` first).
@@ -107,10 +75,13 @@ apply() {
 
 apply BOT_PAT 'op://Private/open-java-format/GitHub/BOT_PAT'
 
-# What .github/workflows/release.yml signs and uploads with. Actions only: a Dependabot run never
-# releases, and the signing key has no business being readable from one.
+# What .github/workflows/release.yml signs and publishes with: the Central Portal token, the signing key
+# and the Gradle Plugin Portal key. Actions only: a Dependabot run never releases, and the signing key has
+# no business being readable from one.
 apply JRELEASER_MAVENCENTRAL_USERNAME 'op://Private/open-java-format/GitHub/JRELEASER_MAVENCENTRAL_USERNAME' actions
 apply JRELEASER_MAVENCENTRAL_PASSWORD 'op://Private/open-java-format/GitHub/JRELEASER_MAVENCENTRAL_PASSWORD' actions
 apply JRELEASER_GPG_SECRET_KEY 'op://Private/open-java-format/GitHub/JRELEASER_GPG_SECRET_KEY' actions
 apply JRELEASER_GPG_PASSPHRASE 'op://Private/open-java-format/GitHub/JRELEASER_GPG_PASSPHRASE' actions
+apply GRADLE_PUBLISH_KEY 'op://Private/open-java-format/GitHub/GRADLE_PUBLISH_KEY' actions
+apply GRADLE_PUBLISH_SECRET 'op://Private/open-java-format/GitHub/GRADLE_PUBLISH_SECRET' actions
 """

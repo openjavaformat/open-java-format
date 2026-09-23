@@ -132,8 +132,10 @@ public final class ImportOrderer {
             .thenComparing(Import::isModule, trueFirst())
             .thenComparing(Import::imported)
             // Imports that compare equal collapse into one, so two that are written differently -- one of them
-            // carrying a comment, say -- must not compare equal, or that comment disappears with it.
-            .thenComparing(Import::declaration);
+            // carrying a comment inside it or on the lines before it, say -- must not compare equal, or that comment
+            // disappears with it.
+            .thenComparing(Import::declaration)
+            .thenComparing(Import::leading);
 
     /**
      * A {@link Comparator} that orders {@link Import}s by AOSP Style, defined at
@@ -148,7 +150,8 @@ public final class ImportOrderer {
             .thenComparing(Import::isThirdParty, trueFirst())
             .thenComparing(Import::isJava, trueFirst())
             .thenComparing(Import::imported)
-            .thenComparing(Import::declaration);
+            .thenComparing(Import::declaration)
+            .thenComparing(Import::leading);
 
     /**
      * Determines whether to insert a blank line between the {@code prev} and {@code curr} {@link Import}s based on
@@ -199,11 +202,19 @@ public final class ImportOrderer {
         private final String imported;
         private final boolean isStatic;
         private final boolean isModule;
+        private final String leading;
         private final String trailing;
         private final String declaration;
 
-        Import(String imported, String trailing, boolean isStatic, boolean isModule, String declaration) {
+        Import(
+                String imported,
+                String leading,
+                String trailing,
+                boolean isStatic,
+                boolean isModule,
+                String declaration) {
             this.imported = imported;
+            this.leading = leading;
             this.trailing = trailing;
             this.isStatic = isStatic;
             this.isModule = isModule;
@@ -256,9 +267,18 @@ public final class ImportOrderer {
         }
 
         /**
-         * The {@code //} comment lines after the final {@code ;}, up to and including the line terminator of the last
-         * one. Note: In case two imports were separated by a space (which is disallowed by the style guide), the
-         * trailing whitespace of the first import does not include a line terminator.
+         * The comments that stood between the previous import and this one, including the line terminator after the
+         * last of them, or empty. They move with this import.
+         */
+        String leading() {
+            return leading;
+        }
+
+        /**
+         * A block comment on the import's own line and the {@code //} comment lines after the final {@code ;}, up to
+         * and including the line terminator of the last one. Note: In case two imports were separated by a space
+         * (which is disallowed by the style guide), the trailing whitespace of the first import does not include a
+         * line terminator.
          */
         String trailing() {
             return trailing;
@@ -269,11 +289,12 @@ public final class ImportOrderer {
             return !(isAndroid() || isJava());
         }
 
-        // One or multiple lines, the import itself and following comments, including the line
-        // terminator.
+        // One or multiple lines, the comments before the import, the import itself and following comments, including
+        // the line terminator.
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
+            sb.append(leading());
             sb.append(declaration());
             if (trailing().trim().isEmpty()) {
                 sb.append(lineSeparator);
@@ -343,11 +364,14 @@ public final class ImportOrderer {
      *
      * <pre>{@code
      * <imports> -> (<end-of-line> | <import>)*
-     * <import> -> "import" <ignorable> (("static" | "module") <ignorable>)?
+     * <import> -> <comments-and-line-breaks>? "import" <ignorable> (("static" | "module") <ignorable>)?
      *    <identifier> ("." <identifier>)* ("." "*")? <ignorable>? ";"
-     *    <whitespace>? <end-of-line>? (<line-comment> <end-of-line>)*
+     *    (<whitespace> | <block-comment>)* <end-of-line>? (<line-comment> <end-of-line>)*
      * <ignorable> -> (<whitespace> | <end-of-line> | <comment>)+
      * }</pre>
+     *
+     * The comments before an import are the ones between it and the previous import, so the first import has none: the
+     * text before it is left where it is.
      *
      * @param i the index to start parsing at.
      * @return the result of parsing the imports.
@@ -356,6 +380,7 @@ public final class ImportOrderer {
     private ImportsAndIndex scanImports(int i) throws FormatterException {
         int afterLastImport = i;
         ImmutableSortedSet.Builder<Import> imports = ImmutableSortedSet.orderedBy(importComparator);
+        String leading = "";
         // JavaInput.buildToks appends a zero-width EOF token after all tokens. It won't match any
         // of our tests here and protects us from running off the end of the toks list. Since it is
         // zero-width it doesn't matter if we include it in our string concatenation at the end.
@@ -392,10 +417,10 @@ public final class ImportOrderer {
                 i++;
             }
             StringBuilder trailing = new StringBuilder();
-            // A block comment on the same line as the `;` trails this import; one on a later line
-            // belongs to whatever follows it, so only same-line toks are absorbed here. Javadoc is
-            // excluded: the formatter moves a javadoc comment onto a line of its own, which would
-            // separate the imports.
+            // A block comment on the same line as the `;` trails this import and stays with it, as a line comment
+            // there does; one on a later line goes with whatever follows, so only same-line toks are absorbed here.
+            // Javadoc is excluded: the formatter moves a javadoc comment onto a line of its own, so it is taken as
+            // one of the comments below the import from the start.
             while (isSpaceToken(i) || isBlockCommentToken(i)) {
                 trailing.append(tokenAt(i));
                 i++;
@@ -414,13 +439,25 @@ public final class ImportOrderer {
                     i++;
                 }
             }
-            imports.add(new Import(importedName, trailing.toString(), isStatic, isModule, declaration.toString()));
+            imports.add(
+                    new Import(importedName, leading, trailing.toString(), isStatic, isModule, declaration.toString()));
             // Remember the position just after the import we just saw, before skipping blank lines.
             // If the next thing after the blank lines is not another import then we don't want to
             // include those blank lines in the text to be replaced.
             afterLastImport = i;
             while (isNewlineToken(i) || isSpaceToken(i)) {
                 i++;
+            }
+            // Comments between this import and the next one go with the next one, so they move with it when the
+            // imports are sorted. Comments after the last import belong to whatever follows it.
+            leading = "";
+            int next = i;
+            while (isCommentToken(next) || isNewlineToken(next) || isSpaceToken(next)) {
+                next++;
+            }
+            if (next > i && tokenAt(next).equals("import")) {
+                leading = CharMatcher.whitespace().trimTrailingFrom(tokString(i, next)) + lineSeparator;
+                i = next;
             }
         }
         return new ImportsAndIndex(imports.build(), afterLastImport);
@@ -585,6 +622,11 @@ public final class ImportOrderer {
     /** True if the tok is a {@code /* *}{@code /} comment that is not javadoc. */
     private boolean isBlockCommentToken(int i) {
         return toks.get(i).isSlashStarComment() && !toks.get(i).isJavadocComment();
+    }
+
+    /** True if the tok is a comment of any kind, javadoc included. */
+    private boolean isCommentToken(int i) {
+        return toks.get(i).isComment();
     }
 
     /** True if {@code text} ends in a line terminator. */
