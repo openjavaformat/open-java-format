@@ -605,6 +605,27 @@ public class MainTest {
         assertThat(out.toString()).isEqualTo(joiner.join(expected));
     }
 
+    // A comment between two imports goes with the import after it, where it used to fail the whole file with "Imports
+    // not contiguous" (#39, from google/google-java-format#424). A second run leaves the result alone.
+    @Test
+    public void commentBetweenImportsMovesWithTheImportAfterIt() throws Exception {
+        String[] input = {
+            "import b.B;", "", "// why we need A", "import a.A;", "", "class T {", "    A a;", "    B b;", "}", "",
+        };
+        String[] expected = {
+            "// why we need A", "import a.A;", "import b.B;", "", "class T {", "    A a;", "    B b;", "}", "",
+        };
+        for (String[] source : ImmutableList.of(input, expected)) {
+            StringWriter out = new StringWriter();
+            Main main = new Main(
+                    new PrintWriter(out, true),
+                    new PrintWriter(new BufferedWriter(new OutputStreamWriter(System.err, UTF_8)), true),
+                    new ByteArrayInputStream(joiner.join(source).getBytes(UTF_8)));
+            assertThat(main.format("-")).isEqualTo(0);
+            assertThat(out.toString()).isEqualTo(joiner.join(expected));
+        }
+    }
+
     private static ProcessBuilder formatterMain(String... args) {
         return new ProcessBuilder(ImmutableList.<String>builder()
                         .add(Paths.get(System.getProperty("java.home"))

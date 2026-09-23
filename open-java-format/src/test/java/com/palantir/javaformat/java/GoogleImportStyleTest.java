@@ -391,25 +391,109 @@ public class GoogleImportStyleTest {
                     "!!Could not parse imported name, at: ",
                 }
             },
+            // A comment between two imports goes with the import after it (#39, from
+            // google/google-java-format#424); a comment on an import's own line stays with that import.
             {
                 {
                     "import com.foo.Second;",
                     "import com.foo.First;",
-                    "/* we don't support block comments",
-                    "   between imports either */",
+                    "/* A block comment between imports",
+                    "   goes with the import after it. */",
                     "import com.foo.Third;",
                 },
                 {
-                    "!!Imports not contiguous (perhaps a comment separates them?)",
+                    "import com.foo.First;",
+                    "import com.foo.Second;",
+                    "/* A block comment between imports",
+                    "   goes with the import after it. */",
+                    "import com.foo.Third;",
                 }
             },
             {
                 {
-                    "import com.foo.Second; /* no block comments after imports */", //
+                    "import com.foo.Second; /* A block comment after an import stays with it. */", //
                     "import com.foo.First;",
                 },
                 {
-                    "!!Imports not contiguous (perhaps a comment separates them?)",
+                    "import com.foo.First;", //
+                    "import com.foo.Second; /* A block comment after an import stays with it. */",
+                }
+            },
+            {
+                {
+                    "import b.B;", //
+                    "",
+                    "// why we need A",
+                    "import a.A;",
+                    "",
+                    "class T {}",
+                },
+                {
+                    "// why we need A", //
+                    "import a.A;",
+                    "import b.B;",
+                    "",
+                    "class T {}",
+                }
+            },
+            {
+                {
+                    "package foo;",
+                    "",
+                    "import groovy.transform.CompileStatic;",
+                    "",
+                    "/**",
+                    " * Created.",
+                    " */",
+                    "import java.util.ArrayList;",
+                    "",
+                    "/**",
+                    " * Created.",
+                    " */",
+                    "@CompileStatic",
+                    "public class Broken {",
+                    "    ArrayList<?> list;",
+                    "}",
+                },
+                {
+                    "package foo;",
+                    "",
+                    "import groovy.transform.CompileStatic;",
+                    "/**",
+                    " * Created.",
+                    " */",
+                    "import java.util.ArrayList;",
+                    "",
+                    "/**",
+                    " * Created.",
+                    " */",
+                    "@CompileStatic",
+                    "public class Broken {",
+                    "    ArrayList<?> list;",
+                    "}",
+                }
+            },
+            {
+                {
+                    "import java.lang.reflect.Field;",
+                    "",
+                    "//import org.jline.nativ.JLineLibrary;",
+                    "//import org.jline.nativ.JLineNativeLoader;",
+                    "import org.jline.terminal.Attributes;",
+                    "",
+                    "import static org.jline.terminal.TerminalBuilder.PROP_NON_BLOCKING_READS;",
+                    "",
+                    "class T {}",
+                },
+                {
+                    "import static org.jline.terminal.TerminalBuilder.PROP_NON_BLOCKING_READS;",
+                    "",
+                    "import java.lang.reflect.Field;",
+                    "//import org.jline.nativ.JLineLibrary;",
+                    "//import org.jline.nativ.JLineNativeLoader;",
+                    "import org.jline.terminal.Attributes;",
+                    "",
+                    "class T {}",
                 }
             },
             {
