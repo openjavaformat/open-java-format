@@ -1,0 +1,7 @@
+class NbspLineComment {
+    // Batches are capped: the importer rejects any upstream export file whose total row count is at or above 1 000 000 000 rows, so split larger files first.
+    int rows;
+
+    //String testString = " thisisnotaHYPERLINKandsoitshouldntbetruncatedinsteaditshouldbedroppedthisisnotaHYPERLINKandsoit \"http://www.example.com/\""
+    String url;
+}
