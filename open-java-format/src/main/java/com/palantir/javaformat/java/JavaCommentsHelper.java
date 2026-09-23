@@ -139,8 +139,11 @@ public final class JavaCommentsHelper implements CommentsHelper {
             String prefix = lineCommentPrefix(line);
             while (line.length() + column0 > options.maxLineLength()) {
                 int idx = options.maxLineLength() - column0;
-                // only break on whitespace characters, and ignore the leading `// `
-                while (idx >= prefix.length() && !CharMatcher.whitespace().matches(line.charAt(idx))) {
+                // only break on whitespace characters, and ignore the leading `// `. Not on a no-break space
+                // such as U+00A0: the new line would start with `//` and that space, which the next run takes
+                // for a missing space and pads, and then the comment never settles.
+                while (idx >= prefix.length()
+                        && !CharMatcher.breakingWhitespace().matches(line.charAt(idx))) {
                     idx--;
                 }
                 if (idx <= prefix.length()) {
