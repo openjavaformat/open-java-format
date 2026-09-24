@@ -2669,18 +2669,29 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
             Optional<String> trailing,
             Optional<BreakTag> annotationBreakForRecords) {
         sync(node);
+        Optional<TypeWithDims> typeWithDims;
+        Tree type;
+        if (node.getType() != null) {
+            TypeWithDims extractedDims = DimensionHelpers.extractDims(node.getType(), SortedDims.YES);
+            typeWithDims = Optional.of(extractedDims);
+            type = extractedDims.node;
+        } else {
+            // "var" and an untyped lambda parameter have no type tree
+            typeWithDims = Optional.empty();
+            type = null;
+        }
         declareOne(
                 kind,
                 annotationsDirection,
                 Optional.of(node.getModifiers()),
-                node.getType(),
+                type,
                 node.getName(),
                 "",
                 equals,
                 initializer,
                 trailing,
                 /* receiverExpression= */ Optional.empty(),
-                /* typeWithDims= */ Optional.empty(),
+                typeWithDims,
                 annotationBreakForRecords);
     }
 
