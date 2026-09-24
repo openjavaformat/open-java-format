@@ -508,4 +508,14 @@ public final class FormatterTest {
 
         assertThat(formatter.formatSource(input.toString()).length()).isLessThan(10_000);
     }
+
+    @Test
+    public void removeTrailingTabsInComments() throws FormatterException {
+        String input = "class Foo {\n    void f() {\n        int x = 0; // comment\t\t\t\n        return;\n    }\n}\n";
+        String expected = "class Foo {\n    void f() {\n        int x = 0; // comment\n        return;\n    }\n}\n";
+        Formatter formatter = Formatter.createFormatter(
+                JavaFormatterOptions.builder().style(Style.OJF).build());
+
+        assertThat(formatter.formatSource(input)).isEqualTo(expected);
+    }
 }
