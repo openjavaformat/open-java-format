@@ -55,9 +55,26 @@ public final class JavadocFormattingTest {
             "class Test {}",
         };
         String[] expected = {
-            "/** */", "class Test {}",
+            "/***/", "class Test {}",
         };
         doFormatTest(input, expected);
+    }
+
+    @Test
+    public void bannerCommentIsNotJavadoc() {
+        // A comment that opens with three or more asterisks is left to the plain comment handling: reflowing it as
+        // javadoc would push the asterisks onto a line of their own and turn its paragraphs into <p> tags.
+        String[] input = {
+            "/****************************************",
+            " * Copyright",
+            " *",
+            " * Some",
+            " *",
+            " * Company",
+            " ****************************************/",
+            "class Test {}",
+        };
+        doFormatTest(input, input);
     }
 
     @Test
