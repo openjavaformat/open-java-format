@@ -3790,6 +3790,14 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
                 tokenBreakTrailingComment("{", plusTwo);
                 builder.blankLineWanted(BlankLineWanted.NO);
                 builder.open(ZERO);
+                if (builder.peekToken().equals(Optional.of(";"))) {
+                    // A body with nothing but stray semicolons: javac drops them, so the member list is empty, but
+                    // the tokens are still there and have to be written out, one per line at the member indent.
+                    builder.open(memberIndent);
+                    dropEmptyDeclarations();
+                    builder.close();
+                    builder.forcedBreak();
+                }
                 token("}", plusTwo);
                 builder.close();
             }
