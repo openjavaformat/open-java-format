@@ -1,0 +1,16 @@
+class LongGenericFieldType {
+    private final AtomicReference<Table<RealmName, CoreGridViewConfigurationId, CoreGridViewConfigurationEntry>>
+            gridViewConfigurations = new AtomicReference<>(ImmutableTable.of());
+
+    private final AtomicReference<
+                    Table<RealmName, CoreGridViewConfigurationId, CoreGridViewConfigurationEntry, DefaultValue>>
+            gridViewConfigurationsWithDefault = new AtomicReference<>(ImmutableTable.of());
+
+    private final AtomicReference<
+                    Table<
+                            RealmNameIdentifierValue,
+                            CoreGridViewConfigurationIdentifierValue,
+                            CoreGridViewConfigurationEntryValue,
+                            DefaultValue>>
+            gridViewConfigurationsWithLongNames = new AtomicReference<>(ImmutableTable.of());
+}
