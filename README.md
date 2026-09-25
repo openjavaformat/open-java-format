@@ -38,33 +38,6 @@ Each page is short and every command on it was run against the published artifac
 - [Eclipse](https://openjavaformat.dev/get-started/eclipse/)
 - [GitHub Action and pre-commit hook](https://openjavaformat.dev/get-started/github-actions/)
 
-With Maven, add the plugin and name the open-java-format version it formats with. The plugin brings
-no formatter of its own, so the dependency is required:
-
-```xml
-<plugin>
-    <groupId>dev.openjavaformat</groupId>
-    <artifactId>fmt-maven-plugin</artifactId>
-    <version>2.27.0.1</version>
-    <executions>
-        <execution>
-            <goals>
-                <goal>format</goal>
-            </goals>
-        </execution>
-    </executions>
-    <dependencies>
-        <dependency>
-            <groupId>dev.openjavaformat</groupId>
-            <artifactId>open-java-format</artifactId>
-            <version>2.98.0.4</version>
-        </dependency>
-    </dependencies>
-</plugin>
-```
-
-`format` rewrites the sources before they are compiled; the `check` goal fails the build instead.
-
 ## What the output looks like
 
 Lines are up to 120 characters wide. A lambda stays on the line where it starts, and a long call
