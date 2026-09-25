@@ -928,7 +928,8 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
     @Override
     public Void visitMemberReference(MemberReferenceTree node, Void unused) {
-        sync(node);
+        // No sync(node): javac's start position for a member reference leaves out a type annotation on its
+        // qualifier ("@A ArrayList::new"), so syncing to it would report the annotation as never generated.
         builder.open(OpenOp.builder()
                 .plusIndent(plusFour)
                 .debugName("methodReference")
