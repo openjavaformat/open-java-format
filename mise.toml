@@ -84,4 +84,5 @@ apply JRELEASER_GPG_SECRET_KEY 'op://Private/open-java-format/GitHub/JRELEASER_G
 apply JRELEASER_GPG_PASSPHRASE 'op://Private/open-java-format/GitHub/JRELEASER_GPG_PASSPHRASE' actions
 apply GRADLE_PUBLISH_KEY 'op://Private/open-java-format/GitHub/GRADLE_PUBLISH_KEY' actions
 apply GRADLE_PUBLISH_SECRET 'op://Private/open-java-format/GitHub/GRADLE_PUBLISH_SECRET' actions
+apply JETBRAINS_MARKETPLACE_TOKEN 'op://Private/open-java-format/GitHub/JETBRAINS_MARKETPLACE_TOKEN' actions
 """

@@ -9,13 +9,14 @@ name: Release
 # fails publishes nothing, and its deployments can be dropped in the Portal.
 #
 # Once Maven Central serves both, the Gradle plugins go to the Gradle Plugin Portal, signed with the same
-# release key. After publishing, a draft GitHub release on the tag collects the runnable jar, the Gradle
+# release key, and the IntelliJ plugin goes to the JetBrains Marketplace, verified against the IDEs it
+# supports first. After publishing, a draft GitHub release on the tag collects the runnable jar, the Gradle
 # and IDE plugins and the native binaries.
 #
-# Needs six repository secrets: JRELEASER_MAVENCENTRAL_USERNAME and JRELEASER_MAVENCENTRAL_PASSWORD (the
-# Central Portal user token), JRELEASER_GPG_SECRET_KEY and JRELEASER_GPG_PASSPHRASE, and
-# GRADLE_PUBLISH_KEY and GRADLE_PUBLISH_SECRET (the Gradle Plugin Portal key). The draft release uses the
-# workflow's own GITHUB_TOKEN.
+# Needs seven repository secrets: JRELEASER_MAVENCENTRAL_USERNAME and JRELEASER_MAVENCENTRAL_PASSWORD (the
+# Central Portal user token), JRELEASER_GPG_SECRET_KEY and JRELEASER_GPG_PASSPHRASE, GRADLE_PUBLISH_KEY and
+# GRADLE_PUBLISH_SECRET (the Gradle Plugin Portal key) and JETBRAINS_MARKETPLACE_TOKEN (a permanent token of
+# the Marketplace account that owns the plugin). The draft release uses the workflow's own GITHUB_TOKEN.
 on:
   push:
     tags:
@@ -269,6 +270,45 @@ jobs:
           GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.JRELEASER_GPG_PASSPHRASE }}
+
+  # The IntelliJ plugin carries the formatter jars inside its zip, so it does not wait for Maven Central. It
+  # waits for the publish job like everything else, so that a version whose jars or native images failed
+  # stays off the Marketplace too. The plugin is checked against the IDEs it declares support for before it
+  # goes up; a plugin that fails there would fail JetBrains' own check after the upload anyway. The
+  # Marketplace never takes a version back and rejects a version it already has, so a re-run of this job
+  # fails once the upload went through.
+  jetbrains-plugin:
+    name: JetBrains Marketplace
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install JDK 21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Verify the plugin against the IDEs it supports
+        run: ./gradlew :open-java-format-idea-plugin:verifyPlugin
+
+      - name: Keep the verifier's report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: plugin-verifier-report
+          path: open-java-format-idea-plugin/build/reports/pluginVerifier
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload the plugin
+        run: ./gradlew :open-java-format-idea-plugin:publishPlugin
+        env:
+          JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
 
   # What Maven Central does not carry — the runnable formatter jar, the Gradle plugins' jar, the IntelliJ
   # plugin zip, the Eclipse plugin jar, and every platform's native binary as a plain download — goes into

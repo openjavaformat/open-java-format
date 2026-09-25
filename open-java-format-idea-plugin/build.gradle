@@ -1,4 +1,7 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.models.ProductRelease
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
 /*
  * Copyright 2017 Google Inc. All Rights Reserved.
@@ -100,9 +103,37 @@ intellijPlatform {
         }
     }
 
+    // publishPlugin uploads the zip to the JetBrains Marketplace, from the release workflow (see
+    // .github/workflows/release.yml). The token is a permanent token of the Marketplace account that owns
+    // the plugin; without it the task fails before uploading anything. The Marketplace never takes a version
+    // back and rejects a version it already has. The zip goes up unsigned, and the Marketplace signs it with
+    // the JetBrains key; a signature of our own would take a `signing { }` block here and three more secrets.
     publishing {
-        // Inert until the token is present; wiring the marketplace release is Phase 2 work.
         token = providers.environmentVariable('JETBRAINS_MARKETPLACE_TOKEN')
+    }
+
+    // verifyPlugin checks the plugin's bytecode against real IDEs, which it downloads. Two of them: the
+    // IDE the plugin is built against, which is the oldest one sinceBuild admits, and the newest IntelliJ
+    // IDEA release. The default, recommended(), would take every major version in between, which is a
+    // gigabyte per IDE for nothing the two ends do not show, and it stops at 2025.2: since 2025.3 IntelliJ
+    // IDEA is one product (IntellijIdea), no longer split into Community and Ultimate.
+    pluginVerification {
+        // Fail on what would break an installation: classes or methods the IDE no longer has, a dependency
+        // it lacks, an invalid descriptor. Usages of internal, deprecated or experimental API stay warnings
+        // in the report: 2026.2 marked every way of looking a plugin descriptor up as @ApiStatus.Internal,
+        // PluginManager.findEnabledPlugin included, and a warning about that must not hold a release.
+        failureLevel = [
+            VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+            VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
+            VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
+        ]
+        ides {
+            current()
+            latest {
+                it.types.set([IntelliJPlatformType.IntellijIdea])
+                it.channels.set([ProductRelease.Channel.RELEASE])
+            }
+        }
     }
 }
 
