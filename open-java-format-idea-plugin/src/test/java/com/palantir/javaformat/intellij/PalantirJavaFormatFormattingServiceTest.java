@@ -16,6 +16,9 @@
 
 package com.palantir.javaformat.intellij;
 
+import static com.palantir.javaformat.intellij.FormatterProvider.getPluginDescriptor;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.google.common.collect.ImmutableList;
 import com.intellij.codeInsight.actions.ReformatCodeProcessor;
 import com.intellij.formatting.service.AsyncFormattingRequest;
@@ -37,20 +40,16 @@ import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.JavaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.palantir.javaformat.intellij.PalantirJavaFormatSettings.State;
-import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import static com.palantir.javaformat.intellij.FormatterProvider.getPluginDescriptor;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class PalantirJavaFormatFormattingServiceTest {
     private JavaCodeInsightTestFixture fixture;
