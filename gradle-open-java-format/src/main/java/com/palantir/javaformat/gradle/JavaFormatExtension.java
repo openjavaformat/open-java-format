@@ -94,16 +94,19 @@ public class JavaFormatExtension {
         String addExports = JAVAC_PACKAGES.stream()
                 .map(javacPackage -> "--add-exports jdk.compiler/" + javacPackage + "=ALL-UNNAMED")
                 .collect(Collectors.joining(" "));
-        throw new GradleException(String.format(
-                "open-java-format cannot run inside this Gradle JVM: module jdk.compiler does not export %s to it."
-                        + " Set one of these in gradle.properties:%n%n"
-                        + "  openjavaformat.native.formatter=true%n"
-                        + "      runs the formatter as a native binary, outside the Gradle JVM"
-                        + " (Linux with glibc, macOS, Windows on x86-64)%n%n"
-                        + "  org.gradle.jvmargs=%s%n"
-                        + "      opens javac's packages to the Gradle JVM; if the file already sets"
-                        + " org.gradle.jvmargs, add the flags to that line%n%n"
-                        + "See %s",
-                String.join(", ", notExported), addExports, DOCS));
+        throw new GradleException("""
+            open-java-format cannot run inside this Gradle JVM: module jdk.compiler does not export %s to it. \
+            Set one of these in gradle.properties:
+
+              openjavaformat.native.formatter=true
+                  runs the formatter as a native binary, outside the Gradle JVM (Linux with glibc, macOS, \
+            Windows on x86-64)
+
+              org.gradle.jvmargs=%s
+                  opens javac's packages to the Gradle JVM; if the file already sets org.gradle.jvmargs, add \
+            the flags to that line
+
+            See %s\
+            """.formatted(String.join(", ", notExported), addExports, DOCS));
     }
 }
