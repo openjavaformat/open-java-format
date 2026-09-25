@@ -17,7 +17,6 @@ package com.palantir.javaformat.java;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.fail;
 
 import com.google.common.collect.Range;
 import java.io.IOException;
@@ -150,15 +149,20 @@ public class CommandLineOptionsParserTest {
                 .isTrue();
     }
 
-    // TODO(cushon): consider handling this in the parser and reporting a more detailed error
     @Test
-    public void illegalLines() {
-        try {
-            CommandLineOptionsParser.parse(Arrays.asList("-lines=1:1", "-lines=1:1"));
-            fail("fail");
-        } catch (IllegalArgumentException e) {
-            assertThat(e.getMessage()).contains("overlap");
-        }
+    public void mergedLines() {
+        assertThat(CommandLineOptionsParser.parse(Arrays.asList("-lines=1:5", "-lines=2:8"))
+                        .lines()
+                        .asRanges())
+                .containsExactly(Range.closedOpen(0, 8));
+    }
+
+    @Test
+    public void repeatedLines() {
+        assertThat(CommandLineOptionsParser.parse(Arrays.asList("-lines=1:1", "-lines=1:1"))
+                        .lines()
+                        .asRanges())
+                .containsExactly(Range.closedOpen(0, 1));
     }
 
     @Test

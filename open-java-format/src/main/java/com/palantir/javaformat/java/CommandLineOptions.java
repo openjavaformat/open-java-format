@@ -16,6 +16,8 @@ package com.palantir.javaformat.java;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableRangeSet;
+import com.google.common.collect.RangeSet;
+import com.google.common.collect.TreeRangeSet;
 import java.util.Optional;
 
 /**
@@ -183,7 +185,8 @@ final class CommandLineOptions {
     static final class Builder {
 
         private final ImmutableList.Builder<String> files = ImmutableList.builder();
-        private final ImmutableRangeSet.Builder<Integer> lines = ImmutableRangeSet.builder();
+        // A TreeRangeSet merges ranges that touch or overlap, which ImmutableRangeSet.Builder rejects
+        private final RangeSet<Integer> lines = TreeRangeSet.create();
         private final ImmutableRangeSet.Builder<Integer> characterRanges = ImmutableRangeSet.builder();
         private final ImmutableList.Builder<Integer> offsets = ImmutableList.builder();
         private final ImmutableList.Builder<Integer> lengths = ImmutableList.builder();
@@ -212,7 +215,7 @@ final class CommandLineOptions {
             return this;
         }
 
-        ImmutableRangeSet.Builder<Integer> linesBuilder() {
+        RangeSet<Integer> linesBuilder() {
             return lines;
         }
 
@@ -294,7 +297,7 @@ final class CommandLineOptions {
             return new CommandLineOptions(
                     files.build(),
                     inPlace,
-                    lines.build(),
+                    ImmutableRangeSet.copyOf(lines),
                     characterRanges.build(),
                     offsets.build(),
                     lengths.build(),
