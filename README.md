@@ -20,7 +20,7 @@ and published from this repository.
 
 | Where | What |
 |---|---|
-| [Maven Central](https://central.sonatype.com/namespace/dev.openjavaformat) | `dev.openjavaformat:open-java-format`, with `-spi`, `-native` and `-jdk-bootstrap` |
+| [Maven Central](https://central.sonatype.com/namespace/dev.openjavaformat) | `dev.openjavaformat:open-java-format`, with `-spi`, `-native` and `-jdk-bootstrap`, and the Maven plugin `dev.openjavaformat:fmt-maven-plugin` from [its own repository](https://github.com/openjavaformat/fmt-maven-plugin) |
 | [Gradle Plugin Portal](https://plugins.gradle.org/plugin/dev.openjavaformat.java-format) | `dev.openjavaformat.java-format` |
 | [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/34359-open-java-format) | the IntelliJ IDEA plugin |
 | [GitHub Releases](https://github.com/openjavaformat/open-java-format/releases/latest) | native binaries, a runnable jar, the Gradle, IntelliJ and Eclipse plugins, every file signed |
@@ -32,10 +32,38 @@ Why the project exists is in the [manifesto](https://openjavaformat.dev/manifest
 Each page is short and every command on it was run against the published artifacts.
 
 - [Gradle plugin](https://openjavaformat.dev/get-started/gradle/)
+- [Maven plugin](https://openjavaformat.dev/get-started/maven/)
 - [Command line](https://openjavaformat.dev/get-started/command-line/): a native binary, or a runnable jar
 - [IntelliJ IDEA](https://openjavaformat.dev/get-started/intellij-idea/)
 - [Eclipse](https://openjavaformat.dev/get-started/eclipse/)
 - [GitHub Action and pre-commit hook](https://openjavaformat.dev/get-started/github-actions/)
+
+With Maven, add the plugin and name the open-java-format version it formats with. The plugin brings
+no formatter of its own, so the dependency is required:
+
+```xml
+<plugin>
+    <groupId>dev.openjavaformat</groupId>
+    <artifactId>fmt-maven-plugin</artifactId>
+    <version>2.27.0.1</version>
+    <executions>
+        <execution>
+            <goals>
+                <goal>format</goal>
+            </goals>
+        </execution>
+    </executions>
+    <dependencies>
+        <dependency>
+            <groupId>dev.openjavaformat</groupId>
+            <artifactId>open-java-format</artifactId>
+            <version>2.98.0.4</version>
+        </dependency>
+    </dependencies>
+</plugin>
+```
+
+`format` rewrites the sources before they are compiled; the `check` goal fails the build instead.
 
 ## What the output looks like
 
