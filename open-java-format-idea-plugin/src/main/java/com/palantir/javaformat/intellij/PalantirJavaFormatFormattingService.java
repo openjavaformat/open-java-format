@@ -16,9 +16,6 @@
 
 package com.palantir.javaformat.intellij;
 
-import static java.util.Comparator.comparing;
-
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.intellij.formatting.service.AsyncDocumentFormattingService;
@@ -36,13 +33,17 @@ import com.intellij.psi.PsiFile;
 import com.palantir.javaformat.java.FormatterException;
 import com.palantir.javaformat.java.FormatterService;
 import com.palantir.javaformat.java.Replacement;
+import org.jetbrains.annotations.NotNull;
+
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import javax.annotation.Nullable;
-import org.jetbrains.annotations.NotNull;
+
+import static java.util.Comparator.comparing;
+import static java.util.Optional.ofNullable;
 
 class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService implements PluginAware {
     private static final Logger logger = Logger.getInstance(PalantirJavaFormatFormattingService.class);
@@ -59,8 +60,8 @@ class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService
         this.pluginDescriptor = pluginDescriptor;
     }
 
-    PluginDescriptor getPluginDescriptor() {
-        return Preconditions.checkNotNull(pluginDescriptor, "The platform has not set the plugin descriptor");
+    Optional<PluginDescriptor> getPluginDescriptor() {
+        return ofNullable(pluginDescriptor);
     }
 
     @Override
@@ -127,7 +128,7 @@ class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format(
                             "Received request to format file=%s, length=%s with ranges=%s",
-                            Optional.ofNullable(request.getIOFile())
+                            ofNullable(request.getIOFile())
                                     .map(file -> file.toPath().toString())
                                     .orElse("null"),
                             preFormatText.length(),

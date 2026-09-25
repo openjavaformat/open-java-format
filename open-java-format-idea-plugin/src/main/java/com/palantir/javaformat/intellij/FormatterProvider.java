@@ -16,29 +16,31 @@
 
 package com.palantir.javaformat.intellij;
 
-import static com.intellij.formatting.service.FormattingService.EP_NAME;
-import static java.util.Optional.ofNullable;
-
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.intellij.formatting.service.FormattingService;
 import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
 import com.palantir.javaformat.bootstrap.BootstrappingFormatterService;
 import com.palantir.javaformat.bootstrap.NativeImageFormatterService;
 import com.palantir.javaformat.java.FormatterService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static java.util.Optional.ofNullable;
 
 final class FormatterProvider {
     private static final Logger log = LoggerFactory.getLogger(FormatterProvider.class);
@@ -46,17 +48,6 @@ final class FormatterProvider {
     // Cache to avoid resolving the formatter every time we want to format from IntelliJ
     private final LoadingCache<FormatterCacheKey, Optional<FormatterService>> implementationCache =
             Caffeine.newBuilder().maximumSize(1).build(FormatterProvider::createFormatter);
-
-    /**
-     * The descriptor of this plugin: where its version and the directory of the bundled formatter come from. The
-     * platform hands it to the formatting service when it creates that service from plugin.xml (PluginAware), and the
-     * extension point finds the service by class. Every way of looking a plugin up by id or by class became
-     * {@code @ApiStatus.Internal} in 2026.2; PluginAware and the extension point are public API in every supported IDE.
-     */
-    static Optional<PluginDescriptor> getPluginDescriptor() {
-        return ofNullable(EP_NAME.findExtension(PalantirJavaFormatFormattingService.class))
-                .map(PalantirJavaFormatFormattingService::getPluginDescriptor);
-    }
 
     Optional<FormatterService> get(Project project, PalantirJavaFormatSettings settings) {
         return implementationCache.get(new FormatterCacheKey(
@@ -91,9 +82,10 @@ final class FormatterProvider {
     @SuppressWarnings("for-rollout:Slf4jLogsafeArgs")
     private static List<Path> getBundledImplementationUrls() {
         // Load from the jars bundled with the plugin.
-        Path implDir = getPluginDescriptor()
+        Path implDir = ofNullable(FormattingService.EP_NAME.findExtension(PalantirJavaFormatFormattingService.class))
+                .flatMap(PalantirJavaFormatFormattingService::getPluginDescriptor)
                 .map(PluginDescriptor::getPluginPath)
-                .orElseThrow()
+                .orElseThrow(() -> new NoSuchElementException("The platform has not set the plugin descriptor"))
                 .resolve("impl");
 
         log.debug("Using open-java-format implementation bundled with plugin: {}", implDir);
