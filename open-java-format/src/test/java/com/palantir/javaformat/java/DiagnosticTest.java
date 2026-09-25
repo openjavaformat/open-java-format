@@ -78,7 +78,7 @@ public class DiagnosticTest {
 
         int result = main.format(path.toString());
         assertThat(stdout.toString()).isEmpty();
-        assertThat(stderr.toString()).contains("InvalidSyntax.java:2:29: error: <identifier> expected");
+        assertThat(stderr.toString()).contains("InvalidSyntax.java:2:28: error: <identifier> expected");
         assertThat(result).isEqualTo(2);
     }
 
@@ -116,7 +116,7 @@ public class DiagnosticTest {
 
         int result = main.format(pathOne.toString(), pathTwo.toString());
         assertThat(stdout.toString()).isEqualTo(two);
-        assertThat(stderr.toString()).contains("One.java:1:13: error: reached end of file");
+        assertThat(stderr.toString()).contains("One.java:1:12: error: reached end of file");
         assertThat(result).isEqualTo(2);
     }
 
@@ -137,7 +137,7 @@ public class DiagnosticTest {
 
         int result = main.format("-i", pathOne.toString(), pathTwo.toString());
         assertThat(stdout.toString()).isEmpty();
-        assertThat(stderr.toString()).contains("One.java:1:14: error: class, interface");
+        assertThat(stderr.toString()).contains("One.java:1:13: error: class, interface");
         assertThat(result).isEqualTo(2);
         // don't edit files with parse errors
         assertThat(Files.readAllLines(pathOne, UTF_8)).containsExactly("class One {}}");
@@ -159,7 +159,7 @@ public class DiagnosticTest {
         int exitCode = main.format(args);
 
         assertThat(exitCode).isEqualTo(2);
-        assertThat(err.toString()).contains("A.java:2:6: error: ';' expected");
+        assertThat(err.toString()).contains("A.java:2:5: error: ';' expected");
     }
 
     @Test
@@ -174,7 +174,7 @@ public class DiagnosticTest {
         int exitCode = main.format(args);
 
         assertThat(exitCode).isEqualTo(2);
-        assertThat(err.toString()).contains("<stdin>:2:6: error: ';' expected");
+        assertThat(err.toString()).contains("<stdin>:2:5: error: ';' expected");
     }
 
     @Test
@@ -192,7 +192,7 @@ public class DiagnosticTest {
         int exitCode = main.format(args);
 
         assertThat(exitCode).isEqualTo(2);
-        assertThat(err.toString()).contains("A.java:2:5: error: unclosed character literal");
+        assertThat(err.toString()).contains("A.java:2:4: error: unclosed character literal");
     }
 
     @Test
@@ -206,6 +206,6 @@ public class DiagnosticTest {
         int exitCode = main.format(args);
 
         assertThat(exitCode).isEqualTo(2);
-        assertThat(err.toString()).contains("<stdin>:2:5: error: unclosed character literal");
+        assertThat(err.toString()).contains("<stdin>:2:4: error: unclosed character literal");
     }
 }

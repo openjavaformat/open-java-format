@@ -351,7 +351,7 @@ public class MainTest {
                     new PrintWriter(err, true),
                     new ByteArrayInputStream(joiner.join(input).getBytes(UTF_8)));
             assertThat(main.format("-")).isEqualTo(2);
-            assertThat(err.toString()).contains("<stdin>:4:3: error: class, interface");
+            assertThat(err.toString()).contains("<stdin>:4:2: error: class, interface");
 
         } finally {
             Locale.setDefault(backupLocale);
@@ -584,7 +584,7 @@ public class MainTest {
                 .isEqualTo(1);
         assertThat(main.format("-n", "--set-exit-if-changed", unformatted.toString(), broken.toString()))
                 .isEqualTo(2);
-        assertThat(err.toString()).contains("Broken.java:1:16: error: reached end of file");
+        assertThat(err.toString()).contains("Broken.java:1:15: error: reached end of file");
     }
 
     @Test
@@ -599,7 +599,7 @@ public class MainTest {
                 new PrintWriter(err, true),
                 new ByteArrayInputStream(joiner.join(input).getBytes(UTF_8)));
         assertThat(main.format("--assume-filename=Foo.java", "-")).isEqualTo(2);
-        assertThat(err.toString()).contains("Foo.java:1:15: error: class, interface");
+        assertThat(err.toString()).contains("Foo.java:1:14: error: class, interface");
     }
 
     @Test
