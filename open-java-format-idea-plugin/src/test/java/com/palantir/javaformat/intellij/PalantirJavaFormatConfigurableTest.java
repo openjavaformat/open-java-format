@@ -92,6 +92,14 @@ public class PalantirJavaFormatConfigurableTest {
         assertThat(settings.isEnabled()).isTrue();
     }
 
+    @Test
+    public void showsTheVersionOfThePlugin() {
+        // The "Plugin version" row: the version the platform read from the plugin's own descriptor, not "unknown".
+        assertThat(settings.getImplementationVersion())
+                .hasValueSatisfying(
+                        version -> assertThat(FormatterVersion.parse(version)).isPresent());
+    }
+
     private static Optional<JCheckBox> findCheckBox(Component root) {
         if (root instanceof JCheckBox checkBox) {
             return Optional.of(checkBox);

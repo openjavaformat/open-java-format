@@ -63,6 +63,9 @@ public class PalantirJavaFormatFormattingServiceTest {
         fixture.setUp();
 
         delegatingFormatter = new DelegatingFormatter();
+        // Only the service the platform creates from plugin.xml is handed the plugin descriptor. This one is created
+        // here, so it takes the descriptor from that service before masking it.
+        delegatingFormatter.setPluginDescriptor(FormatterProvider.getPluginDescriptor());
         ExtensionTestUtil.maskExtensions(
                 FormattingService.EP_NAME, ImmutableList.of(delegatingFormatter), fixture.getProjectDisposable());
 
