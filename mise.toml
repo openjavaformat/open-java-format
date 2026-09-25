@@ -84,13 +84,5 @@ apply JRELEASER_GPG_SECRET_KEY 'op://Private/open-java-format/GitHub/JRELEASER_G
 apply JRELEASER_GPG_PASSPHRASE 'op://Private/open-java-format/GitHub/JRELEASER_GPG_PASSPHRASE' actions
 apply GRADLE_PUBLISH_KEY 'op://Private/open-java-format/GitHub/GRADLE_PUBLISH_KEY' actions
 apply GRADLE_PUBLISH_SECRET 'op://Private/open-java-format/GitHub/GRADLE_PUBLISH_SECRET' actions
-
-# What release.yml uploads the IntelliJ plugin to the JetBrains Marketplace with: a permanent token of the
-# Marketplace account that owns the plugin, and the key the zip is signed with before the Marketplace adds
-# its own signature. The chain and the key are the PEM files as they are, line breaks included; the key
-# stays encrypted with the password.
 apply JETBRAINS_MARKETPLACE_TOKEN 'op://Private/open-java-format/GitHub/JETBRAINS_MARKETPLACE_TOKEN' actions
-apply JETBRAINS_CERTIFICATE_CHAIN 'op://Private/open-java-format/GitHub/JETBRAINS_CERTIFICATE_CHAIN' actions
-apply JETBRAINS_PRIVATE_KEY 'op://Private/open-java-format/GitHub/JETBRAINS_PRIVATE_KEY' actions
-apply JETBRAINS_PRIVATE_KEY_PASSWORD 'op://Private/open-java-format/GitHub/JETBRAINS_PRIVATE_KEY_PASSWORD' actions
 """

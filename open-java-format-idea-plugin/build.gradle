@@ -106,19 +106,10 @@ intellijPlatform {
     // publishPlugin uploads the zip to the JetBrains Marketplace, from the release workflow (see
     // .github/workflows/release.yml). The token is a permanent token of the Marketplace account that owns
     // the plugin; without it the task fails before uploading anything. The Marketplace never takes a version
-    // back and rejects a version it already has.
+    // back and rejects a version it already has. The zip goes up unsigned, and the Marketplace signs it with
+    // the JetBrains key; a signature of our own would take a `signing { }` block here and three more secrets.
     publishing {
         token = providers.environmentVariable('JETBRAINS_MARKETPLACE_TOKEN')
-    }
-
-    // signPlugin runs before publishPlugin and signs the zip with this key, and the Marketplace then adds
-    // its own signature on top. Without the three variables signPlugin is skipped and the unsigned zip goes
-    // up, which the Marketplace accepts as well. The values are the PEM files themselves; the private key
-    // stays encrypted, and the password decrypts it.
-    signing {
-        certificateChain = providers.environmentVariable('JETBRAINS_CERTIFICATE_CHAIN')
-        privateKey = providers.environmentVariable('JETBRAINS_PRIVATE_KEY')
-        password = providers.environmentVariable('JETBRAINS_PRIVATE_KEY_PASSWORD')
     }
 
     // verifyPlugin checks the plugin's bytecode against real IDEs, which it downloads. Two of them: the

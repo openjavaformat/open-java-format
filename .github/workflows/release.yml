@@ -10,15 +10,13 @@ name: Release
 #
 # Once Maven Central serves both, the Gradle plugins go to the Gradle Plugin Portal, signed with the same
 # release key, and the IntelliJ plugin goes to the JetBrains Marketplace, verified against the IDEs it
-# supports and signed with a key of its own. After publishing, a draft GitHub release on the tag collects the
-# runnable jar, the Gradle and IDE plugins and the native binaries.
+# supports first. After publishing, a draft GitHub release on the tag collects the runnable jar, the Gradle
+# and IDE plugins and the native binaries.
 #
-# Needs ten repository secrets: JRELEASER_MAVENCENTRAL_USERNAME and JRELEASER_MAVENCENTRAL_PASSWORD (the
+# Needs seven repository secrets: JRELEASER_MAVENCENTRAL_USERNAME and JRELEASER_MAVENCENTRAL_PASSWORD (the
 # Central Portal user token), JRELEASER_GPG_SECRET_KEY and JRELEASER_GPG_PASSPHRASE, GRADLE_PUBLISH_KEY and
-# GRADLE_PUBLISH_SECRET (the Gradle Plugin Portal key), JETBRAINS_MARKETPLACE_TOKEN (a permanent token of
-# the Marketplace account that owns the plugin), and JETBRAINS_CERTIFICATE_CHAIN, JETBRAINS_PRIVATE_KEY and
-# JETBRAINS_PRIVATE_KEY_PASSWORD (the plugin signing key; without them the zip goes up unsigned). The draft
-# release uses the workflow's own GITHUB_TOKEN.
+# GRADLE_PUBLISH_SECRET (the Gradle Plugin Portal key) and JETBRAINS_MARKETPLACE_TOKEN (a permanent token of
+# the Marketplace account that owns the plugin). The draft release uses the workflow's own GITHUB_TOKEN.
 on:
   push:
     tags:
@@ -307,13 +305,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Sign and upload the plugin
+      - name: Upload the plugin
         run: ./gradlew :open-java-format-idea-plugin:publishPlugin
         env:
           JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
-          JETBRAINS_CERTIFICATE_CHAIN: ${{ secrets.JETBRAINS_CERTIFICATE_CHAIN }}
-          JETBRAINS_PRIVATE_KEY: ${{ secrets.JETBRAINS_PRIVATE_KEY }}
-          JETBRAINS_PRIVATE_KEY_PASSWORD: ${{ secrets.JETBRAINS_PRIVATE_KEY_PASSWORD }}
 
   # What Maven Central does not carry — the runnable formatter jar, the Gradle plugins' jar, the IntelliJ
   # plugin zip, the Eclipse plugin jar, and every platform's native binary as a plain download — goes into
