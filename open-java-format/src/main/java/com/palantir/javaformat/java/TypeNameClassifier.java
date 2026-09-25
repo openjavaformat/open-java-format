@@ -164,7 +164,8 @@ public final class TypeNameClassifier {
                 hasLowercase |= Character.isLowerCase(c);
             }
             if (firstUppercase) {
-                return hasLowercase ? UPPER_CAMEL : UPPERCASE;
+                // A single upper case letter is a type name: Android's R, and generic type parameters such as T.
+                return (hasLowercase || name.length() == 1) ? UPPER_CAMEL : UPPERCASE;
             } else {
                 return hasUppercase ? LOWER_CAMEL : LOWERCASE;
             }
