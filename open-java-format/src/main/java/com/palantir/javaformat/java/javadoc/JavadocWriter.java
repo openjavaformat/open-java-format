@@ -126,6 +126,30 @@ final class JavadocWriter {
         continuingFooterTag = true;
     }
 
+    void writeSnippetBegin(Token token) {
+        requestBlankLine();
+        writeToken(token);
+        /*
+         * We don't request a newline here because we should have at least a colon following on this
+         * line, and we may have attributes after that.
+         *
+         * (If we find it convenient, we could instead consume the entire rest of the line as part of
+         * the same token as `{@snippet` itself. But we already would never split the rest of the line
+         * across lines (because we preserve whitespace), so that might not accomplish anything. Plus,
+         * we'd probably want to be careful not to swallow an expectedly early closing `}`.)
+         */
+    }
+
+    void writeSnippetEnd(Token token) {
+        /*
+         * We don't request a newline here because we have preserved all newlines that existed in the
+         * input. Specifically, if there is not yet a newline, one could be added; several could be
+         * collapsed; and a closing brace that is not indented as we'd want could be indented.
+         */
+        writeToken(token);
+        requestBlankLine();
+    }
+
     void writeListOpen(Token token) {
         requestBlankLine();
 
