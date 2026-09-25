@@ -339,8 +339,18 @@ public final class Level extends Doc {
 
         // Add the width of tokens, breaks before the lastLevel. We must always have space for
         // these.
-        List<Doc> leadingDocs = docs.subList(0, docs.indexOf(lastLevel));
+        int lastLevelIndex = docs.indexOf(lastLevel);
+        List<Doc> leadingDocs = docs.subList(0, lastLevelIndex);
         float leadingWidth = getWidth(leadingDocs);
+
+        // A forced break after the lastLevel, such as the ones around a // comment that sits before this level's
+        // closing token, cannot be laid out flat by tryToLayOutLevelOnOneLine: the comment would swallow every token
+        // after it on the line. Such a level breaks normally instead, as tryBreakInnerLevel refuses it for the same
+        // reason. (A forced break before the lastLevel makes leadingWidth infinite and fails the check below.)
+        List<Doc> trailingDocs = docs.subList(lastLevelIndex + 1, docs.size());
+        if (Float.isInfinite(getWidth(trailingDocs))) {
+            return Optional.empty();
+        }
 
         // Potentially add the width of prefixes we want to consider as part of the width that
         // must fit on the same line, so that we don't accidentally break prefixes when we could
@@ -592,6 +602,9 @@ public final class Level extends Doc {
      * Mark breaks in this level as not broken, but lay out the inner levels normally, according to their own
      * {@link BreakBehaviour}. The resulting {@link State#mustBreak} will be true if this level did not fit on exactly
      * one line.
+     *
+     * <p>The callers make sure that none of this level's own breaks is forced: a forced break laid out flat would put
+     * the tokens after a {@code //} comment inside the comment.
      */
     private State tryToLayOutLevelOnOneLine(
             CommentsHelper commentsHelper,

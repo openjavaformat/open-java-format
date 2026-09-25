@@ -1,0 +1,32 @@
+import java.util.stream.IntStream;
+
+class Repro {
+    int find(Item[] items) {
+        return IntStream.range(0, items.length)
+                .filter(i ->
+                        (items[i].getName().equals("alpha")
+                                || items[i].getName().equals("beta")
+                                || items[i].getName().equals("gamma")
+                        // || (items[i].getName().equals("delta") && items.length > i
+                        // && items[i + 1].getName().equals("epsilon"))
+                        ))
+                .findFirst()
+                .orElse(-1);
+    }
+
+    void plainCall() {
+        check(i ->
+                (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa(i)
+                        || bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb(i)
+                // || c(i)
+                ));
+    }
+
+    void blockComment() {
+        check(i ->
+                (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa(i)
+                        || bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb(i)
+                /* block */
+                ));
+    }
+}
