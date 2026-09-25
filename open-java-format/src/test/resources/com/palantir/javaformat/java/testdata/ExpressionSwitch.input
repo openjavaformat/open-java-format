@@ -23,6 +23,13 @@ class ExpressionSwitch {
     return val;
   }
 
+  static final int FIELD =
+          switch (KIND) {
+              case 0 -> 1;
+              case 1 -> 2;
+              default -> throw new IllegalStateException();
+          };
+
   int wrapping(Wrapping w) {
     switch (w) {
         case THIS_IS_A_VERY_LONG_ENUM_VALUE_ONE,
