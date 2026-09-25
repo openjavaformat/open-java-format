@@ -1,0 +1,36 @@
+interface B {
+    ;
+}
+
+enum C {
+    X;
+    ;
+}
+
+record R(int a) {
+    ;
+}
+
+class E {
+    ;
+    ;
+}
+
+class F {
+    Object o = new Object() {
+        ;
+    };
+}
+
+class G { // comment
+    ;
+}
+
+@interface H {
+    ;
+}
+
+class I {
+    ;
+    int x;
+}
