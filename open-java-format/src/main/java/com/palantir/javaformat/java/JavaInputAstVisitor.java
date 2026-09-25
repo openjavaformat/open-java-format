@@ -678,10 +678,18 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     @Override
     public Void visitTypeCast(TypeCastTree node, Void unused) {
         sync(node);
-        builder.open(
-                plusFour,
-                BreakBehaviours.preferBreakingLastInnerLevel(true),
-                LastLevelBreakability.ACCEPT_INLINE_CHAIN);
+        // An inline chain that ends at this level must have room for the whole type before the break in front of the
+        // operand. Without IF_FIRST_LEVEL_FITS the chain measured the type up to its first break, the one after the
+        // "<" of a parameterized type, and once inlined the type itself had to take that break: "(PrivilegedAction<"
+        // at the end of one line and "String>)" on the next. The type stays breakable for the rare cast that does not
+        // fit on a line at all.
+        builder.open(OpenOp.builder()
+                .debugName("typeCast")
+                .plusIndent(plusFour)
+                .breakBehaviour(BreakBehaviours.preferBreakingLastInnerLevel(true))
+                .breakabilityIfLastLevel(LastLevelBreakability.ACCEPT_INLINE_CHAIN)
+                .partialInlineability(PartialInlineability.IF_FIRST_LEVEL_FITS)
+                .build());
         token("(");
         scan(node.getType(), null);
         token(")");
