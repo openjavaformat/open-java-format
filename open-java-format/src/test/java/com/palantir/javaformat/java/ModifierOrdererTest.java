@@ -99,4 +99,17 @@ public class ModifierOrdererTest {
                 .getText();
         assertThat(output).contains("public\n  static int a;");
     }
+
+    @Test
+    public void sealedClass() throws FormatterException {
+        assertThat(ModifierOrderer.reorderModifiers("non-sealed sealed public").getText())
+                .isEqualTo("public sealed non-sealed");
+    }
+
+    @Test
+    public void nonSealedBeforeAccessModifier() throws FormatterException {
+        assertThat(ModifierOrderer.reorderModifiers("non-sealed private interface B extends I {}")
+                        .getText())
+                .isEqualTo("private non-sealed interface B extends I {}");
+    }
 }

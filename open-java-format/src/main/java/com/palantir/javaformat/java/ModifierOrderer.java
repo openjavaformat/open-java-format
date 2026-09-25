@@ -16,6 +16,9 @@
 
 package com.palantir.javaformat.java;
 
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.Iterables.getLast;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Range;
@@ -26,10 +29,10 @@ import com.palantir.javaformat.Input.Token;
 import com.sun.tools.javac.parser.Tokens.TokenKind;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 import javax.lang.model.element.Modifier;
 
 /** Fixes sequences of modifiers to be in JLS order. */
@@ -38,6 +41,74 @@ final class ModifierOrderer {
     /** Reorders all modifiers in the given text to be in JLS order. */
     static JavaInput reorderModifiers(String text) throws FormatterException {
         return reorderModifiers(new JavaInput(text), ImmutableList.of(Range.closedOpen(0, text.length())));
+    }
+
+    /**
+     * The tokens that make up one modifier. Usually a single token (e.g. for {@code public}), but a modifier that
+     * contains a {@code -} (e.g. {@code non-sealed}) is lexed as three tokens.
+     */
+    static final class ModifierTokens implements Comparable<ModifierTokens> {
+        private final ImmutableList<Token> tokens;
+
+        @Nullable
+        private final Modifier modifier;
+
+        static ModifierTokens create(ImmutableList<Token> tokens) {
+            return new ModifierTokens(tokens, asModifier(tokens));
+        }
+
+        static ModifierTokens empty() {
+            return new ModifierTokens(ImmutableList.of(), null);
+        }
+
+        private ModifierTokens(ImmutableList<Token> tokens, @Nullable Modifier modifier) {
+            this.tokens = tokens;
+            this.modifier = modifier;
+        }
+
+        boolean isEmpty() {
+            return tokens.isEmpty() || modifier == null;
+        }
+
+        @SuppressWarnings("for-rollout:NullAway")
+        Modifier modifier() {
+            return modifier;
+        }
+
+        ImmutableList<Token> tokens() {
+            return tokens;
+        }
+
+        private Token first() {
+            return tokens.get(0);
+        }
+
+        private Token last() {
+            return getLast(tokens);
+        }
+
+        int startPosition() {
+            return first().getTok().getPosition();
+        }
+
+        int endPosition() {
+            return last().getTok().getPosition() + last().getTok().length();
+        }
+
+        ImmutableList<? extends Tok> getToksBefore() {
+            return first().getToksBefore();
+        }
+
+        ImmutableList<? extends Tok> getToksAfter() {
+            return last().getToksAfter();
+        }
+
+        @Override
+        @SuppressWarnings("for-rollout:NullAway")
+        public int compareTo(ModifierTokens o) {
+            checkState(!isEmpty()); // empty ModifierTokens are filtered out prior to sorting
+            return modifier.compareTo(o.modifier);
+        }
     }
 
     /** Reorders all modifiers in the given text and within the given character ranges to be in JLS order. */
@@ -52,43 +123,37 @@ final class ModifierOrderer {
         Iterator<? extends Token> it = javaInput.getTokens().iterator();
         TreeRangeMap<Integer, String> replacements = TreeRangeMap.create();
         while (it.hasNext()) {
-            Token token = it.next();
-            if (!tokenRanges.contains(token.getTok().getIndex())) {
-                continue;
-            }
-            Modifier mod = asModifier(token);
-            if (mod == null) {
+            ModifierTokens tokens = getModifierTokens(it);
+            if (tokens.isEmpty()
+                    || !tokens.tokens().stream()
+                            .allMatch(token -> tokenRanges.contains(token.getTok().getIndex()))) {
                 continue;
             }
 
-            List<Token> modifierTokens = new ArrayList<>();
-            List<Modifier> mods = new ArrayList<>();
+            List<ModifierTokens> modifierTokens = new ArrayList<>();
 
-            int begin = token.getTok().getPosition();
-            mods.add(mod);
-            modifierTokens.add(token);
+            int begin = tokens.startPosition();
+            modifierTokens.add(tokens);
 
             int end = -1;
             while (it.hasNext()) {
-                token = it.next();
-                mod = asModifier(token);
-                if (mod == null) {
+                tokens = getModifierTokens(it);
+                if (tokens.isEmpty()) {
                     break;
                 }
-                mods.add(mod);
-                modifierTokens.add(token);
-                end = token.getTok().getPosition() + token.getTok().length();
+                modifierTokens.add(tokens);
+                end = tokens.endPosition();
             }
 
-            if (!Ordering.natural().isOrdered(mods)) {
-                Collections.sort(mods);
+            if (!Ordering.natural().isOrdered(modifierTokens)) {
+                List<ModifierTokens> sorted = Ordering.natural().sortedCopy(modifierTokens);
                 StringBuilder replacement = new StringBuilder();
-                for (int i = 0; i < mods.size(); i++) {
+                for (int i = 0; i < sorted.size(); i++) {
                     if (i > 0) {
                         addTrivia(replacement, modifierTokens.get(i).getToksBefore());
                     }
-                    replacement.append(mods.get(i).toString());
-                    if (i < (modifierTokens.size() - 1)) {
+                    replacement.append(sorted.get(i).modifier());
+                    if (i < (sorted.size() - 1)) {
                         addTrivia(replacement, modifierTokens.get(i).getToksAfter());
                     }
                 }
@@ -105,8 +170,44 @@ final class ModifierOrderer {
     }
 
     /**
+     * Consumes the tokens of one modifier from the iterator: the next token, plus the two after it when it is the
+     * {@code non} of a hyphenated modifier such as {@code non-sealed}. The result is empty if they are not a modifier.
+     */
+    private static ModifierTokens getModifierTokens(Iterator<? extends Token> it) {
+        Token token = it.next();
+        ImmutableList.Builder<Token> result = ImmutableList.builder();
+        result.add(token);
+        if (!token.getTok().getText().equals("non")) {
+            return ModifierTokens.create(result.build());
+        }
+        if (!it.hasNext()) {
+            return ModifierTokens.empty();
+        }
+        Token dash = it.next();
+        result.add(dash);
+        if (!dash.getTok().getText().equals("-") || !it.hasNext()) {
+            return ModifierTokens.empty();
+        }
+        result.add(it.next());
+        return ModifierTokens.create(result.build());
+    }
+
+    @Nullable
+    private static Modifier asModifier(ImmutableList<Token> tokens) {
+        if (tokens.size() == 1) {
+            return asModifier(tokens.get(0));
+        }
+        Modifier modifier = asModifier(getLast(tokens));
+        if (modifier == null) {
+            return null;
+        }
+        return Modifier.valueOf("NON_" + modifier.name());
+    }
+
+    /**
      * Returns the given token as a {@link javax.lang.model.element.Modifier}, or {@code null} if it is not a modifier.
      */
+    @Nullable
     @SuppressWarnings("for-rollout:NullAway")
     private static Modifier asModifier(Token token) {
         TokenKind kind = ((JavaInput.Tok) token.getTok()).kind();
@@ -140,8 +241,6 @@ final class ModifierOrderer {
             }
         }
         switch (token.getTok().getText()) {
-            case "non-sealed":
-                return Modifier.valueOf("NON_SEALED");
             case "sealed":
                 return Modifier.valueOf("SEALED");
             default:

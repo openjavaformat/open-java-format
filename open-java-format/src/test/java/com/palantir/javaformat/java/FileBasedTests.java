@@ -49,7 +49,7 @@ public final class FileBasedTests {
             ImmutableMultimap.<Integer, String>builder()
                     .putAll(14, "Records", "RSL", "Var", "ExpressionSwitch", "I574", "I594")
                     .putAll(15, "I603")
-                    .putAll(16, "I588")
+                    .putAll(16, "I588", "Sealed")
                     .putAll(17, "I683", "I684", "I696")
                     .putAll(
                             21,
