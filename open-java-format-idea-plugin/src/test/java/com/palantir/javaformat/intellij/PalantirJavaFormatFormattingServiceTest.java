@@ -16,8 +16,6 @@
 
 package com.palantir.javaformat.intellij;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.google.common.collect.ImmutableList;
 import com.intellij.codeInsight.actions.ReformatCodeProcessor;
 import com.intellij.formatting.service.AsyncFormattingRequest;
@@ -39,16 +37,20 @@ import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.JavaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.palantir.javaformat.intellij.PalantirJavaFormatSettings.State;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+
+import static com.palantir.javaformat.intellij.FormatterProvider.getPluginDescriptor;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class PalantirJavaFormatFormattingServiceTest {
     private JavaCodeInsightTestFixture fixture;
@@ -65,7 +67,7 @@ public class PalantirJavaFormatFormattingServiceTest {
         delegatingFormatter = new DelegatingFormatter();
         // Only the service the platform creates from plugin.xml is handed the plugin descriptor. This one is created
         // here, so it takes the descriptor from that service before masking it.
-        delegatingFormatter.setPluginDescriptor(FormatterProvider.getPluginDescriptor());
+        delegatingFormatter.setPluginDescriptor(getPluginDescriptor().orElseThrow());
         ExtensionTestUtil.maskExtensions(
                 FormattingService.EP_NAME, ImmutableList.of(delegatingFormatter), fixture.getProjectDisposable());
 

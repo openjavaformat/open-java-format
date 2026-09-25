@@ -18,13 +18,15 @@ package com.palantir.javaformat.intellij;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.intellij.formatting.service.FormattingService;
 import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
 import com.palantir.javaformat.bootstrap.BootstrappingFormatterService;
 import com.palantir.javaformat.bootstrap.NativeImageFormatterService;
 import com.palantir.javaformat.java.FormatterService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -35,8 +37,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static com.intellij.formatting.service.FormattingService.EP_NAME;
+import static java.util.Optional.ofNullable;
 
 final class FormatterProvider {
     private static final Logger log = LoggerFactory.getLogger(FormatterProvider.class);
@@ -51,10 +54,9 @@ final class FormatterProvider {
      * extension point finds the service by class. Every way of looking a plugin up by id or by class became
      * {@code @ApiStatus.Internal} in 2026.2; PluginAware and the extension point are public API in every supported IDE.
      */
-    static PluginDescriptor getPluginDescriptor() {
-        return FormattingService.EP_NAME
-                .findExtensionOrFail(PalantirJavaFormatFormattingService.class)
-                .getPluginDescriptor();
+    static Optional<PluginDescriptor> getPluginDescriptor() {
+        return ofNullable(EP_NAME.findExtension(PalantirJavaFormatFormattingService.class))
+                .map(PalantirJavaFormatFormattingService::getPluginDescriptor);
     }
 
     Optional<FormatterService> get(Project project, PalantirJavaFormatSettings settings) {
@@ -90,9 +92,10 @@ final class FormatterProvider {
     @SuppressWarnings("for-rollout:Slf4jLogsafeArgs")
     private static List<Path> getBundledImplementationUrls() {
         // Load from the jars bundled with the plugin.
-        PluginDescriptor ourPlugin = getPluginDescriptor();
-        Path implDir = ourPlugin.getPluginPath().resolve("impl");
+        Path implDir = getPluginDescriptor().map(PluginDescriptor::getPluginPath).orElseThrow().resolve("impl");
+
         log.debug("Using open-java-format implementation bundled with plugin: {}", implDir);
+
         return listDirAsUrlsUnchecked(implDir);
     }
 
