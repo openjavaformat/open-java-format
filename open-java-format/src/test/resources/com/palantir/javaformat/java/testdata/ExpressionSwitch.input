@@ -23,6 +23,13 @@ class ExpressionSwitch {
     return val;
   }
 
+  static final int FIELD =
+          switch (KIND) {
+              case 0 -> 1;
+              case 1 -> 2;
+              default -> throw new IllegalStateException();
+          };
+
   int wrapping(Wrapping w) {
     switch (w) {
         case THIS_IS_A_VERY_LONG_ENUM_VALUE_ONE,
@@ -43,11 +50,12 @@ class ExpressionSwitch {
   }
 
   public void test1(int y) {
-      int x = switch (y) {
-          case 1 -> 1;
-          case 2 -> throw new IllegalArgumentException();
-          default -> throw new IllegalStateException();
-      };
+      int x =
+              switch (y) {
+                  case 1 -> 1;
+                  case 2 -> throw new IllegalArgumentException();
+                  default -> throw new IllegalStateException();
+              };
   }
 
   public void test2(int y) {
