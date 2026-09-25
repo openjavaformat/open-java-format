@@ -1,0 +1,33 @@
+class TCPTransport {
+    @SuppressWarnings("removal")
+    static final Log tcpLog = Log.getLog("sun.rmi.transport.tcp", "tcp",
+            LogStream.parseLevel(AccessController.doPrivileged(
+                    (PrivilegedAction<String>) () -> System.getProperty("sun.rmi.transport.tcp.logLevel"))));
+
+    static final Level level = LogStream.parseLevel(AccessController.doPrivileged(
+            (PrivilegedAction<String>) () -> System.getProperty("sun.rmi.transport.tcp.logLevel.and.some.more")));
+
+    static final Log methodReference = Log.getLog("sun.rmi.transport.tcp", "tcp",
+            LogStream.parseLevel(AccessController.doPrivileged(
+                    (PrivilegedAction<String>) SomeVeryLongClassNameToFillTheLine::getTheTcpLogLevelProperty)));
+
+    static final Log twoTypeArguments = Log.getLog("sun.rmi.transport.tcp", "tcp",
+            LogStream.parseLevel(AccessController.doPrivileged(
+                    (Function<String, Integer>) s -> System.getProperty("sun.rmi.transport.tcp.logLevel.x"))));
+
+    static final Log nested = Log.getLog("sun.rmi.transport.tcp", "tcp",
+            LogStream.parseLevel(AccessController.doPrivileged(
+                    (Map<String, ? extends List<Integer>>) () -> System.getProperty("sun.rmi.transport.tcp.lv"))));
+
+    static final Log qualified = Log.getLog("sun.rmi.transport.tcp", "tcp",
+            LogStream.parseLevel(AccessController.doPrivileged(
+                    (java.util.function.Function<String, Integer>) s -> System.getProperty("sun.rmi.logLevel"))));
+
+    static final Log intersection = Log.getLog("sun.rmi.transport.tcp", "tcp",
+            LogStream.parseLevel(AccessController.doPrivileged(
+                    (Runnable & java.io.Serializable) () -> System.getProperty("sun.rmi.transport.tcp.logLevelxx"))));
+
+    static final Log annotated = Log.getLog("sun.rmi.transport.tcp", "tcp",
+            LogStream.parseLevel(AccessController.doPrivileged(
+                    (Function<@Nullable String, Integer[]>) s -> System.getProperty("sun.rmi.transport.tcp.lvl"))));
+}
