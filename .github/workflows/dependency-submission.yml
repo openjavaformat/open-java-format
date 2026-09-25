@@ -21,8 +21,11 @@ jobs:
 
       - name: Submit Dependency Snapshot
         uses: gradle/actions/dependency-submission@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
-        env:
-          # Only runtime-classpath dependencies of the published modules count as 'runtime';
-          # annotation processors, Gradle plugin classpaths and test-only dependencies are
-          # reported as 'development' so Dependabot auto-triage rules can dismiss their alerts.
-          DEPENDENCY_GRAPH_RUNTIME_INCLUDE_CONFIGURATIONS: 'runtimeClasspath'
+        with:
+          # Only what ships goes into the graph. The published jars, the native image and the IntelliJ and
+          # Eclipse plugins are all built from runtimeClasspath, and the formatter configuration the IntelliJ
+          # plugin also bundles is open-java-format's runtimeClasspath again. The name is matched whole, so
+          # testRuntimeClasspath stays out. Without the filter the graph holds every configuration the build
+          # resolves, buildSrc with JReleaser and the root buildscript's plugins included, and Dependabot
+          # raises alerts for all of it: marking a dependency 'development' does not stop an alert.
+          dependency-graph-include-configurations: 'runtimeClasspath'
