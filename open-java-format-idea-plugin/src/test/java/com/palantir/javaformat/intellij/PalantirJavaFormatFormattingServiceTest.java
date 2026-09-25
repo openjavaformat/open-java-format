@@ -16,9 +16,6 @@
 
 package com.palantir.javaformat.intellij;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import com.google.common.collect.ImmutableList;
 import com.intellij.codeInsight.actions.ReformatCodeProcessor;
 import com.intellij.formatting.service.AsyncFormattingRequest;
 import com.intellij.formatting.service.FormattingService;
@@ -39,16 +36,20 @@ import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.JavaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.palantir.javaformat.intellij.PalantirJavaFormatSettings.State;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class PalantirJavaFormatFormattingServiceTest {
     private JavaCodeInsightTestFixture fixture;
@@ -63,10 +64,12 @@ public class PalantirJavaFormatFormattingServiceTest {
         fixture.setUp();
 
         delegatingFormatter = new DelegatingFormatter();
+
         ExtensionTestUtil.maskExtensions(
-                FormattingService.EP_NAME, ImmutableList.of(delegatingFormatter), fixture.getProjectDisposable());
+                FormattingService.EP_NAME, List.of(delegatingFormatter), fixture.getProjectDisposable());
 
         settings = PalantirJavaFormatSettings.getInstance(fixture.getProject());
+
         State resetState = new State();
         resetState.setEnabled("true");
         settings.loadState(resetState);
@@ -126,6 +129,13 @@ public class PalantirJavaFormatFormattingServiceTest {
     }
 
     private static final class DelegatingFormatter extends PalantirJavaFormatFormattingService {
+        @SuppressWarnings("DataFlowIssue")
+        public DelegatingFormatter() {
+            this.setPluginDescriptor(FormattingService.EP_NAME
+                    .findExtension(PalantirJavaFormatFormattingService.class)
+                    .getPluginDescriptor()
+                    .orElseThrow());
+        }
 
         private boolean invoked = false;
 

@@ -16,8 +16,6 @@
 
 package com.palantir.javaformat.intellij;
 
-import static java.util.Comparator.comparing;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.intellij.formatting.service.AsyncDocumentFormattingService;
@@ -25,6 +23,8 @@ import com.intellij.formatting.service.AsyncFormattingRequest;
 import com.intellij.ide.highlighter.JavaFileType;
 import com.intellij.ide.impl.TrustedProjects;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.extensions.PluginAware;
+import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.NlsSafe;
@@ -33,16 +33,36 @@ import com.intellij.psi.PsiFile;
 import com.palantir.javaformat.java.FormatterException;
 import com.palantir.javaformat.java.FormatterService;
 import com.palantir.javaformat.java.Replacement;
+import org.jetbrains.annotations.NotNull;
+
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import org.jetbrains.annotations.NotNull;
 
-class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService {
+import static java.util.Comparator.comparing;
+import static java.util.Optional.ofNullable;
+
+class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService implements PluginAware {
     private static final Logger logger = Logger.getInstance(PalantirJavaFormatFormattingService.class);
     private final FormatterProvider formatterProvider = new FormatterProvider();
+
+    // The platform sets this right after creating the service from plugin.xml: the descriptor of the plugin that
+    // declared it, which is how the plugin learns its own path and version (see FormatterProvider.getPluginDescriptor).
+    // A service created with `new`, as the tests do, has to be given the descriptor itself.
+    @Nullable
+    private PluginDescriptor pluginDescriptor;
+
+    @Override
+    public void setPluginDescriptor(@NotNull PluginDescriptor pluginDescriptor) {
+        this.pluginDescriptor = pluginDescriptor;
+    }
+
+    Optional<PluginDescriptor> getPluginDescriptor() {
+        return ofNullable(pluginDescriptor);
+    }
 
     @Override
     protected FormattingTask createFormattingTask(@NotNull AsyncFormattingRequest request) {
@@ -108,7 +128,7 @@ class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format(
                             "Received request to format file=%s, length=%s with ranges=%s",
-                            Optional.ofNullable(request.getIOFile())
+                            ofNullable(request.getIOFile())
                                     .map(file -> file.toPath().toString())
                                     .orElse("null"),
                             preFormatText.length(),

@@ -18,43 +18,36 @@ package com.palantir.javaformat.intellij;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import com.google.common.base.Preconditions;
-import com.intellij.ide.plugins.IdeaPluginDescriptor;
-import com.intellij.ide.plugins.PluginManager;
-import com.intellij.openapi.extensions.PluginId;
+import com.intellij.formatting.service.FormattingService;
+import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
 import com.palantir.javaformat.bootstrap.BootstrappingFormatterService;
 import com.palantir.javaformat.bootstrap.NativeImageFormatterService;
 import com.palantir.javaformat.java.FormatterService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static java.util.Optional.ofNullable;
 
 final class FormatterProvider {
     private static final Logger log = LoggerFactory.getLogger(FormatterProvider.class);
 
-    static final String PLUGIN_ID = "open-java-format";
-
     // Cache to avoid resolving the formatter every time we want to format from IntelliJ
     private final LoadingCache<FormatterCacheKey, Optional<FormatterService>> implementationCache =
             Caffeine.newBuilder().maximumSize(1).build(FormatterProvider::createFormatter);
-
-    static IdeaPluginDescriptor getPluginDescriptor() {
-        return Preconditions.checkNotNull(
-                PluginManager.getInstance().findEnabledPlugin(PluginId.getId(PLUGIN_ID)),
-                "Couldn't find our own plugin: %s",
-                PLUGIN_ID);
-    }
 
     Optional<FormatterService> get(Project project, PalantirJavaFormatSettings settings) {
         return implementationCache.get(new FormatterCacheKey(
@@ -89,9 +82,14 @@ final class FormatterProvider {
     @SuppressWarnings("for-rollout:Slf4jLogsafeArgs")
     private static List<Path> getBundledImplementationUrls() {
         // Load from the jars bundled with the plugin.
-        IdeaPluginDescriptor ourPlugin = getPluginDescriptor();
-        Path implDir = ourPlugin.getPluginPath().resolve("impl");
+        Path implDir = ofNullable(FormattingService.EP_NAME.findExtension(PalantirJavaFormatFormattingService.class))
+                .flatMap(PalantirJavaFormatFormattingService::getPluginDescriptor)
+                .map(PluginDescriptor::getPluginPath)
+                .orElseThrow(() -> new NoSuchElementException("The platform has not set the plugin descriptor"))
+                .resolve("impl");
+
         log.debug("Using open-java-format implementation bundled with plugin: {}", implDir);
+
         return listDirAsUrlsUnchecked(implDir);
     }
 

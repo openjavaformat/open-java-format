@@ -16,12 +16,16 @@
 
 package com.palantir.javaformat.intellij;
 
+import com.intellij.formatting.service.FormattingService;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
+import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.openapi.project.Project;
 import com.palantir.javaformat.java.FormatterService;
 import com.palantir.javaformat.java.JavaFormatterOptions;
+
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -30,7 +34,8 @@ import java.util.Optional;
 import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import javax.annotation.Nullable;
+
+import static java.util.Optional.ofNullable;
 
 @SuppressWarnings("for-rollout:SameNameButDifferent")
 @State(
@@ -109,7 +114,9 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
     }
 
     Optional<String> getImplementationVersion() {
-        return Optional.ofNullable(FormatterProvider.getPluginDescriptor().getVersion());
+        return ofNullable(FormattingService.EP_NAME.findExtension(PalantirJavaFormatFormattingService.class))
+                .flatMap(PalantirJavaFormatFormattingService::getPluginDescriptor)
+                .map(PluginDescriptor::getVersion);
     }
 
     Optional<String> computeFormatterVersion() {
