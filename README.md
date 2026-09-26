@@ -106,7 +106,7 @@ Other changes to the formatter's output wait for 3.0.
 | Gradle plugin IDs | `com.palantir.java-format`, `-idea`, `-spotless`, `-provider` | `dev.openjavaformat.java-format`, `-idea`, `-spotless`, `-provider` |
 | IntelliJ plugin ID | `palantir-java-format` | `open-java-format` |
 | Eclipse plugin bundle | `palantir-java-format-eclipse-plugin` | `open-java-format-eclipse-plugin` |
-| CLI style flag | `--palantir`, `-palantir` | `--ojf`, `-ojf` |
+| CLI style flag | `--palantir`, `-palantir` | none: there is one style |
 | Formatter style | `PALANTIR` | `OJF` |
 | Native formatter Gradle property | `palantir.native.formatter` | `openjavaformat.native.formatter` |
 | Java packages | `com.palantir.javaformat.*` | **unchanged in 2.x** |
