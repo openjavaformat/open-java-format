@@ -79,83 +79,30 @@ final class CommandLineOptionsParser {
             }
             // NOTE: update usage information in UsageException when new flags are added
             switch (flag) {
-                case "-i":
-                case "-r":
-                case "-replace":
-                case "--replace":
-                    optionsBuilder.inPlace(true);
-                    break;
-                case "--lines":
-                case "-lines":
-                case "--line":
-                case "-line":
+                case "-i", "-r", "-replace", "--replace" -> optionsBuilder.inPlace(true);
+                case "--lines", "-lines", "--line", "-line" ->
                     parseRangeSet(optionsBuilder.linesBuilder(), getValue(flag, it, value));
-                    break;
-                case "--character-ranges":
-                case "-character-ranges":
-                case "--character-range":
-                case "-character-range":
+                case "--character-ranges", "-character-ranges", "--character-range", "-character-range" ->
                     parseCharacterRanges(optionsBuilder.characterRangesBuilder(), getValue(flag, it, value));
-                    break;
-                case "--offset":
-                case "-offset":
-                    optionsBuilder.addOffset(parseInteger(it, flag, value));
-                    break;
-                case "--length":
-                case "-length":
-                    optionsBuilder.addLength(parseInteger(it, flag, value));
-                    break;
-                case "--aosp":
-                case "-aosp":
-                case "-a":
-                case "--ojf":
-                case "-ojf":
+                case "--offset", "-offset" -> optionsBuilder.addOffset(parseInteger(it, flag, value));
+                case "--length", "-length" -> optionsBuilder.addLength(parseInteger(it, flag, value));
+                case "--aosp", "-aosp", "-a", "--ojf", "-ojf" ->
                     // There is one style. The old style flags are accepted so that a script keeps working, and
                     // Main warns about each of them.
                     optionsBuilder.addUnsupportedFlag(flag);
-                    break;
-                case "--version":
-                case "-version":
-                case "-v":
-                    optionsBuilder.version(true);
-                    break;
-                case "--help":
-                case "-help":
-                case "-h":
-                    optionsBuilder.help(true);
-                    break;
-                case "--fix-imports-only":
-                    optionsBuilder.fixImportsOnly(true);
-                    break;
-                case "--skip-sorting-imports":
-                    optionsBuilder.sortImports(false);
-                    break;
-                case "--skip-removing-unused-imports":
-                    optionsBuilder.removeUnusedImports(false);
-                    break;
-                case "--skip-reflowing-long-strings":
-                    optionsBuilder.reflowLongStrings(false);
-                    break;
-                case "-":
-                    optionsBuilder.stdin(true);
-                    break;
-                case "-n":
-                case "--dry-run":
-                    optionsBuilder.dryRun(true);
-                    break;
-                case "--set-exit-if-changed":
-                    optionsBuilder.setExitIfChanged(true);
-                    break;
-                case "-assume-filename":
-                case "--assume-filename":
+                case "--version", "-version", "-v" -> optionsBuilder.version(true);
+                case "--help", "-help", "-h" -> optionsBuilder.help(true);
+                case "--fix-imports-only" -> optionsBuilder.fixImportsOnly(true);
+                case "--skip-sorting-imports" -> optionsBuilder.sortImports(false);
+                case "--skip-removing-unused-imports" -> optionsBuilder.removeUnusedImports(false);
+                case "--skip-reflowing-long-strings" -> optionsBuilder.reflowLongStrings(false);
+                case "-" -> optionsBuilder.stdin(true);
+                case "-n", "--dry-run" -> optionsBuilder.dryRun(true);
+                case "--set-exit-if-changed" -> optionsBuilder.setExitIfChanged(true);
+                case "-assume-filename", "--assume-filename" ->
                     optionsBuilder.assumeFilename(getValue(flag, it, value));
-                    break;
-                case "-output-replacements":
-                case "--output-replacements":
-                    optionsBuilder.outputReplacements(true);
-                    break;
-                default:
-                    throw new IllegalArgumentException("unexpected flag: " + flag);
+                case "-output-replacements", "--output-replacements" -> optionsBuilder.outputReplacements(true);
+                default -> throw new IllegalArgumentException("unexpected flag: " + flag);
             }
         }
         return optionsBuilder.build();
@@ -196,15 +143,16 @@ final class CommandLineOptionsParser {
     private static Range<Integer> parseCharacterRange(String range) {
         List<String> args = COLON_SPLITTER.splitToList(range);
         switch (args.size()) {
-            case 1:
+            case 1 -> {
                 int lowerUpperRange = Integer.parseInt(args.get(0));
                 return Range.closed(lowerUpperRange, lowerUpperRange);
-            case 2:
+            }
+            case 2 -> {
                 int lower = Integer.parseInt(args.get(0));
                 int higher = Integer.parseInt(args.get(1));
                 return Range.closed(lower, higher);
-            default:
-                throw new IllegalArgumentException(range);
+            }
+            default -> throw new IllegalArgumentException(range);
         }
     }
 
@@ -226,15 +174,16 @@ final class CommandLineOptionsParser {
     private static Range<Integer> parseRange(String arg) {
         List<String> args = COLON_SPLITTER.splitToList(arg);
         switch (args.size()) {
-            case 1:
+            case 1 -> {
                 int line = Integer.parseInt(args.get(0)) - 1;
                 return Range.closedOpen(line, line + 1);
-            case 2:
+            }
+            case 2 -> {
                 int line0 = Integer.parseInt(args.get(0)) - 1;
                 int line1 = Integer.parseInt(args.get(1)) - 1;
                 return Range.closedOpen(line0, line1 + 1);
-            default:
-                throw new IllegalArgumentException(arg);
+            }
+            default -> throw new IllegalArgumentException(arg);
         }
     }
 

@@ -570,10 +570,10 @@ public final class Level extends Doc {
                                 }
                                 Level lastLevel2 = ((Level) getLast(innerLevel.docs));
                                 switch (lastLevel2.getBreakabilityIfLastLevel()) {
-                                    case ABORT:
-                                    case CHECK_INNER:
+                                    case ABORT, CHECK_INNER -> {
                                         return Optional.empty();
-                                    case ACCEPT_INLINE_CHAIN:
+                                    }
+                                    case ACCEPT_INLINE_CHAIN -> {
                                         Exploration broken =
                                                 innerLevel.breakNormally(state, levelNode, commentsHelper, maxWidth);
                                         return innerLevel.handle_breakOnlyIfInnerLevelsThenFitOnOneLine(
@@ -583,11 +583,13 @@ public final class Level extends Doc {
                                                 broken.state(),
                                                 keepIndentWhenInlined,
                                                 explorationNode);
-                                    case ACCEPT_INLINE_CHAIN_IF_SIMPLE_OTHERWISE_CHECK_INNER:
+                                    }
+                                    case ACCEPT_INLINE_CHAIN_IF_SIMPLE_OTHERWISE_CHECK_INNER -> {
                                         // specific to lambda body expressions - falls back to `breakNormally` in
                                         // `preferBreakingLastInnerLevel`
                                         return Optional.empty();
-                                    default:
+                                    }
+                                    default ->
                                         throw new RuntimeException("Unknown breakabilityIfLastLevel: " + lastLevel2);
                                 }
                             })

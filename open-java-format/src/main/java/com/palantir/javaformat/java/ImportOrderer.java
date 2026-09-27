@@ -257,13 +257,10 @@ public final class ImportOrderer {
 
         /** True if this is a Java import per AOSP style. */
         boolean isJava() {
-            switch (topLevel()) {
-                case "java":
-                case "javax":
-                    return true;
-                default:
-                    return false;
-            }
+            return switch (topLevel()) {
+                case "java", "javax" -> true;
+                default -> false;
+            };
         }
 
         /**
