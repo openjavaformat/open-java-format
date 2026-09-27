@@ -1,13 +1,19 @@
 version: 2
+# A release is proposed only once it is a week old: a compromised or broken release is usually pulled
+# within days. The cooldown holds back version updates only; security updates still come at once.
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     target-branch: "main"
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: "gradle"
     directory: "/"
     schedule:
       interval: "weekly"
     target-branch: "main"
+    cooldown:
+      default-days: 7
