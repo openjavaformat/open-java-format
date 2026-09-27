@@ -90,8 +90,7 @@ public class DebugRenderer {
 
         ImmutableList<Op> ops = opsOutput.ops();
         for (Op op : ops) {
-            if (op instanceof Token) {
-                Token token = (Token) op;
+            if (op instanceof Token token) {
                 Input.Token inputToken = token.getToken();
 
                 ObjectNode json = arrayNode.addObject();
@@ -109,9 +108,7 @@ public class DebugRenderer {
                                 .collect(Collectors.joining()));
                 json.put("hue", computeHue(token));
             }
-            if (op instanceof Break) {
-                Break breakOp = (Break) op;
-
+            if (op instanceof Break breakOp) {
                 ObjectNode json = arrayNode.addObject();
                 json.put("type", "break");
                 json.put("fillMode", breakOp.fillMode().toString());

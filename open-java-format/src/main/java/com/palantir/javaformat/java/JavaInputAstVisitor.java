@@ -866,8 +866,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         ArrayList<VariableTree> enumConstants = new ArrayList<>();
         ArrayList<Tree> members = new ArrayList<>();
         for (Tree member : node.getMembers()) {
-            if (member instanceof JCTree.JCVariableDecl) {
-                JCTree.JCVariableDecl variableDecl = (JCTree.JCVariableDecl) member;
+            if (member instanceof JCTree.JCVariableDecl variableDecl) {
                 if ((variableDecl.mods.flags & Flags.ENUM) == Flags.ENUM) {
                     enumConstants.add(variableDecl);
                     continue;
@@ -1332,8 +1331,8 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
                         builder.breakOp(" ");
                     }
                 }
-                if (argument instanceof AssignmentTree) {
-                    visitAnnotationArgument((AssignmentTree) argument);
+                if (argument instanceof AssignmentTree assignmentTree) {
+                    visitAnnotationArgument(assignmentTree);
                 } else {
                     scan(argument, null);
                 }
@@ -1353,11 +1352,11 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     }
 
     private static boolean isArrayValue(ExpressionTree argument) {
-        if (!(argument instanceof AssignmentTree)) {
+        if (!(argument instanceof AssignmentTree assignmentTree)) {
             return false;
         }
-        ExpressionTree expression = ((AssignmentTree) argument).getExpression();
-        return expression instanceof NewArrayTree && ((NewArrayTree) expression).getType() == null;
+        ExpressionTree expression = assignmentTree.getExpression();
+        return expression instanceof NewArrayTree newArrayTree && newArrayTree.getType() == null;
     }
 
     public void visitAnnotationArgument(AssignmentTree node) {
@@ -1383,8 +1382,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     public Void visitAnnotatedType(AnnotatedTypeTree node, Void unused) {
         sync(node);
         ExpressionTree base = node.getUnderlyingType();
-        if (base instanceof MemberSelectTree) {
-            MemberSelectTree selectTree = (MemberSelectTree) base;
+        if (base instanceof MemberSelectTree selectTree) {
             scan(selectTree.getExpression(), null);
             token(".");
             visitAnnotations(node.getAnnotations(), BreakOrNot.NO, BreakOrNot.NO);
@@ -1411,8 +1409,8 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
     /** Is {@code type} the implicit wrapper class javac synthesizes for a compact source file? */
     private static boolean isCompactSourceFile(Tree type) {
-        return type instanceof JCTree.JCClassDecl
-                && (((JCTree.JCClassDecl) type).mods.flags & IMPLICIT_CLASS) == IMPLICIT_CLASS;
+        return type instanceof JCTree.JCClassDecl classDecl
+                && (classDecl.mods.flags & IMPLICIT_CLASS) == IMPLICIT_CLASS;
     }
 
     @SuppressWarnings("for-rollout:NullAway")
@@ -1646,10 +1644,10 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
     private static List<Long> handleStream(List<ExpressionTree> parts) {
         return indexes(parts.stream(), p -> {
-                    if (!(p instanceof MethodInvocationTree)) {
+                    if (!(p instanceof MethodInvocationTree methodInvocation)) {
                         return false;
                     }
-                    Name name = getMethodName((MethodInvocationTree) p);
+                    Name name = getMethodName(methodInvocation);
                     return Stream.of("stream", "parallelStream", "toBuilder").anyMatch(name::contentEquals);
                 })
                 .collect(toList());
@@ -1976,8 +1974,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
                 if (!first) {
                     builder.forcedBreak();
                 }
-                if (resource instanceof VariableTree) {
-                    VariableTree variableTree = (VariableTree) resource;
+                if (resource instanceof VariableTree variableTree) {
                     declareOne(
                             DeclarationKind.PARAMETER,
                             inlineAnnotationDirection(variableTree.getModifiers()),
@@ -2446,8 +2443,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     /** Accumulate the operands and operators. */
     private static void walkInfix(
             int precedence, ExpressionTree expression, List<ExpressionTree> operands, List<String> operators) {
-        if (expression instanceof BinaryTree) {
-            BinaryTree binaryTree = (BinaryTree) expression;
+        if (expression instanceof BinaryTree binaryTree) {
             if (precedence(binaryTree) == precedence) {
                 walkInfix(precedence, binaryTree.getLeftOperand(), operands, operators);
                 operators.add(operatorName(expression));
@@ -2958,10 +2954,9 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
             return false;
         }
         // don't special-case calls nested inside expressions
-        if (!(e instanceof MethodInvocationTree)) {
+        if (!(e instanceof MethodInvocationTree methodInvocation)) {
             return false;
         }
-        MethodInvocationTree methodInvocation = (MethodInvocationTree) e;
         Name name = getMethodName(methodInvocation);
         if (!(methodInvocation.getMethodSelect() instanceof IdentifierTree)
                 || name.length() > 4
@@ -3135,7 +3130,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     @SuppressWarnings("for-rollout:NullAway")
     private ExpressionTree getMethodReceiver(MethodInvocationTree methodInvocation) {
         ExpressionTree select = methodInvocation.getMethodSelect();
-        return select instanceof MemberSelectTree ? ((MemberSelectTree) select).getExpression() : null;
+        return select instanceof MemberSelectTree memberSelectTree ? memberSelectTree.getExpression() : null;
     }
 
     private void dotExpressionArgsAndParen(ExpressionTree expression, Indent tyargIndent, Indent indent) {
@@ -3453,11 +3448,10 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     static int rowLength(List<? extends ExpressionTree> row) {
         int size = 0;
         for (ExpressionTree tree : row) {
-            if (!(tree instanceof NewArrayTree)) {
+            if (!(tree instanceof NewArrayTree array)) {
                 size++;
                 continue;
             }
-            NewArrayTree array = (NewArrayTree) tree;
             if (array.getInitializers() == null) {
                 size++;
                 continue;
@@ -3656,7 +3650,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
             if (initializer.isPresent()) {
                 builder.space();
                 token(equals);
-                if (initializer.get() instanceof NewArrayTree && ((NewArrayTree) initializer.get()).getType() == null) {
+                if (initializer.get() instanceof NewArrayTree newArrayTree && newArrayTree.getType() == null) {
                     builder.open(minusFour);
                     builder.space();
                     initializer.get().accept(this, null);
@@ -3919,9 +3913,9 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
      */
     private List<VariableTree> variableFragments(PeekingIterator<? extends Tree> it, Tree first) {
         List<VariableTree> fragments = new ArrayList<>();
-        if (first instanceof VariableTree) {
+        if (first instanceof VariableTree variableTree) {
             int start = getStartPosition(first);
-            fragments.add((VariableTree) first);
+            fragments.add(variableTree);
             while (it.hasNext() && it.peek() instanceof VariableTree && getStartPosition(it.peek()) == start) {
                 fragments.add((VariableTree) it.next());
             }
