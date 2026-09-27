@@ -7,6 +7,10 @@ on:
     # Run every hour to catch stuck PRs
     - cron: '0 * * * *'
 
+# The action reads and updates the pull requests with BOT_PAT alone, so the workflow's own token needs
+# no permissions.
+permissions: {}
+
 jobs:
   update:
     runs-on: ubuntu-latest
