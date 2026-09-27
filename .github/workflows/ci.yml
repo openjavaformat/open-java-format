@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install JDK 21
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -63,6 +65,8 @@ jobs:
               out until the wrapper's Gradle supports Java 27.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install JDK ${{ matrix.jdk }} for the tests
         id: test-jdk
@@ -126,6 +130,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # The jars compile with a Java 21 toolchain, which gradle.properties looks up in JDK21_HOME. On
       # Linux and macOS Gradle also finds the runner's own JDK 21 by its location, on Windows it does not.
