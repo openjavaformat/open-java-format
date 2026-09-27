@@ -160,21 +160,11 @@ public class Java14InputAstVisitor extends JavaInputAstVisitor {
     @Override
     public Void visitClass(ClassTree tree, Void unused) {
         switch (tree.getKind()) {
-            case ANNOTATION_TYPE:
-                visitAnnotationType(tree);
-                break;
-            case CLASS:
-            case INTERFACE:
-                visitClassDeclaration(tree);
-                break;
-            case ENUM:
-                visitEnumDeclaration(tree);
-                break;
-            case RECORD:
-                visitRecordDeclaration(tree);
-                break;
-            default:
-                throw new IllegalArgumentException(tree.getKind().name());
+            case ANNOTATION_TYPE -> visitAnnotationType(tree);
+            case CLASS, INTERFACE -> visitClassDeclaration(tree);
+            case ENUM -> visitEnumDeclaration(tree);
+            case RECORD -> visitRecordDeclaration(tree);
+            default -> throw new IllegalArgumentException(tree.getKind().name());
         }
         return null;
     }
@@ -305,7 +295,7 @@ public class Java14InputAstVisitor extends JavaInputAstVisitor {
         }
 
         switch (node.getCaseKind()) {
-            case STATEMENT:
+            case STATEMENT -> {
                 token(":");
                 boolean isBlock =
                         node.getStatements().size() == 1 && node.getStatements().get(0) instanceof BlockTree;
@@ -315,8 +305,8 @@ public class Java14InputAstVisitor extends JavaInputAstVisitor {
                 }
                 visitStatements(node.getStatements(), isBlock);
                 builder.close();
-                break;
-            case RULE:
+            }
+            case RULE -> {
                 builder.open(plusTwo);
                 builder.space();
                 token("-");
@@ -336,9 +326,8 @@ public class Java14InputAstVisitor extends JavaInputAstVisitor {
                     builder.close();
                 }
                 builder.guessToken(";");
-                break;
-            default:
-                throw new IllegalArgumentException(node.getCaseKind().name());
+            }
+            default -> throw new IllegalArgumentException(node.getCaseKind().name());
         }
         return null;
     }

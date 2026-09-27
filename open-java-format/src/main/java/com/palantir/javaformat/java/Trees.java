@@ -136,8 +136,8 @@ class Trees {
     /** Returns the simple name of a (possibly qualified) method invocation expression. */
     static Name getMethodName(MethodInvocationTree methodInvocation) {
         ExpressionTree select = methodInvocation.getMethodSelect();
-        return select instanceof MemberSelectTree
-                ? ((MemberSelectTree) select).getIdentifier()
+        return select instanceof MemberSelectTree memberSelectTree
+                ? memberSelectTree.getIdentifier()
                 : ((IdentifierTree) select).getName();
     }
 
@@ -145,7 +145,7 @@ class Trees {
     @SuppressWarnings("for-rollout:NullAway")
     static ExpressionTree getMethodReceiver(MethodInvocationTree methodInvocation) {
         ExpressionTree select = methodInvocation.getMethodSelect();
-        return select instanceof MemberSelectTree ? ((MemberSelectTree) select).getExpression() : null;
+        return select instanceof MemberSelectTree memberSelectTree ? memberSelectTree.getExpression() : null;
     }
 
     /** Returns the string name of an operator, including assignment and compound assignment. */
@@ -171,13 +171,10 @@ class Trees {
     static ClassTree getEnclosingTypeDeclaration(TreePath path) {
         for (; path != null; path = path.getParentPath()) {
             switch (path.getLeaf().getKind()) {
-                case CLASS:
-                case ENUM:
-                case INTERFACE:
-                case ANNOTATED_TYPE:
+                case CLASS, ENUM, INTERFACE, ANNOTATED_TYPE -> {
                     return (ClassTree) path.getLeaf();
-                default:
-                    break;
+                }
+                default -> {}
             }
         }
         throw new IllegalStateException();

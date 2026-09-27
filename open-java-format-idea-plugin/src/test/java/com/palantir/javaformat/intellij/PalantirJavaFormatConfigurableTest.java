@@ -108,7 +108,7 @@ public class PalantirJavaFormatConfigurableTest {
         if (root instanceof Container container) {
             return Arrays.stream(container.getComponents())
                     .map(PalantirJavaFormatConfigurableTest::findCheckBox)
-                    .flatMap(Optional::stream)
+                    .<JCheckBox>mapMulti(Optional::ifPresent)
                     .findFirst();
         }
         return Optional.empty();

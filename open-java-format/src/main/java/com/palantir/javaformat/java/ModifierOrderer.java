@@ -213,39 +213,49 @@ final class ModifierOrderer {
         TokenKind kind = ((JavaInput.Tok) token.getTok()).kind();
         if (kind != null) {
             switch (kind) {
-                case PUBLIC:
+                case PUBLIC -> {
                     return Modifier.PUBLIC;
-                case PROTECTED:
+                }
+                case PROTECTED -> {
                     return Modifier.PROTECTED;
-                case PRIVATE:
+                }
+                case PRIVATE -> {
                     return Modifier.PRIVATE;
-                case ABSTRACT:
+                }
+                case ABSTRACT -> {
                     return Modifier.ABSTRACT;
-                case STATIC:
+                }
+                case STATIC -> {
                     return Modifier.STATIC;
-                case DEFAULT:
+                }
+                case DEFAULT -> {
                     return Modifier.DEFAULT;
-                case FINAL:
+                }
+                case FINAL -> {
                     return Modifier.FINAL;
-                case TRANSIENT:
+                }
+                case TRANSIENT -> {
                     return Modifier.TRANSIENT;
-                case VOLATILE:
+                }
+                case VOLATILE -> {
                     return Modifier.VOLATILE;
-                case SYNCHRONIZED:
+                }
+                case SYNCHRONIZED -> {
                     return Modifier.SYNCHRONIZED;
-                case NATIVE:
+                }
+                case NATIVE -> {
                     return Modifier.NATIVE;
-                case STRICTFP:
+                }
+                case STRICTFP -> {
                     return Modifier.STRICTFP;
-                default: // fall out
+                }
+                default -> {}
             }
         }
-        switch (token.getTok().getText()) {
-            case "sealed":
-                return Modifier.valueOf("SEALED");
-            default:
-                return null;
-        }
+        return switch (token.getTok().getText()) {
+            case "sealed" -> Modifier.valueOf("SEALED");
+            default -> null;
+        };
     }
 
     /** Applies replacements to the given string. */

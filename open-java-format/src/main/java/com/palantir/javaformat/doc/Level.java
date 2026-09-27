@@ -148,12 +148,11 @@ public final class Level extends Doc {
         int column = state.column();
         int columnBeforeLastBreak = 0; // Not activated by default
         for (Doc doc : docs) {
-            if (doc instanceof Break && ((Break) doc).hasColumnLimit()) {
+            if (doc instanceof Break b && b.hasColumnLimit()) {
                 columnBeforeLastBreak = column;
-            } else if (doc instanceof Level) {
+            } else if (doc instanceof Level innerLevel) {
                 // Levels might have nested levels that have a 'columnLimitBeforeLastBreak' set, so recurse.
                 State newState = state.withColumn(column);
-                Level innerLevel = (Level) doc;
                 Optional<Integer> newWidth = innerLevel.tryToFitOnOneLine(maxWidth, newState, innerLevel.getDocs());
                 if (!newWidth.isPresent()) {
                     return Optional.empty();
@@ -571,10 +570,10 @@ public final class Level extends Doc {
                                 }
                                 Level lastLevel2 = ((Level) getLast(innerLevel.docs));
                                 switch (lastLevel2.getBreakabilityIfLastLevel()) {
-                                    case ABORT:
-                                    case CHECK_INNER:
+                                    case ABORT, CHECK_INNER -> {
                                         return Optional.empty();
-                                    case ACCEPT_INLINE_CHAIN:
+                                    }
+                                    case ACCEPT_INLINE_CHAIN -> {
                                         Exploration broken =
                                                 innerLevel.breakNormally(state, levelNode, commentsHelper, maxWidth);
                                         return innerLevel.handle_breakOnlyIfInnerLevelsThenFitOnOneLine(
@@ -584,11 +583,13 @@ public final class Level extends Doc {
                                                 broken.state(),
                                                 keepIndentWhenInlined,
                                                 explorationNode);
-                                    case ACCEPT_INLINE_CHAIN_IF_SIMPLE_OTHERWISE_CHECK_INNER:
+                                    }
+                                    case ACCEPT_INLINE_CHAIN_IF_SIMPLE_OTHERWISE_CHECK_INNER -> {
                                         // specific to lambda body expressions - falls back to `breakNormally` in
                                         // `preferBreakingLastInnerLevel`
                                         return Optional.empty();
-                                    default:
+                                    }
+                                    default ->
                                         throw new RuntimeException("Unknown breakabilityIfLastLevel: " + lastLevel2);
                                 }
                             })
@@ -633,10 +634,10 @@ public final class Level extends Doc {
         ImmutableSplitsBreaks.Builder builder = ImmutableSplitsBreaks.builder();
         ImmutableList.Builder<Doc> currentSplit = ImmutableList.builder();
         for (Doc doc : docs) {
-            if (doc instanceof Break) {
+            if (doc instanceof Break b) {
                 builder.addSplits(currentSplit.build());
                 currentSplit = ImmutableList.builder();
-                builder.addBreaks((Break) doc);
+                builder.addBreaks(b);
             } else {
                 currentSplit.add(doc);
             }
@@ -790,8 +791,7 @@ public final class Level extends Doc {
     private int computeMaxDepth(Iterable<Doc> docs) {
         int maxChildDepth = 0;
         for (Doc doc : docs) {
-            if (doc instanceof Level) {
-                Level childLevel = (Level) doc;
+            if (doc instanceof Level childLevel) {
                 maxChildDepth = Math.max(maxChildDepth, childLevel.getMaxDepth());
             }
         }

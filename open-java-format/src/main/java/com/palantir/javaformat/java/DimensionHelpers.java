@@ -103,9 +103,10 @@ class DimensionHelpers {
      */
     private static Tree extractDims(Deque<List<AnnotationTree>> dims, Tree node) {
         switch (node.getKind()) {
-            case ARRAY_TYPE:
+            case ARRAY_TYPE -> {
                 return extractDims(dims, ((ArrayTypeTree) node).getType());
-            case ANNOTATED_TYPE:
+            }
+            case ANNOTATED_TYPE -> {
                 AnnotatedTypeTree annotatedTypeTree = (AnnotatedTypeTree) node;
                 if (!(annotatedTypeTree.getUnderlyingType() instanceof ArrayTypeTree)) {
                     return node;
@@ -113,8 +114,10 @@ class DimensionHelpers {
                 node = extractDims(dims, annotatedTypeTree.getUnderlyingType());
                 dims.addFirst(ImmutableList.copyOf(annotatedTypeTree.getAnnotations()));
                 return node;
-            default:
+            }
+            default -> {
                 return node;
+            }
         }
     }
 }

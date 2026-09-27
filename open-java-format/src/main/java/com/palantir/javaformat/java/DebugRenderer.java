@@ -61,8 +61,15 @@ public class DebugRenderer {
             String formatterDecisionsJson) {
 
         String javascript = String.format(
-                "window.palantirJavaFormat = {\njavaInput: %s,\nops: %s,\ndoc: %s,\njavaOutput: %s,\n"
-                        + "formatterDecisions: %s\n};\n",
+                """
+                window.palantirJavaFormat = {
+                javaInput: %s,
+                ops: %s,
+                doc: %s,
+                javaOutput: %s,
+                formatterDecisions: %s
+                };
+                """,
                 jsonEscapedString(javaInput.getText()),
                 opsJson(opsOutput),
                 new JsonDocVisitor(finalState).visit(doc),
@@ -90,8 +97,7 @@ public class DebugRenderer {
 
         ImmutableList<Op> ops = opsOutput.ops();
         for (Op op : ops) {
-            if (op instanceof Token) {
-                Token token = (Token) op;
+            if (op instanceof Token token) {
                 Input.Token inputToken = token.getToken();
 
                 ObjectNode json = arrayNode.addObject();
@@ -109,9 +115,7 @@ public class DebugRenderer {
                                 .collect(Collectors.joining()));
                 json.put("hue", computeHue(token));
             }
-            if (op instanceof Break) {
-                Break breakOp = (Break) op;
-
+            if (op instanceof Break breakOp) {
                 ObjectNode json = arrayNode.addObject();
                 json.put("type", "break");
                 json.put("fillMode", breakOp.fillMode().toString());

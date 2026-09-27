@@ -220,12 +220,12 @@ public final class Formatter {
             return false;
         }
         switch (input.getCode()) {
-            case "compiler.err.invalid.meth.decl.ret.type.req":
+            case "compiler.err.invalid.meth.decl.ret.type.req" -> {
                 // accept constructor-like method declarations that don't match the name of their
                 // enclosing class
                 return false;
-            default:
-                break;
+            }
+            default -> {}
         }
         return true;
     }
