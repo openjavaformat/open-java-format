@@ -9,7 +9,7 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath 'org.graalvm.buildtools:native-gradle-plugin:1.1.12'
+        classpath 'org.graalvm.buildtools:native-gradle-plugin:1.1.14'
         classpath 'com.palantir.gradle.utils:platform:0.29.0'
     }
 }
