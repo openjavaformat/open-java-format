@@ -15,6 +15,7 @@
 package com.palantir.javaformat.java;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.collect.ImmutableSet;
 import com.palantir.javaformat.CommentsHelper;
 import com.palantir.javaformat.Input.Tok;
 import com.palantir.javaformat.Newlines;
@@ -32,12 +33,16 @@ public final class JavaCommentsHelper implements CommentsHelper {
     private final String lineSeparator;
     private final JavaFormatterOptions options;
 
+    /** Comments are numbered along with tokens, so the comments before the first line of code have smaller indices. */
+    private final int firstTokenIndex;
+
     @Nullable
     private final JavadocFormatter javadocFormatter;
 
-    public JavaCommentsHelper(String lineSeparator, JavaFormatterOptions options) {
-        this.lineSeparator = lineSeparator;
+    public JavaCommentsHelper(JavaInput javaInput, JavaFormatterOptions options) {
+        this.lineSeparator = javaInput.getLineSeparator();
         this.options = options;
+        this.firstTokenIndex = javaInput.getTokens().get(0).getTok().getIndex();
         this.javadocFormatter = options.formatJavadoc() ? new JavadocFormatter(options.maxLineLength()) : null;
     }
 
@@ -56,6 +61,9 @@ public final class JavaCommentsHelper implements CommentsHelper {
             lines.add(CharMatcher.whitespace().trimTrailingFrom(it.next()));
         }
         if (tok.isSlashSlashComment()) {
+            if (isJBangHeaderLine(tok)) {
+                return lines.get(0);
+            }
             return indentLineComments(lines, column0);
         } else if (javadocShaped(lines)) {
             return indentJavadoc(lines, column0);
@@ -106,6 +114,57 @@ public final class JavaCommentsHelper implements CommentsHelper {
                     .append(lines.get(i).trim());
         }
         return builder.toString();
+    }
+
+    // JBang reads the directives of a script, such as `//DEPS info.picocli:picocli:4.7.6`, from the line comments
+    // before its first line of code, and a shell runs the first line, `///usr/bin/env jbang "$0" "$@" ; exit $?`, when
+    // the file is executed. A space after the slashes or a wrapped line breaks both, so these lines stay as written.
+    // https://www.jbang.dev/documentation/jbang/latest/script-directives.html
+    private boolean isJBangHeaderLine(Tok tok) {
+        if (tok.getIndex() >= firstTokenIndex) {
+            return false;
+        }
+        String text = tok.getOriginalText();
+        boolean firstLine = tok.getIndex() == 0;
+        return isJBangDirective(text)
+                || (firstLine && SHELL_COMMAND.matcher(text).lookingAt());
+    }
+
+    // The directive names JBang knows, from dev.jbang.source.parser.Directives.Names.
+    private static final ImmutableSet<String> JBANG_DIRECTIVE_NAMES = ImmutableSet.of(
+            "CDS",
+            "COMPILE_OPTIONS",
+            "DEPS",
+            "DESCRIPTION",
+            "DOCS",
+            "FILES",
+            "GAV",
+            "GROOVY",
+            "JAVA",
+            "JAVAAGENT",
+            "JAVAC_OPTIONS",
+            "JAVA_OPTIONS",
+            "KOTLIN",
+            "MAIN",
+            "MANIFEST",
+            "MODULE",
+            "NATIVE_OPTIONS",
+            "NOINTEGRATIONS",
+            "PREVIEW",
+            "REPOS",
+            "RUNTIME_OPTIONS",
+            "SOURCES");
+
+    // JBang's syntax: the name right after the slashes, then whitespace or the end of the line. A name with a prefix,
+    // such as Quarkus's `//Q:CONFIG`, belongs to a build integration, so it is kept whatever follows the prefix.
+    private static final Pattern JBANG_DIRECTIVE = Pattern.compile("//([A-Z]+:)?([A-Z_]+)(?=\\s|$)");
+
+    // A line comment whose first word is a path: the command a shell runs.
+    private static final Pattern SHELL_COMMAND = Pattern.compile("//+[^\\s/]+/");
+
+    private static boolean isJBangDirective(String text) {
+        Matcher matcher = JBANG_DIRECTIVE.matcher(text);
+        return matcher.lookingAt() && (matcher.group(1) != null || JBANG_DIRECTIVE_NAMES.contains(matcher.group(2)));
     }
 
     // Preserve special `//noinspection` and `//$NON-NLS-x$` comments used by IDEs, which cannot
