@@ -316,7 +316,7 @@ public final class Formatter {
         // 'de-linting' changes (e.g. import ordering).
         javaInput = ModifierOrderer.reorderModifiers(javaInput, characterRanges);
 
-        JavaCommentsHelper commentsHelper = new JavaCommentsHelper(javaInput.getLineSeparator(), options);
+        JavaCommentsHelper commentsHelper = new JavaCommentsHelper(javaInput, options);
         JavaOutput javaOutput;
         try {
             javaOutput = format(javaInput, options, commentsHelper, debugMode);

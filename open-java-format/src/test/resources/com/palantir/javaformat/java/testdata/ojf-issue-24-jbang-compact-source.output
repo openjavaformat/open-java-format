@@ -1,0 +1,12 @@
+//usr/bin/env jbang "$0" "$@" ; exit $?
+//JAVA 25+
+//PREVIEW
+//DEPS com.fasterxml.jackson.core:jackson-databind:2.17.2
+
+void main() {
+    IO.println(greeting());
+}
+// DEPS org.example:after-main:1.0
+String greeting() {
+    return "Hello";
+}

@@ -63,7 +63,8 @@ public final class FileBasedTests {
                             "UnnamedPattern",
                             "CompactSource",
                             "MarkdownDoc",
-                            "FlexibleConstructor")
+                            "FlexibleConstructor",
+                            "ojf-issue-24-jbang-compact-source")
                     .putAll(23, "ModuleImport")
                     .build();
 

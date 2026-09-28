@@ -1,0 +1,22 @@
+///usr/bin/env bash -c 'command -v jbang >/dev/null 2>&1 || { echo "Bootstrapping JBang..." >&2; curl -Ls https://sh.jbang.dev | bash -s - app setup --quiet ; export PATH="$HOME/.jbang/bin:$PATH"; }; exec jbang "$0" "$@"' "$0" "$@"; exit $?
+/*
+ * Licensed under the Apache License, Version 2.0.
+ */
+//DESCRIPTION Starts a Quarkus REST service that greets whoever calls it, with the startup banner switched off for scripts
+//CDS
+//DEPS io.quarkus:quarkus-bom:${quarkus.version:3.15.1}@pom
+//DEPS	io.quarkus:quarkus-rest // the JAX-RS endpoints
+//Q:CONFIG quarkus.banner.enabled=false
+package org.example;
+// SOURCES model/Greeting.java
+
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+
+@Path("/hello")
+public class GreetingResource {
+    @GET
+    public String hello() {
+        return "Hello";
+    }
+}
