@@ -32,15 +32,8 @@ tasks.named('jmh', JMHTask.class) {
     environment.put('JARS_CLASSPATH', configurations.named('formatterNativeJars').map { conf -> conf.collect { it.absolutePath }.join(":") })
 }
 
-// Spotless is off for now: baseline-format is not applied, because Spotless 8.10.2
-// cannot be serialised into the configuration cache. Restore this block together
-// with baseline-format once that is fixed upstream.
-// spotless {
-//     java {
-//         // symlinks to a test input file that shouldn't be formatted
-//         targetExclude 'src/test/resources/*'
-//     }
-// }
+// src/test/resources/PalantirDeeplyNestedCalls.java is a symlink to a formatter test input, which has to
+// keep its unformatted shape: leave src/test/resources out of any formatting step added to this build.
 
 jmhCompileGeneratedClasses {
     options.errorprone.enabled = false
