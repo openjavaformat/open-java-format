@@ -1,0 +1,45 @@
+// The platform this build runs on, as `nativePlatform`: <os>_<arch>, the names open-java-format-native's
+// classifiers carry (nativeImage-<os>_<arch>) and the Gradle plugin resolves (NativeImageFormatProviderPlugin).
+def osName = providers.systemProperty('os.name').get().toLowerCase(Locale.ROOT)
+def osArch = providers.systemProperty('os.arch').get().toLowerCase(Locale.ROOT)
+
+String os
+if (osName.startsWith('mac')) {
+    os = 'macos'
+} else if (osName.startsWith('windows')) {
+    os = 'windows'
+} else if (osName.startsWith('linux')) {
+    // A glibc image does not run on musl. glibc's ldd prints its version to stdout; musl's prints it
+    // to stderr and exits with 1.
+    def ldd = providers.exec {
+        commandLine 'ldd', '--version'
+        ignoreExitValue = true
+    }
+    def libc = (ldd.standardOutput.asText.get() + ldd.standardError.asText.get()).toLowerCase(Locale.ROOT)
+    if (libc.contains('glibc') || libc.contains('gnu libc')) {
+        os = 'linux-glibc'
+    } else if (libc.contains('musl')) {
+        os = 'linux-musl'
+    } else {
+        throw new GradleException("Cannot tell glibc from musl: ldd --version printed ${libc}")
+    }
+} else {
+    throw new GradleException("No native image name for the operating system ${osName}")
+}
+
+String arch
+switch (osArch) {
+    case ['x86_64', 'x64', 'amd64']:
+        arch = 'x86-64'
+        break
+    case ['arm', 'arm64', 'aarch64']:
+        arch = 'aarch64'
+        break
+    case ['x86', 'i686']:
+        arch = 'x86'
+        break
+    default:
+        throw new GradleException("No native image name for the architecture ${osArch}")
+}
+
+ext.nativePlatform = "${os}_${arch}".toString()
