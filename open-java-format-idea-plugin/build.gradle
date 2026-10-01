@@ -75,7 +75,6 @@ dependencies {
 
     implementation project(':open-java-format-jdk-bootstrap')
     implementation libs.caffeine
-    implementation libs.palantir.platform
 
     formatter project(':open-java-format')
 
