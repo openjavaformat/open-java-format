@@ -34,6 +34,13 @@ buildscript {
 apply plugin: 'java'
 apply plugin: 'org.jetbrains.intellij.platform'
 
+// The IntelliJ Platform plugin defaults javac to --release, which javac refuses alongside the
+// --add-exports of jdk.compiler that build.gradle passes to every module. The Java 21 toolchain
+// already fixes what this code compiles against.
+tasks.withType(JavaCompile).configureEach {
+    options.release.unsetConvention()
+}
+
 repositories {
     mavenCentral()
     intellijPlatform {

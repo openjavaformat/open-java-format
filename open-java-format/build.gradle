@@ -8,6 +8,7 @@ description = 'A modern, lambda-friendly, 120-character Java formatter'
 dependencies {
     api project(':open-java-format-spi')
     api libs.guava
+
     implementation libs.functionaljava
     implementation libs.jackson.core
     implementation libs.jackson.databind
@@ -67,9 +68,9 @@ tasks.register('allJar', Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
-// false positives due to org.junit.runners.* in the test cases
-tasks.named("checkJUnitDependencies") {
-    enabled = false
+// Immutables' processor keeps Gradle's incremental compilation working only when asked to.
+tasks.named('compileJava', JavaCompile) {
+    options.compilerArgs.add('-Aimmutables.gradle.incremental')
 }
 
 tasks.named("test") {
@@ -78,11 +79,7 @@ tasks.named("test") {
     systemProperty 'junit.jupiter.execution.parallel.mode.default', 'concurrent'
     // FormatterVersionTest fails when the tests run on another JDK than the one asked for, so a CI leg
     // cannot pass on the wrong JDK and skip the tests that need a newer parser.
-    systemProperty 'expectedJavaVersion', rootProject.ext.javaRuntime
-}
-
-javaVersion {
-    target = 21
+    systemProperty 'expectedJavaVersion', javaRuntime
 }
 
 publishing {

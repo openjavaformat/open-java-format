@@ -62,30 +62,24 @@ class PalantirJavaFormatSpotlessPluginTest {
 
         GradleTestProject project = new GradleTestProject(projectDir)
                 // The spotless plugin dependency is already brought in by open-java-format
-                .plugins(
-                        "java",
-                        "dev.openjavaformat.java-format",
-                        "com.palantir.baseline-java-versions",
-                        "com.diffplug.spotless")
+                .plugins("java", "dev.openjavaformat.java-format", "com.diffplug.spotless")
                 .withJavacInternalExports()
                 .gradleProperties(extraGradleProperties == null ? "" : extraGradleProperties)
                 // The generated project resolves this through Gradle's own toolchain detection; this
                 // repository no longer provisions JDKs itself (palantir/gradle-jdks was removed).
-                .buildGradle(
-                        """
-                        javaVersions {
-                            libraryTarget = %s
+                .buildGradle("""
+                    java {
+                        toolchain {
+                            languageVersion = JavaLanguageVersion.of(%s)
                         }
-                        """,
-                        javaVersion)
-                .buildGradle(
-                        """
-                        dependencies {
-                            palantirJavaFormat files(file("%s").text.split(File.pathSeparator))
-                            %s
-                        }
-                        """,
-                        CLASSPATH_FILE, extraDependencies)
+                    }
+                    """, javaVersion)
+                .buildGradle("""
+                    dependencies {
+                        palantirJavaFormat files(file("%s").text.split(File.pathSeparator))
+                        %s
+                    }
+                    """, CLASSPATH_FILE, extraDependencies)
                 .writeFile(MAIN_JAVA, invalidJavaFile());
 
         BuildResult result = project.succeeds("spotlessApply", "--info");

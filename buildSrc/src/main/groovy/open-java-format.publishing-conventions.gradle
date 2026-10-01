@@ -1,5 +1,3 @@
-// Applied by every module with a Maven publication: the POM Maven Central requires, and a local
-// `staging` repository that JReleaser signs and uploads from (open-java-format.release-conventions).
 plugins {
     id 'maven-publish'
 }
@@ -61,6 +59,7 @@ publishing {
 def cleanStagingDeploy = tasks.register('cleanStagingDeploy', Delete) {
     delete stagingDeploy
 }
+
 tasks.withType(PublishToMavenRepository).configureEach {
     if (name.endsWith('ToStagingRepository')) {
         dependsOn cleanStagingDeploy

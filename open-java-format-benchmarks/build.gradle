@@ -14,6 +14,7 @@ dependencies {
     jmhImplementation libs.junit.jupiter
     jmhImplementation libs.jmh.core
     jmhImplementation libs.jmh.generator.annprocess
+
     formatterNativeJars project(':open-java-format')
     formatterNativeImage(project(':open-java-format-native')) {
         attributes {
