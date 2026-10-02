@@ -8,10 +8,7 @@ configurations {
 }
 
 dependencies {
-    annotationProcessor libs.immutables.value
-
     api project(':open-java-format-spi')
-    compileOnly variantOf(libs.immutables.value) { classifier('annotations') }
     implementation libs.jackson.databind
 
     testImplementation project(':open-java-format')
@@ -24,11 +21,6 @@ dependencies {
             attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.objects.named(LibraryElements, 'nativeImage'))
         }
     }
-}
-
-// Immutables' processor keeps Gradle's incremental compilation working only when asked to.
-tasks.named('compileJava', JavaCompile) {
-    options.compilerArgs.add('-Aimmutables.gradle.incremental')
 }
 
 tasks.named('test', Test.class) {
