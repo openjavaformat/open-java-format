@@ -18,10 +18,7 @@ package com.palantir.javaformat.gradle;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.palantir.gradle.ideaconfiguration.IdeaConfigurationExtension;
-import com.palantir.gradle.ideaconfiguration.IdeaConfigurationPlugin;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 import javax.inject.Inject;
@@ -82,23 +79,34 @@ public abstract class PalantirJavaFormatIdeaPlugin implements Plugin<Project> {
                         task.getOutputFile().set(rootProject.file(".idea/workspace.xml"));
                     });
 
-            // Add the task to the Gradle start parameters so it executes automatically.
-            StartParameter startParameter = rootProject.getGradle().getStartParameter();
-            List<String> updateTasks = Stream.of(updateOpenJavaFormatXml, updateWorkspaceXml)
-                    .map(taskProvider -> String.format(":%s", taskProvider.getName()))
-                    .toList();
-            List<String> taskNames = ImmutableList.<String>builder()
-                    .addAll(startParameter.getTaskNames())
-                    .addAll(updateTasks)
-                    .build();
-            startParameter.setTaskNames(taskNames);
+            runWithEveryBuild(rootProject, updateOpenJavaFormatXml, updateWorkspaceXml);
         });
 
-        rootProject.getPluginManager().apply(IdeaConfigurationPlugin.class);
-        IdeaConfigurationExtension extension = rootProject.getExtensions().getByType(IdeaConfigurationExtension.class);
-        extension
-                .getExternalDependencies()
-                .register("open-java-format", dep -> dep.atLeastVersion(MIN_IDEA_PLUGIN_VERSION));
+        // IntelliJ's Gradle sync sets idea.active. The project then lists the open-java-format IDEA plugin as
+        // required, and IntelliJ offers to install it.
+        if (rootProject
+                .getProviders()
+                .systemProperty("idea.active")
+                .map(Boolean::parseBoolean)
+                .getOrElse(false)) {
+            TaskProvider<UpdateExternalDependenciesXmlFile> updateExternalDependenciesXml = rootProject
+                    .getTasks()
+                    .register("updateExternalDependenciesXml", UpdateExternalDependenciesXmlFile.class, task -> {
+                        task.getPluginId().set("open-java-format");
+                        task.getMinVersion().set(MIN_IDEA_PLUGIN_VERSION);
+                        task.getOutputFile().set(rootProject.file(".idea/externalDependencies.xml"));
+                    });
+            runWithEveryBuild(rootProject, updateExternalDependenciesXml);
+        }
+    }
+
+    // Adds the tasks to the Gradle start parameters, so they run with whatever the build was asked to do.
+    private static void runWithEveryBuild(Project rootProject, TaskProvider<?>... tasks) {
+        StartParameter startParameter = rootProject.getGradle().getStartParameter();
+        startParameter.setTaskNames(ImmutableList.<String>builder()
+                .addAll(startParameter.getTaskNames())
+                .addAll(Stream.of(tasks).map(task -> ":" + task.getName()).toList())
+                .build());
     }
 
     private Optional<Configuration> maybeGetNativeImplConfiguration() {

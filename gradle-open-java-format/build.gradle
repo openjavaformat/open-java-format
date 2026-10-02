@@ -23,7 +23,6 @@ dependencies {
     implementation libs.guava
     implementation project(':open-java-format-spi')
     implementation project(':open-java-format-jdk-bootstrap')
-    implementation libs.ideaConfiguration.gradlePlugin
 
     testImplementation project(':open-java-format')
     testImplementation libs.junit.jupiter
