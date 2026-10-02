@@ -33,7 +33,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.immutables.value.Value;
 
 public final class BootstrappingFormatterService implements FormatterService {
     private static final ObjectMapper MAPPER =
@@ -80,13 +79,12 @@ public final class BootstrappingFormatterService implements FormatterService {
 
     private ImmutableList<Replacement> getFormatReplacementsInternal(String input, Collection<Range<Integer>> ranges)
             throws IOException {
-        FormatterCliArgs command = FormatterCliArgs.builder()
-                .jdkPath(jdkPath)
-                .withJvmArgsForVersion(jdkMajorVersion)
-                .implementationClasspath(implementationClassPath)
-                .outputReplacements(true)
-                .characterRanges(ranges.stream().map(RangeUtils::toStringRange).collect(Collectors.toList()))
-                .build();
+        FormatterCliArgs command = new FormatterCliArgs(
+                jdkPath,
+                jvmArgsForVersion(jdkMajorVersion),
+                implementationClassPath,
+                /* outputReplacements= */ true,
+                ranges.stream().map(RangeUtils::toStringRange).collect(Collectors.toList()));
 
         @SuppressWarnings("for-rollout:NullAway")
         Optional<String> output =
@@ -98,43 +96,50 @@ public final class BootstrappingFormatterService implements FormatterService {
     }
 
     private String runFormatterCommand(String input) throws IOException {
-        FormatterCliArgs command = FormatterCliArgs.builder()
-                .jdkPath(jdkPath)
-                .withJvmArgsForVersion(jdkMajorVersion)
-                .implementationClasspath(implementationClassPath)
-                .outputReplacements(false)
-                .build();
+        FormatterCliArgs command = new FormatterCliArgs(
+                jdkPath,
+                jvmArgsForVersion(jdkMajorVersion),
+                implementationClassPath,
+                /* outputReplacements= */ false,
+                /* characterRanges= */ List.of());
         return FormatterCommandRunner.runWithStdin(command.toArgs(), input, Optional.ofNullable(jdkPath.getParent()))
                 .orElse(input);
     }
 
-    @Value.Immutable
-    interface FormatterCliArgs {
-        List<String> characterRanges();
+    private static List<String> jvmArgsForVersion(int majorJvmVersion) {
+        if (majorJvmVersion >= 16) {
+            return List.of(
+                    "--add-exports", "jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+                    "--add-exports", "jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
+                    "--add-exports", "jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED",
+                    "--add-exports", "jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
+                    "--add-exports", "jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED");
+        }
+        return List.of();
+    }
 
-        boolean outputReplacements();
+    record FormatterCliArgs(
+            Path jdkPath,
+            List<String> jvmArgs,
+            List<Path> implementationClasspath,
+            boolean outputReplacements,
+            List<String> characterRanges) {
 
-        Path jdkPath();
-
-        List<Path> implementationClasspath();
-
-        List<String> jvmArgs();
-
-        default List<String> toArgs() {
+        List<String> toArgs() {
             ImmutableList.Builder<String> args = ImmutableList.<String>builder()
-                    .add(jdkPath().toAbsolutePath().toString())
-                    .addAll(jvmArgs())
+                    .add(jdkPath.toAbsolutePath().toString())
+                    .addAll(jvmArgs)
                     .add(
                             "-cp",
-                            implementationClasspath().stream()
+                            implementationClasspath.stream()
                                     .map(path -> path.toAbsolutePath().toString())
                                     .collect(Collectors.joining(System.getProperty("path.separator"))))
                     .add(FORMATTER_MAIN_CLASS);
 
-            if (!characterRanges().isEmpty()) {
-                args.add("--character-ranges", Joiner.on(',').join(characterRanges()));
+            if (!characterRanges.isEmpty()) {
+                args.add("--character-ranges", Joiner.on(',').join(characterRanges));
             }
-            if (outputReplacements()) {
+            if (outputReplacements) {
                 args.add("--output-replacements");
             }
 
@@ -142,24 +147,6 @@ public final class BootstrappingFormatterService implements FormatterService {
                     // Trailing "-" enables formatting stdin -> stdout
                     .add("-")
                     .build();
-        }
-
-        static Builder builder() {
-            return new Builder();
-        }
-
-        final class Builder extends ImmutableFormatterCliArgs.Builder {
-            Builder withJvmArgsForVersion(Integer majorJvmVersion) {
-                if (majorJvmVersion >= 16) {
-                    addJvmArgs(
-                            "--add-exports", "jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
-                            "--add-exports", "jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
-                            "--add-exports", "jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED",
-                            "--add-exports", "jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED",
-                            "--add-exports", "jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED");
-                }
-                return this;
-            }
         }
     }
 }

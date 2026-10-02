@@ -32,7 +32,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.immutables.value.Value;
 
 public class NativeImageFormatterService implements FormatterService {
     private static final ObjectMapper MAPPER =
@@ -47,12 +46,10 @@ public class NativeImageFormatterService implements FormatterService {
     public ImmutableList<Replacement> getFormatReplacements(String input, Collection<Range<Integer>> ranges) {
         Optional<String> output = Optional.empty();
         try {
-            FormatterNativeImageArgs command = FormatterNativeImageArgs.builder()
-                    .nativeImagePath(nativeImagePath)
-                    .outputReplacements(true)
-                    .characterRanges(
-                            ranges.stream().map(RangeUtils::toStringRange).collect(Collectors.toList()))
-                    .build();
+            FormatterNativeImageArgs command = new FormatterNativeImageArgs(
+                    nativeImagePath,
+                    /* outputReplacements= */ true,
+                    ranges.stream().map(RangeUtils::toStringRange).collect(Collectors.toList()));
 
             output = FormatterCommandRunner.runWithStdin(
                     command.toArgs(), input, Optional.ofNullable(nativeImagePath.getParent()));
@@ -85,32 +82,23 @@ public class NativeImageFormatterService implements FormatterService {
     }
 
     private String runFormatterCommand(String input) throws IOException {
-        FormatterNativeImageArgs command = FormatterNativeImageArgs.builder()
-                .nativeImagePath(nativeImagePath)
-                .outputReplacements(false)
-                .build();
+        FormatterNativeImageArgs command = new FormatterNativeImageArgs(
+                nativeImagePath, /* outputReplacements= */ false, /* characterRanges= */ List.of());
         return FormatterCommandRunner.runWithStdin(
                         command.toArgs(), input, Optional.ofNullable(nativeImagePath.getParent()))
                 .orElse(input);
     }
 
-    @Value.Immutable
-    interface FormatterNativeImageArgs {
+    record FormatterNativeImageArgs(Path nativeImagePath, boolean outputReplacements, List<String> characterRanges) {
 
-        List<String> characterRanges();
-
-        boolean outputReplacements();
-
-        Path nativeImagePath();
-
-        default List<String> toArgs() {
+        List<String> toArgs() {
             ImmutableList.Builder<String> args = ImmutableList.<String>builder()
-                    .add(nativeImagePath().toAbsolutePath().toString());
+                    .add(nativeImagePath.toAbsolutePath().toString());
 
-            if (!characterRanges().isEmpty()) {
-                args.add("--character-ranges", Joiner.on(',').join(characterRanges()));
+            if (!characterRanges.isEmpty()) {
+                args.add("--character-ranges", Joiner.on(',').join(characterRanges));
             }
-            if (outputReplacements()) {
+            if (outputReplacements) {
                 args.add("--output-replacements");
             }
 
@@ -119,11 +107,5 @@ public class NativeImageFormatterService implements FormatterService {
                     .add("-")
                     .build();
         }
-
-        static FormatterNativeImageArgs.Builder builder() {
-            return new FormatterNativeImageArgs.Builder();
-        }
-
-        final class Builder extends ImmutableFormatterNativeImageArgs.Builder {}
     }
 }
