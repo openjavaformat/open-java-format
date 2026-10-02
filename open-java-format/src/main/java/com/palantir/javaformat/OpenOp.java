@@ -41,7 +41,7 @@ public abstract class OpenOp extends HasUniqueId implements Op {
      */
     @Default
     public BreakBehaviour breakBehaviour() {
-        return BreakBehaviours.breakThisLevel();
+        return BreakBehaviour.breakThisLevel();
     }
 
     /** If it's the last level of its parent, when to inline this level rather than break the parent. */

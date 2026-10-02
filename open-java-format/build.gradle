@@ -26,8 +26,6 @@ dependencies {
     compileOnly variantOf(libs.immutables.value) { classifier('annotations') }
     annotationProcessor libs.immutables.value
 
-    compileOnly libs.derive4j.annotation
-    annotationProcessor libs.derive4j
     implementation libs.jsr305
 }
 

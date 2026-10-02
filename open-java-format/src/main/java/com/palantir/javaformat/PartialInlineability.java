@@ -20,7 +20,7 @@ import com.palantir.javaformat.java.JavaInputAstVisitor;
 
 /**
  * What are the conditions for a level to be partially inlineable. Partial inlining refers to the behaviour of
- * {@link BreakBehaviours#breakOnlyIfInnerLevelsThenFitOnOneLine} where a level is too large to fit on the current line,
+ * {@link BreakBehaviour.BreakOnlyIfInnerLevelsThenFitOnOneLine} where a level is too large to fit on the current line,
  * but a prefix thereof is partially inlined onto the current line.
  *
  * <p>Specifically, when inlining a level with the above behaviour, the partial inlineability of its first

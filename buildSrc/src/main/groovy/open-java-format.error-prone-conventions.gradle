@@ -16,7 +16,7 @@ nullaway {
 
 tasks.withType(JavaCompile).configureEach {
     options.errorprone {
-        // Annotation processor output (derive4j, Immutables) is not ours to fix.
+        // Annotation processor output (Immutables) is not ours to fix.
         excludedPaths = '.*/build/generated/.*'
     }
 }
