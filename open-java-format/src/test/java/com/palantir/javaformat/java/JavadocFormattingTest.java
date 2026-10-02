@@ -26,7 +26,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /** Tests formatting javadoc. */
 @Execution(ExecutionMode.CONCURRENT)
-public final class JavadocFormattingTest {
+final class JavadocFormattingTest {
 
     private final Formatter formatter = new Formatter(
             JavaFormatterOptions.builder()

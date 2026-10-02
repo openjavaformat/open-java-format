@@ -27,7 +27,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /** {@link ModifierOrderer}Test */
 @Execution(ExecutionMode.CONCURRENT)
-public class ModifierOrdererTest {
+final class ModifierOrdererTest {
 
     @Test
     public void simple() throws FormatterException {

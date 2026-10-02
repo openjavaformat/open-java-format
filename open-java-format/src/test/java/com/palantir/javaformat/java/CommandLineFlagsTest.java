@@ -24,7 +24,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /** Tests for command-line flags. */
 @Execution(ExecutionMode.CONCURRENT)
-public class CommandLineFlagsTest {
+final class CommandLineFlagsTest {
 
     // TODO(eaftan): Disallow passing both -lines and -offset/-length, like clang-format.
 

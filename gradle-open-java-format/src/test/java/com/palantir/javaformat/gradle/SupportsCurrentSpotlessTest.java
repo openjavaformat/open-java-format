@@ -31,7 +31,7 @@ import org.junit.jupiter.api.io.TempDir;
  * cache, which is what now catches eager resolution. gradle-consistent-versions used to play that role; it is gone,
  * because applying it is precisely what Gradle 9 rejects.
  */
-class SupportsCurrentSpotlessTest {
+final class SupportsCurrentSpotlessTest {
 
     // Forward slashes: the path goes into a Groovy string, where a Windows backslash would start an escape.
     private static final String CLASSPATH_FILE =

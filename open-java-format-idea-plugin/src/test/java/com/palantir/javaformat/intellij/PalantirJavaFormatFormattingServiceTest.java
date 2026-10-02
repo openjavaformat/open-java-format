@@ -51,7 +51,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class PalantirJavaFormatFormattingServiceTest {
+final class PalantirJavaFormatFormattingServiceTest {
     private JavaCodeInsightTestFixture fixture;
     private PalantirJavaFormatSettings settings;
     private DelegatingFormatter delegatingFormatter;

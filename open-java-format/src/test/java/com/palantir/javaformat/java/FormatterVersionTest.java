@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
  * Guards CI's {@code jdk} legs: without this, a leg that runs on an older JDK than the one it asked for with
  * {@code -PjavaRuntime} skips the {@code ModuleImport} golden and the module import tests, and still passes.
  */
-public class FormatterVersionTest {
+final class FormatterVersionTest {
 
     @Test
     public void runsOnTheJdkTheTestTaskAskedFor() {

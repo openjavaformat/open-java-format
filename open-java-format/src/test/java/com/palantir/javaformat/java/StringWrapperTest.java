@@ -37,7 +37,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 @Execution(ExecutionMode.CONCURRENT)
-public class StringWrapperTest {
+final class StringWrapperTest {
     @Test
     public void testAwkwardLineEndWrapping() throws Exception {
         String input = lines(

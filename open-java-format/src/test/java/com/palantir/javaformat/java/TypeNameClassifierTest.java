@@ -24,7 +24,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 @Execution(ExecutionMode.CONCURRENT)
-public final class TypeNameClassifierTest {
+final class TypeNameClassifierTest {
     @Test
     public void caseFormat() throws Exception {
         assertThat(JavaCaseFormat.from("CONST")).isEqualTo(JavaCaseFormat.UPPERCASE);

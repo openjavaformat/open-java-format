@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
  * End-to-end tests for module import declarations (JEP 511) through the pipeline the Gradle plugin and Spotless use,
  * which reorders imports before formatting. The {@code ModuleImport} golden only exercises {@code formatSource}.
  */
-public class ModuleImportTest {
+final class ModuleImportTest {
 
     @BeforeAll
     public static void requiresAParserThatProducesModuleImports() {

@@ -40,7 +40,7 @@ import org.junit.jupiter.api.Test;
  * every bound field stayed null, so the page rendered nothing and reset() threw as soon as it was opened. It is plain
  * Java now, and these tests fail if it goes back to a form the build does not instrument.
  */
-public class PalantirJavaFormatConfigurableTest {
+final class PalantirJavaFormatConfigurableTest {
 
     private JavaCodeInsightTestFixture fixture;
     private PalantirJavaFormatSettings settings;

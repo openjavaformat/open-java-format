@@ -28,26 +28,26 @@ pluginManager.withPlugin('java-gradle-plugin') {
     }
 }
 
-// The checks vfs-s3 makes build-breaking. Off until the code is fixed, one check at a time:
-// JUnitMethodDeclaration 206, StaticImport 84, LexicographicalAnnotationListing 46, JUnitClassModifiers 25,
+// The checks vfs-s3 makes build-breaking. The commented ones stay off until the code is fixed, one check at a
+// time: JUnitMethodDeclaration 206, StaticImport 84, LexicographicalAnnotationListing 46,
 // RedundantStringConversion 6, AlmostJavadoc 3 findings; the rest have none.
-//tasks.withType(JavaCompile).configureEach {
-//    options.errorprone {
-//        error('StaticImport')
-//        error('UnnecessarilyFullyQualified')
-//        error('EmptyBlockTag')
-//        error('OperatorPrecedence')
-//        error('RedundantStringConversion')
-//        error('PatternMatchingInstanceof')
-//        error('UnnecessaryParentheses')
-//        error('LexicographicalAnnotationListing')
-//        error('JUnitMethodDeclaration')
-//        error('JUnitClassModifiers')
-//        error('MissingSummary')
-//        error('AlmostJavadoc')
-//        error('BadImport')
-//        error('JdkObsolete')
-//        // NonStaticImport (Picnic) is the inverse of StaticImport and would give contradictory advice.
-//        disable('NonStaticImport')
-//    }
-//}
+tasks.withType(JavaCompile).configureEach {
+    options.errorprone {
+        //error('StaticImport')
+        //error('UnnecessarilyFullyQualified')
+        //error('EmptyBlockTag')
+        //error('OperatorPrecedence')
+        //error('RedundantStringConversion')
+        //error('PatternMatchingInstanceof')
+        //error('UnnecessaryParentheses')
+        //error('LexicographicalAnnotationListing')
+        //error('JUnitMethodDeclaration')
+        error('JUnitClassModifiers')
+        //error('MissingSummary')
+        //error('AlmostJavadoc')
+        //error('BadImport')
+        //error('JdkObsolete')
+        // NonStaticImport (Picnic) is the inverse of StaticImport and would give contradictory advice.
+        //disable('NonStaticImport')
+    }
+}

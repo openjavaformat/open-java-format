@@ -43,7 +43,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 @Execution(ExecutionMode.CONCURRENT)
-public class MainTest {
+final class MainTest {
 
     private static final ImmutableList<String> ADD_EXPORTS = ImmutableList.of(
             "--add-exports", "jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",

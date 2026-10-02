@@ -27,7 +27,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /** Tests for {@link Utils#lineRangesToCharRanges} */
 @Execution(ExecutionMode.CONCURRENT)
-public class LineRangesToCharRangesTest {
+final class LineRangesToCharRangesTest {
 
     @SafeVarargs
     final Set<Range<Integer>> getCharRanges(String input, Range<Integer>... ranges) {

@@ -28,7 +28,7 @@ import org.junit.jupiter.api.io.TempDir;
  * Most projects that apply the formatter never apply Spotless, so there are no Spotless classes on their buildscript
  * classpath. The Spotless integration has to stay dormant there instead of failing the whole plugin.
  */
-class AppliesWithoutSpotlessTest {
+final class AppliesWithoutSpotlessTest {
 
     @TempDir
     private Path projectDir;

@@ -24,7 +24,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import org.junit.jupiter.api.Test;
 
-public class NewlinesTest {
+final class NewlinesTest {
     @Test
     public void offsets() {
         Truth.assertThat(ImmutableList.copyOf(Newlines.lineOffsetIterator("foo\nbar\n")))

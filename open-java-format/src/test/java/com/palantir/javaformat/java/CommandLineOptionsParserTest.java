@@ -31,7 +31,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /** {@link CommandLineOptionsParser}Test */
 @Execution(ExecutionMode.CONCURRENT)
-public class CommandLineOptionsParserTest {
+final class CommandLineOptionsParserTest {
 
     @TempDir
     public Path testFolder;

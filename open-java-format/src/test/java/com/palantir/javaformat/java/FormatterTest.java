@@ -41,7 +41,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 @Execution(ExecutionMode.CONCURRENT)
-public final class FormatterTest {
+final class FormatterTest {
 
     @TempDir
     public Path testFolder;
