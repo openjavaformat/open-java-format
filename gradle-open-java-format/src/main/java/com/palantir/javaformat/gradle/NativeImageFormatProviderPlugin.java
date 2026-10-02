@@ -17,20 +17,18 @@
 package com.palantir.javaformat.gradle;
 
 import com.google.common.base.Preconditions;
-import com.palantir.platform.Architecture;
-import com.palantir.platform.GradleOperatingSystem;
-import com.palantir.platform.OperatingSystem;
 import java.util.Collections;
+import javax.inject.Inject;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.tasks.Nested;
+import org.gradle.api.provider.ProviderFactory;
 
 public abstract class NativeImageFormatProviderPlugin implements Plugin<Project> {
 
-    @Nested
-    protected abstract GradleOperatingSystem getOs();
+    @Inject
+    protected abstract ProviderFactory getProviderFactory();
 
     static final String NATIVE_CONFIGURATION_NAME = "palantirJavaFormatNative";
 
@@ -40,21 +38,18 @@ public abstract class NativeImageFormatProviderPlugin implements Plugin<Project>
                 rootProject == rootProject.getRootProject(),
                 "May only apply dev.openjavaformat.java-format-provider to the root project");
 
-        Provider<OperatingSystem> operatingSystem = getOs().getOperatingSystem();
+        Provider<NativePlatform> platform = NativePlatform.current(getProviderFactory());
         String implementationVersion = JavaFormatExtension.class.getPackage().getImplementationVersion();
         rootProject.getConfigurations().register(NATIVE_CONFIGURATION_NAME, conf -> {
             conf.setDescription("Internal configuration for resolving the open-java-format native image");
             conf.setCanBeConsumed(false);
             conf.setCanBeResolved(true);
             conf.defaultDependencies(deps -> {
-                deps.addAllLater(operatingSystem.map(os -> Collections.singletonList(rootProject
+                deps.addAllLater(platform.map(p -> Collections.singletonList(rootProject
                         .getDependencies()
                         .create(String.format(
-                                "dev.openjavaformat:open-java-format-native:%s:nativeImage-%s_%s@%s",
-                                implementationVersion,
-                                os.uiName(),
-                                Architecture.get().uiName(),
-                                getExtension(os))))));
+                                "dev.openjavaformat:open-java-format-native:%s:%s@%s",
+                                implementationVersion, p.classifier(), p.extension())))));
             });
             conf.getAttributes().attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, "executable-nativeImage");
         });
@@ -62,16 +57,8 @@ public abstract class NativeImageFormatProviderPlugin implements Plugin<Project>
             transformSpec
                     .getFrom()
                     .attributeProvider(
-                            ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE,
-                            operatingSystem.map(NativeImageFormatProviderPlugin::getExtension));
+                            ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, platform.map(NativePlatform::extension));
             transformSpec.getTo().attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, "executable-nativeImage");
         });
-    }
-
-    static String getExtension(OperatingSystem operatingSystem) {
-        if (operatingSystem.equals(OperatingSystem.WINDOWS)) {
-            return "exe";
-        }
-        return "bin";
     }
 }
