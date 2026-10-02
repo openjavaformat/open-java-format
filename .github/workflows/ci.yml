@@ -22,11 +22,16 @@ jobs:
         with:
           persist-credentials: false
 
+      # setup-java's problem matcher turns javac's warnings, Error Prone's among them, into annotations on
+      # the diff. This is the one job that keeps it: every other job compiles the same sources, and with
+      # the matcher on there too each warning showed once per job. GitHub keeps only the first ten
+      # warnings of a step, so the annotations are the first ten warnings the parallel build prints.
       - name: Install JDK 21
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '21'
+          problem-matcher: true
 
       - name: Build
         run: ./gradlew test
@@ -68,12 +73,14 @@ jobs:
         with:
           persist-credentials: false
 
+      # No problem matcher in this job: `build` annotates the warnings.
       - name: Install JDK ${{ matrix.jdk }} for the tests
         id: test-jdk
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: ${{ matrix.jdk }}
+          problem-matcher: false
 
       # Installed last, so that it is the JAVA_HOME Gradle runs and compiles on.
       - name: Install JDK 21
@@ -81,6 +88,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          problem-matcher: false
 
       - name: Explain the extra Gradle arguments
         if: ${{ matrix.gradle_args != '' }}
@@ -138,13 +146,15 @@ jobs:
 
       # The jars compile with a Java 21 toolchain, which gradle.properties looks up in JDK21_HOME. On
       # Linux and macOS Gradle also finds the runner's own JDK 21 by its location, on Windows it does not.
-      # Installed before GraalVM, so that Gradle itself still runs on GraalVM.
+      # Installed before GraalVM, so that Gradle itself still runs on GraalVM. No problem matcher: `build`
+      # annotates the warnings.
       - name: Install JDK 21 for the jars
         id: jdk21
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '21'
+          problem-matcher: false
 
       - name: Install GraalVM 25 for the image
         uses: graalvm/setup-graalvm@0426e2e191540e8514dff98dc52a5f5146a2a276 # v1.6.6
