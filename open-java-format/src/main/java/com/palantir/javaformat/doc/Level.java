@@ -36,10 +36,6 @@ import com.palantir.javaformat.doc.Obs.Exploration;
 import com.palantir.javaformat.doc.Obs.ExplorationNode;
 import com.palantir.javaformat.doc.Obs.LevelNode;
 import com.palantir.javaformat.doc.StartsWithBreakVisitor.Result;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -49,7 +45,6 @@ import java.util.Set;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.immutables.value.Value;
 
 /** A {@code Level} inside a {@link Doc}. */
 public final class Level extends Doc {
@@ -127,7 +122,7 @@ public final class Level extends Doc {
     @Override
     public State computeBreaks(CommentsHelper commentsHelper, int maxWidth, State state, Obs.ExplorationNode observer) {
         return tryToFitOnOneLine(maxWidth, state, docs)
-                .map(newWidth -> state.withColumn(newWidth).withLevelState(this, ImmutableLevelState.of(true)))
+                .map(newWidth -> state.withColumn(newWidth).withLevelState(this, new State.LevelState(true)))
                 .orElseGet(() -> {
                     Obs.LevelNode childLevel = observer.newChildNode(this, state);
                     State newState =
@@ -631,19 +626,20 @@ public final class Level extends Doc {
     }
 
     private static SplitsBreaks splitByBreaks(List<Doc> docs) {
-        ImmutableSplitsBreaks.Builder builder = ImmutableSplitsBreaks.builder();
+        ImmutableList.Builder<ImmutableList<Doc>> splits = ImmutableList.builder();
+        ImmutableList.Builder<Break> breaks = ImmutableList.builder();
         ImmutableList.Builder<Doc> currentSplit = ImmutableList.builder();
         for (Doc doc : docs) {
             if (doc instanceof Break b) {
-                builder.addSplits(currentSplit.build());
+                splits.add(currentSplit.build());
                 currentSplit = ImmutableList.builder();
-                builder.addBreaks(b);
+                breaks.add(b);
             } else {
                 currentSplit.add(doc);
             }
         }
-        builder.addSplits(currentSplit.build());
-        return builder.build();
+        splits.add(currentSplit.build());
+        return new SplitsBreaks(splits.build(), breaks.build());
     }
 
     /** Compute breaks for a {@link Level} that spans multiple lines. */
@@ -837,18 +833,11 @@ public final class Level extends Doc {
                 .toString();
     }
 
-    @Target(ElementType.TYPE)
-    @Retention(RetentionPolicy.SOURCE)
-    @Value.Style(overshadowImplementation = true)
-    @interface SplitsBreaksStyle {}
-
-    @SplitsBreaksStyle
-    @Value.Immutable
-    interface SplitsBreaks {
-        /** Groups of {@link Doc}s that are children of the current {@link Level}, separated by {@link Break}s. */
-        ImmutableList<ImmutableList<Doc>> splits();
-
-        /** {@link Break}s between {@link Doc}s in the current {@link Level}. */
-        ImmutableList<Break> breaks();
-    }
+    /**
+     * The children of the current {@link Level}, cut at its {@link Break}s.
+     *
+     * @param splits groups of {@link Doc}s that are children of the current level, separated by breaks
+     * @param breaks the breaks between those groups
+     */
+    record SplitsBreaks(ImmutableList<ImmutableList<Doc>> splits, ImmutableList<Break> breaks) {}
 }

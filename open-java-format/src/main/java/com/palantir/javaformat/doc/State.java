@@ -22,13 +22,8 @@ import com.google.errorprone.annotations.Immutable;
 import com.palantir.javaformat.Indent;
 import fj.data.Set;
 import fj.data.TreeMap;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.util.Objects;
 import org.immutables.value.Value;
-import org.immutables.value.Value.Parameter;
 
 /** State for writing. */
 // Automatically suppressed to unblock enforcement in new code
@@ -95,7 +90,7 @@ public abstract class State {
     }
 
     public BreakState getBreakState(Break brk) {
-        return breakStates().get(brk).orSome(ImmutableBreakState.of(false, -1));
+        return breakStates().get(brk).orSome(new BreakState(false, -1));
     }
 
     public boolean wasBreakTaken(BreakTag breakTag) {
@@ -163,7 +158,7 @@ public abstract class State {
                     .lastIndent(indent())
                     .column(newColumn)
                     .numLines(numLines() + 1)
-                    .breakStates(breakStates().set(brk, ImmutableBreakState.of(true, newColumn)))
+                    .breakStates(breakStates().set(brk, new BreakState(true, newColumn)))
                     .build();
         } else {
             return builder.column(column() + brk.getFlat().length()).build();
@@ -249,44 +244,14 @@ public abstract class State {
         return new Builder();
     }
 
-    @Target(ElementType.TYPE)
-    @Retention(RetentionPolicy.SOURCE)
-    @Value.Style(overshadowImplementation = true)
-    @interface BreakStateStyle {}
+    record BreakState(boolean broken, int newIndent) {}
 
-    @BreakStateStyle
-    @Value.Immutable
-    @JsonSerialize(as = ImmutableBreakState.class)
-    interface BreakState {
-        @Parameter
-        boolean broken();
+    /**
+     * How a {@link Level} was laid out.
+     *
+     * @param oneLine true if the entire level fits on one line
+     */
+    record LevelState(boolean oneLine) {}
 
-        @Parameter
-        int newIndent();
-    }
-
-    @Target(ElementType.TYPE)
-    @Retention(RetentionPolicy.SOURCE)
-    @Value.Style(overshadowImplementation = true)
-    @interface LevelStateStyle {}
-
-    @LevelStateStyle
-    @Value.Immutable
-    interface LevelState {
-        /** True if the entire {@link Level} fits on one line. */
-        @Parameter
-        boolean oneLine();
-    }
-
-    @Target(ElementType.TYPE)
-    @Retention(RetentionPolicy.SOURCE)
-    @Value.Style(overshadowImplementation = true)
-    @interface TokStateStyle {}
-
-    @TokStateStyle
-    @Value.Immutable
-    interface TokState {
-        @Parameter
-        String text();
-    }
+    record TokState(String text) {}
 }

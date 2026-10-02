@@ -51,9 +51,6 @@ public final class InputMetadataBuilder {
     }
 
     public InputMetadata build() {
-        return ImmutableInputMetadata.builder()
-                .blankLines(ImmutableMap.copyOf(blankLines))
-                .partialFormatRanges(ImmutableRangeSet.copyOf(partialFormatRanges))
-                .build();
+        return new InputMetadata(ImmutableMap.copyOf(blankLines), ImmutableRangeSet.copyOf(partialFormatRanges));
     }
 }

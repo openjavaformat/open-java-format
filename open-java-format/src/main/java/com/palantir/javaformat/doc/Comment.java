@@ -96,7 +96,7 @@ public final class Comment extends Doc implements Op {
         int column = lastLineStart == 0 ? state.column() + lastLineLength : lastLineLength;
         return state.withColumn(column)
                 .addNewLines(Iterators.size(Newlines.lineOffsetIterator(text)))
-                .withTokState(this, ImmutableTokState.of(text));
+                .withTokState(this, new State.TokState(text));
     }
 
     @Override

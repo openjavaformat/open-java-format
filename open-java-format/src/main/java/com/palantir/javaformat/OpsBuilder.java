@@ -20,6 +20,7 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
+import com.google.errorprone.annotations.Immutable;
 import com.palantir.javaformat.Indent.Const;
 import com.palantir.javaformat.Input.Tok;
 import com.palantir.javaformat.doc.Break;
@@ -35,14 +36,9 @@ import com.palantir.javaformat.doc.Token.RealOrImaginary;
 import com.palantir.javaformat.java.FormatterDiagnostic;
 import com.palantir.javaformat.java.InputMetadata;
 import com.palantir.javaformat.java.InputMetadataBuilder;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.immutables.value.Value;
 
 /** An {@code OpsBuilder} creates a list of {@link Op}s, which is turned into a {@link Doc} by {@link DocBuilder}. */
 public final class OpsBuilder {
@@ -86,6 +82,7 @@ public final class OpsBuilder {
     }
 
     /** A request to add or remove a blank line in the output. */
+    @Immutable
     public abstract static class BlankLineWanted {
 
         /** Always emit a blank line. */
@@ -501,18 +498,7 @@ public final class OpsBuilder {
 
     private static final NonBreakingSpace SPACE = NonBreakingSpace.make();
 
-    @Target(ElementType.TYPE)
-    @Retention(RetentionPolicy.SOURCE)
-    @Value.Style(overshadowImplementation = true)
-    @interface OpsOutputStyle {}
-
-    @OpsOutputStyle
-    @Value.Immutable
-    public interface OpsOutput {
-        ImmutableList<Op> ops();
-
-        InputMetadata inputMetadata();
-    }
+    public record OpsOutput(ImmutableList<Op> ops, InputMetadata inputMetadata) {}
 
     /** Build a list of {@link Op}s from the {@code OpsBuilder}. */
     public OpsOutput build() {
@@ -669,10 +655,7 @@ public final class OpsBuilder {
                 afterForcedBreak = isForcedBreak(op);
             }
         }
-        return ImmutableOpsOutput.builder()
-                .ops(newOps.build())
-                .inputMetadata(inputMetadataBuilder.build())
-                .build();
+        return new OpsOutput(newOps.build(), inputMetadataBuilder.build());
     }
 
     private static boolean isNonNlsComment(Input.Tok tokAfter) {
