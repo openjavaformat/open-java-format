@@ -30,7 +30,7 @@ import org.junit.jupiter.api.io.TempDir;
  * internals (#19). It fails before the first file now, naming the two settings that make the formatter run. This
  * class runs in the default test task; PalantirJavaFormatPluginTest does not, because it needs the native binary.
  */
-class FormatDiffWithoutJavacExportsTest {
+final class FormatDiffWithoutJavacExportsTest {
 
     /** ./gradlew writeImplClasspath generates this file. Forward slashes: the path goes into a Groovy string. */
     private static final String CLASSPATH_FILE =

@@ -35,25 +35,25 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 @Execution(ExecutionMode.CONCURRENT)
-public class DiagnosticTest {
+final class DiagnosticTest {
     @TempDir
     public Path testFolder;
 
     private Locale backupLocale;
 
     @BeforeEach
-    public void setUpLocale() throws Exception {
+    void setUpLocale() throws Exception {
         backupLocale = Locale.getDefault();
         Locale.setDefault(Locale.ROOT);
     }
 
     @AfterEach
-    public void restoreLocale() throws Exception {
+    void restoreLocale() throws Exception {
         Locale.setDefault(backupLocale);
     }
 
     @Test
-    public void parseError() throws Exception {
+    void parseError() throws Exception {
         @SuppressWarnings("for-rollout:StringConcatToTextBlock")
         String input = Joiner.on('\n')
                 .join(
@@ -83,7 +83,7 @@ public class DiagnosticTest {
     }
 
     @Test
-    public void lexError() throws Exception {
+    void lexError() throws Exception {
         String input = "\\uuuuuuuuuuuuuuuuuuuuuuuuuuuuuu00not-actually-a-unicode-escape-sequence";
 
         StringWriter stdout = new StringWriter();
@@ -100,7 +100,7 @@ public class DiagnosticTest {
     }
 
     @Test
-    public void oneFileParseError() throws Exception {
+    void oneFileParseError() throws Exception {
         String one = "class One {\n";
         String two = "class Two {}\n";
 
@@ -121,7 +121,7 @@ public class DiagnosticTest {
     }
 
     @Test
-    public void oneFileParseErrorReplace() throws Exception {
+    void oneFileParseErrorReplace() throws Exception {
         String one = "class One {}}\n";
         String two = "class Two {\n}\n";
 
@@ -145,7 +145,7 @@ public class DiagnosticTest {
     }
 
     @Test
-    public void parseError2() throws FormatterException, IOException, UsageException {
+    void parseError2() throws FormatterException, IOException, UsageException {
         String input = "class Foo { void f() {\n g() } }";
 
         Path path = testFolder.resolve("A.java");
@@ -163,7 +163,7 @@ public class DiagnosticTest {
     }
 
     @Test
-    public void parseErrorStdin() throws FormatterException, IOException, UsageException {
+    void parseErrorStdin() throws FormatterException, IOException, UsageException {
         String input = "class Foo { void f() {\n g() } }";
 
         InputStream inStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
@@ -178,7 +178,7 @@ public class DiagnosticTest {
     }
 
     @Test
-    public void lexError2() throws FormatterException, IOException, UsageException {
+    void lexError2() throws FormatterException, IOException, UsageException {
         String input = "class Foo { void f() {\n g('foo'); } }";
 
         Path path = testFolder.resolve("A.java");
@@ -196,7 +196,7 @@ public class DiagnosticTest {
     }
 
     @Test
-    public void lexErrorStdin() throws FormatterException, IOException, UsageException {
+    void lexErrorStdin() throws FormatterException, IOException, UsageException {
         String input = "class Foo { void f() {\n g('foo'); } }";
         InputStream inStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
         StringWriter out = new StringWriter();

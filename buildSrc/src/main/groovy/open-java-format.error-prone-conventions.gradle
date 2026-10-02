@@ -1,0 +1,53 @@
+// Error Prone with NullAway and Picnic's error-prone-support checks, on the plain net.ltgt plugins.
+plugins {
+    id 'net.ltgt.errorprone'
+    id 'net.ltgt.nullaway'
+}
+
+dependencies {
+    errorprone libs.errorprone.core
+    errorprone libs.nullaway
+    errorprone libs.errorProneSupport.contrib
+}
+
+nullaway {
+    annotatedPackages.add('com.palantir')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.errorprone {
+        // Annotation processor output (derive4j, Immutables) is not ours to fix.
+        excludedPaths = '.*/build/generated/.*'
+    }
+}
+
+// Gradle injects services through abstract @Inject getters, which is what this check forbids.
+pluginManager.withPlugin('java-gradle-plugin') {
+    tasks.withType(JavaCompile).configureEach {
+        options.errorprone.disable('JavaxInjectOnAbstractMethod')
+    }
+}
+
+// The checks vfs-s3 makes build-breaking. The commented ones stay off until the code is fixed, one check at a
+// time: StaticImport 84, LexicographicalAnnotationListing 46, RedundantStringConversion 6, AlmostJavadoc 3
+// findings; the rest have none.
+tasks.withType(JavaCompile).configureEach {
+    options.errorprone {
+        //error('StaticImport')
+        //error('UnnecessarilyFullyQualified')
+        //error('EmptyBlockTag')
+        //error('OperatorPrecedence')
+        //error('RedundantStringConversion')
+        //error('PatternMatchingInstanceof')
+        //error('UnnecessaryParentheses')
+        //error('LexicographicalAnnotationListing')
+        error('JUnitMethodDeclaration')
+        error('JUnitClassModifiers')
+        //error('MissingSummary')
+        //error('AlmostJavadoc')
+        //error('BadImport')
+        //error('JdkObsolete')
+        // NonStaticImport (Picnic) is the inverse of StaticImport and would give contradictory advice.
+        //disable('NonStaticImport')
+    }
+}

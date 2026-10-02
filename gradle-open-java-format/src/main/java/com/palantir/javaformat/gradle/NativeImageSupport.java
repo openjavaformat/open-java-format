@@ -16,17 +16,10 @@
 
 package com.palantir.javaformat.gradle;
 
-import com.palantir.platform.Architecture;
-import com.palantir.platform.GradleOperatingSystem;
-import com.palantir.platform.OperatingSystem;
 import javax.inject.Inject;
 import org.gradle.api.provider.ProviderFactory;
-import org.gradle.api.tasks.Nested;
 
 public abstract class NativeImageSupport {
-
-    @Nested
-    protected abstract GradleOperatingSystem getOs();
 
     @Inject
     protected abstract ProviderFactory getProviderFactory();
@@ -35,17 +28,10 @@ public abstract class NativeImageSupport {
         return isNativeFlagEnabled() && isNativeImageSupported();
     }
 
-    /**
-     * The platforms a native image is published for, and therefore the only ones where it can be
-     * resolved. macOS is supported on both architectures: the x86-64 image used to be excluded
-     * because nobody built it, and .github/workflows/ci.yml now does. Windows has an image for
-     * x86-64 only, and musl none: no job produces them.
-     */
+    /** Whether this platform has a published native image; see NativePlatform's PUBLISHED. */
     private boolean isNativeImageSupported() {
-        return getOs().getOperatingSystem()
-                .map(os -> os.equals(OperatingSystem.LINUX_GLIBC)
-                        || os.equals(OperatingSystem.MACOS)
-                        || (os.equals(OperatingSystem.WINDOWS) && Architecture.get() == Architecture.X86_64))
+        return NativePlatform.current(getProviderFactory())
+                .map(NativePlatform::isPublished)
                 .get();
     }
 

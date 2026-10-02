@@ -25,10 +25,10 @@ import org.junit.jupiter.api.Test;
  * Guards CI's {@code jdk} legs: without this, a leg that runs on an older JDK than the one it asked for with
  * {@code -PjavaRuntime} skips the {@code ModuleImport} golden and the module import tests, and still passes.
  */
-public class FormatterVersionTest {
+final class FormatterVersionTest {
 
     @Test
-    public void runsOnTheJdkTheTestTaskAskedFor() {
+    void runsOnTheJdkTheTestTaskAskedFor() {
         String expected = System.getProperty("expectedJavaVersion");
         Assumptions.assumeTrue(expected != null, "expectedJavaVersion is set by the Gradle build");
         assertThat(Formatter.getRuntimeVersion()).isEqualTo(Integer.parseInt(expected));

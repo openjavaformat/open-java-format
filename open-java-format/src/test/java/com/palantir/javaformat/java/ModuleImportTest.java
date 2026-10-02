@@ -30,10 +30,10 @@ import org.junit.jupiter.api.Test;
  * End-to-end tests for module import declarations (JEP 511) through the pipeline the Gradle plugin and Spotless use,
  * which reorders imports before formatting. The {@code ModuleImport} golden only exercises {@code formatSource}.
  */
-public class ModuleImportTest {
+final class ModuleImportTest {
 
     @BeforeAll
-    public static void requiresAParserThatProducesModuleImports() {
+    static void requiresAParserThatProducesModuleImports() {
         // Module imports parse from JDK 23 on, as a preview feature there; the formatter enables preview.
         Assumptions.assumeTrue(
                 Formatter.getRuntimeVersion() >= 23, "import module requires running on JDK 23 or later");
@@ -48,7 +48,7 @@ public class ModuleImportTest {
     }
 
     @Test
-    public void formatsAndFixesImports() throws FormatterException {
+    void formatsAndFixesImports() throws FormatterException {
         String input = """
             import module java.base;
             class Example {}
@@ -62,7 +62,7 @@ public class ModuleImportTest {
     }
 
     @Test
-    public void fixesImportsOnlyFromTheCommandLine() throws Exception {
+    void fixesImportsOnlyFromTheCommandLine() throws Exception {
         // The flag combination from the #1506 report, which failed with `Expected ; after import`.
         String input = """
             import module java.base;
@@ -87,7 +87,7 @@ public class ModuleImportTest {
     }
 
     @Test
-    public void keepsACommentBetweenModuleAndTheModuleName() throws FormatterException {
+    void keepsACommentBetweenModuleAndTheModuleName() throws FormatterException {
         String input = """
             import module /* comment */ java.base;
             class Example {}
@@ -101,7 +101,7 @@ public class ModuleImportTest {
     }
 
     @Test
-    public void keepsACommentBetweenThePartsOfTheModuleName() throws FormatterException {
+    void keepsACommentBetweenThePartsOfTheModuleName() throws FormatterException {
         String input = """
             import module java./* comment */base;
             class Example {}
@@ -128,7 +128,7 @@ public class ModuleImportTest {
     }
 
     @Test
-    public void normalizesWhitespaceInsideTheModuleName() throws FormatterException {
+    void normalizesWhitespaceInsideTheModuleName() throws FormatterException {
         String input = """
             import module java . base;
             class Example {}
@@ -142,7 +142,7 @@ public class ModuleImportTest {
     }
 
     @Test
-    public void keepsBothCopiesOfADuplicateThatCarriesAComment() throws FormatterException {
+    void keepsBothCopiesOfADuplicateThatCarriesAComment() throws FormatterException {
         // Identical declarations collapse; ones that differ are both kept, so no comment is dropped.
         String input = """
             import module /* explanation A */ java.base;
@@ -159,7 +159,7 @@ public class ModuleImportTest {
     }
 
     @Test
-    public void acceptsALineBreakAfterModule() throws FormatterException {
+    void acceptsALineBreakAfterModule() throws FormatterException {
         String input = """
             import module
                 java.base;

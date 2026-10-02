@@ -27,7 +27,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class SpotlessExcludesTest {
+final class SpotlessExcludesTest {
 
     // Forward slashes: the path goes into a Groovy string, where a Windows backslash would start an escape.
     private static final String CLASSPATH_FILE =

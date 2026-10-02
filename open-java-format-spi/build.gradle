@@ -13,10 +13,6 @@ dependencies {
     testImplementation libs.jackson.databind
 }
 
-javaVersion {
-    target = 21
-}
-
 publishing {
     publications {
         maven(MavenPublication) {

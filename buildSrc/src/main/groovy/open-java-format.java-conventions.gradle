@@ -1,0 +1,67 @@
+// Java compilation and tests for every module: what palantir/gradle-baseline used to set, in plain Gradle.
+plugins {
+    id 'java'
+    id 'checkstyle'
+}
+
+// The JDK the tests run on, and with it the javac whose internals the formatter parses with. The code is
+// compiled for 21 whatever this says. CI's `jdk` jobs pass -PjavaRuntime=25 and so on.
+ext.javaRuntime = providers.gradleProperty('javaRuntime').getOrElse('21')
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations.configureEach {
+    resolutionStrategy.preferProjectModules()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll('-parameters', '-Xmaxwarns', '10000', '-Xmaxerrs', '10000')
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    options.tags('apiNote', 'implSpec', 'implNote')
+}
+
+// The configuration is Gradle's default, config/checkstyle in the root project.
+checkstyle {
+    toolVersion = libs.versions.checkstyle.get()
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.WARN
+}
+
+testing {
+    suites {
+        test {
+            useJUnitJupiter()
+        }
+    }
+}
+
+tasks.withType(Test).configureEach {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(javaRuntime)
+    }
+    maxHeapSize = '2g'
+    jvmArgs '-XX:+HeapDumpOnOutOfMemoryError', '-XX:+CrashOnOutOfMemoryError'
+
+    systemProperty 'junit.platform.output.capture.stdout', 'true'
+    systemProperty 'junit.platform.output.capture.stderr', 'true'
+    systemProperty 'junit.jupiter.execution.parallel.enabled', 'true'
+    systemProperty 'junit.jupiter.execution.parallel.config.strategy', 'dynamic'
+    testLogging.events 'failed'
+
+    // Run `./gradlew test -Drecreate=true` to recreate all the expected
+    // generated code that we have checked into the repo.
+    def recreate = Boolean.getBoolean('recreate')
+    systemProperty 'recreate', recreate.toString()
+    outputs.upToDateWhen { !recreate }
+    outputs.cacheIf { false }
+}

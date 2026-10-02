@@ -10,7 +10,6 @@ buildscript {
     }
     dependencies {
         classpath 'org.graalvm.buildtools:native-gradle-plugin:1.1.14'
-        classpath 'com.palantir.gradle.utils:platform:0.29.0'
     }
 }
 
@@ -18,18 +17,14 @@ buildscript {
 apply plugin: 'java-library'
 apply plugin: 'org.graalvm.buildtools.native'
 apply plugin: 'open-java-format.publishing-conventions'
+// nativePlatform: the <os>_<arch> of this machine, as the image name and its classifier spell it.
+apply plugin: 'open-java-format.native-platform'
 
 description = 'open-java-format compiled to a native executable with GraalVM, one classifier per platform'
 
 dependencies {
     implementation project(':open-java-format')
 }
-
-import com.palantir.platform.OperatingSystem
-import com.palantir.platform.Architecture
-
-def operatingSystem = OperatingSystem.get()
-def architecture = Architecture.get()
 
 def exports = [
         'jdk.compiler/com.sun.tools.javac.file',
@@ -59,7 +54,7 @@ graalvmNative {
             it.languageVersion.set(JavaLanguageVersion.of(25))
             it.vendor.set(JvmVendorSpec.GRAAL_VM)
         })
-        it.imageName.set(String.format('open-java-format-%s_%s', operatingSystem.uiName(), architecture.uiName()))
+        it.imageName.set("open-java-format-${nativePlatform}".toString())
         it.mainClass.set('com.palantir.javaformat.java.Main')
         it.fallback.set(false)
         it.sharedLibrary.set(false)
@@ -126,8 +121,7 @@ private static String getExtension(File file) {
     Pattern pattern = Pattern.compile("open-java-format-(.*)_(.*?)(\\.exe)?\$");
     Matcher matcher = pattern.matcher(file.name)
     if (matcher.find()) {
-        return OperatingSystem.fromStringThrowing(matcher.group(1))
-                == OperatingSystem.WINDOWS ? "exe" : "bin"
+        return matcher.group(3) == null ? "bin" : "exe"
     }
     throw new GradleException("Could not determine OS name from file name: ${file.name}")
 }

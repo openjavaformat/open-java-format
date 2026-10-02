@@ -23,8 +23,6 @@ dependencies {
     implementation libs.guava
     implementation project(':open-java-format-spi')
     implementation project(':open-java-format-jdk-bootstrap')
-    implementation libs.palantir.platform
-    implementation libs.ideaConfiguration.gradlePlugin
 
     testImplementation project(':open-java-format')
     testImplementation libs.junit.jupiter
@@ -42,7 +40,6 @@ dependencies {
     // Third-party plugins the generated test projects apply. java-gradle-plugin injects this
     // alongside the plugin under test, so `plugins { id '...' }` resolves them without a version.
     pluginClasspath libs.spotless.gradlePlugin
-    pluginClasspath libs.baseline.gradlePlugin
 }
 
 gradlePlugin {

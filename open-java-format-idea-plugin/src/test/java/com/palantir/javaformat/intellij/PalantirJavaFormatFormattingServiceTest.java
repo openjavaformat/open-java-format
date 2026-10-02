@@ -51,13 +51,13 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class PalantirJavaFormatFormattingServiceTest {
+final class PalantirJavaFormatFormattingServiceTest {
     private JavaCodeInsightTestFixture fixture;
     private PalantirJavaFormatSettings settings;
     private DelegatingFormatter delegatingFormatter;
 
     @BeforeEach
-    public void setUp() throws Exception {
+    void setUp() throws Exception {
         TestFixtureBuilder<IdeaProjectTestFixture> projectBuilder = IdeaTestFixtureFactory.getFixtureFactory()
                 .createLightFixtureBuilder(getProjectDescriptor(), getClass().getName());
         fixture = JavaTestFixtureFactory.getFixtureFactory().createCodeInsightFixture(projectBuilder.getFixture());
@@ -76,12 +76,12 @@ public class PalantirJavaFormatFormattingServiceTest {
     }
 
     @AfterEach
-    public void tearDown() throws Exception {
+    void tearDown() throws Exception {
         fixture.tearDown();
     }
 
     @Test
-    public void defaultFormatSettings() throws Exception {
+    void defaultFormatSettings() throws Exception {
         String input = Files.readString(
                 Paths.get("../open-java-format/src/test/resources/com/palantir/javaformat/java/testdata/A.input"));
         String output = Files.readString(

@@ -1,5 +1,3 @@
-import me.champeau.jmh.JMHTask
-
 apply plugin: 'java-library'
 apply plugin: 'open-java-format.publishing-conventions'
 
@@ -16,16 +14,21 @@ dependencies {
     compileOnly variantOf(libs.immutables.value) { classifier('annotations') }
     implementation libs.jackson.databind
 
-    // So that we have pjf on our test classpath
     testImplementation project(':open-java-format')
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj
     testImplementation libs.jackson.databind
+
     formatterNativeImage(project(':open-java-format-native')) {
         attributes {
             attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.objects.named(LibraryElements, 'nativeImage'))
         }
     }
+}
+
+// Immutables' processor keeps Gradle's incremental compilation working only when asked to.
+tasks.named('compileJava', JavaCompile) {
+    options.compilerArgs.add('-Aimmutables.gradle.incremental')
 }
 
 tasks.named('test', Test.class) {

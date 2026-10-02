@@ -30,9 +30,10 @@ import java.util.stream.Stream;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
-class ConfigureJavaFormatterXmlTest {
+final class ConfigureJavaFormatterXmlTest {
 
     @Language("xml")
     private static final String EXISTING_CLASS_PATH = """
@@ -279,6 +280,63 @@ class ConfigureJavaFormatterXmlTest {
             """.formatted(action).strip();
 
         assertThat(newXml).isEqualTo(expected);
+    }
+
+    @Test
+    void lists_the_required_plugin_in_a_new_file() {
+        Node node = parseXml("<project version=\"4\"/>");
+
+        ConfigureJavaFormatterXml.configureExternalDependencies(node, "open-java-format", "2.57.0");
+
+        assertThat(xmlToString(node)).isEqualTo("""
+            <project version="4">
+              <component name="ExternalDependencies">
+                <plugin id="open-java-format" min-version="2.57.0"/>
+              </component>
+            </project>
+            """);
+    }
+
+    @Test
+    void keeps_the_other_required_plugins() {
+        Node node = parseXml("""
+            <project version="4">
+              <component name="ExternalDependencies">
+                <plugin id="CheckStyle-IDEA" min-version="5.0"/>
+              </component>
+            </project>
+            """);
+
+        ConfigureJavaFormatterXml.configureExternalDependencies(node, "open-java-format", "2.57.0");
+
+        assertThat(xmlToString(node)).isEqualTo("""
+            <project version="4">
+              <component name="ExternalDependencies">
+                <plugin id="CheckStyle-IDEA" min-version="5.0"/>
+                <plugin id="open-java-format" min-version="2.57.0"/>
+              </component>
+            </project>
+            """);
+    }
+
+    // An empty cell is a plugin listed without a min-version. 2.100.0 is higher than 2.57.0: versions compare
+    // numerically, not as text.
+    @CsvSource({",         2.57.0", "2.100.0,  2.100.0", "2.50.0,   2.57.0", "2.57.0,   2.57.0", "2.98.0.5, 2.98.0.5"})
+    @ParameterizedTest
+    void raises_a_lower_min_version_and_keeps_a_higher_one(String existing, String expected) {
+        Node node = parseXml("""
+            <project version="4">
+              <component name="ExternalDependencies">
+                <plugin id="open-java-format"%s/>
+              </component>
+            </project>
+            """.formatted(existing == null ? "" : " min-version=\"" + existing + "\""));
+
+        ConfigureJavaFormatterXml.configureExternalDependencies(node, "open-java-format", "2.57.0");
+
+        assertThat(xmlToString(node))
+                .contains("<plugin id=\"open-java-format\" min-version=\"" + expected + "\"/>")
+                .containsOnlyOnce("<plugin ");
     }
 
     private static Node parseXml(@Language("xml") String xml) {

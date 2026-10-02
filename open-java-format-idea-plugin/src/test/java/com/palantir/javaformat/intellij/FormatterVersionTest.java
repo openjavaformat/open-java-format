@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-class FormatterVersionTest {
+final class FormatterVersionTest {
 
     @Test
     void buildNumberOrdersReleasesOfTheSameUpstreamVersion() {

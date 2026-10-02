@@ -41,7 +41,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-class FormatDiffTest {
+final class FormatDiffTest {
 
     private static final File CLASSPATH_FILE = new File("build/impl.classpath");
     private static final File NATIVE_IMAGE_FILE = new File("build/nativeImage.path");

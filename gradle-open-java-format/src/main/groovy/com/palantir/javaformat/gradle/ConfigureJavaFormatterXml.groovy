@@ -16,6 +16,8 @@
 
 package com.palantir.javaformat.gradle
 
+import java.lang.module.ModuleDescriptor
+
 class ConfigureJavaFormatterXml {
 
     static void configureJavaFormat(Node rootNode, List<URI> uris, Optional<URI> nativeImageUri) {
@@ -40,6 +42,17 @@ class ConfigureJavaFormatterXml {
     static void configureWorkspaceXml(Node rootNode) {
         configureFormatOnSave(rootNode)
         configureOptimizeOnSave(rootNode)
+    }
+
+    // Lists an IDEA plugin as required by the project, so IntelliJ offers to install or update it. The other
+    // required plugins stay, and so does a higher min-version for this one, such as a developer's own choice.
+    static void configureExternalDependencies(Node rootNode, String pluginId, String minVersion) {
+        def externalDependencies = matchOrCreateChild(rootNode, 'component', [name: 'ExternalDependencies'])
+        def plugin = matchOrCreateChild(externalDependencies, 'plugin', [id: pluginId])
+        def existing = plugin.attribute('min-version') as String
+        if (existing == null || ModuleDescriptor.Version.parse(existing) < ModuleDescriptor.Version.parse(minVersion)) {
+            plugin.attributes().put('min-version', minVersion)
+        }
     }
 
     private static void configureFormatOnSave(Node rootNode) {
