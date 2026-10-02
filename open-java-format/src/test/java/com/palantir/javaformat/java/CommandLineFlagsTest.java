@@ -29,7 +29,7 @@ final class CommandLineFlagsTest {
     // TODO(eaftan): Disallow passing both -lines and -offset/-length, like clang-format.
 
     @Test
-    public void formatInPlaceRequiresAtLeastOneFile() throws UsageException {
+    void formatInPlaceRequiresAtLeastOneFile() throws UsageException {
         assertThatThrownBy(() -> Main.processArgs("-i")).isInstanceOf(UsageException.class);
 
         assertThatThrownBy(() -> Main.processArgs("-i", "-")).isInstanceOf(UsageException.class);
@@ -39,7 +39,7 @@ final class CommandLineFlagsTest {
     }
 
     @Test
-    public void formatASubsetRequiresExactlyOneFile() throws UsageException {
+    void formatASubsetRequiresExactlyOneFile() throws UsageException {
         Main.processArgs("-lines", "10", "Foo.java");
 
         assertThatThrownBy(() -> Main.processArgs("-lines", "10")).isInstanceOf(UsageException.class);
@@ -59,7 +59,7 @@ final class CommandLineFlagsTest {
     // TODO(eaftan): clang-format allows a single offset with no length, which means to format
     // up to the end of the file.  We should match that behavior.
     @Test
-    public void numberOfOffsetsMustMatchNumberOfLengths() throws UsageException {
+    void numberOfOffsetsMustMatchNumberOfLengths() throws UsageException {
         Main.processArgs("-offset", "10", "-length", "20", "Foo.java");
 
         assertThatThrownBy(() -> Main.processArgs("-offset", "10", "-length", "20", "-offset", "50", "Foo.java"))
@@ -70,7 +70,7 @@ final class CommandLineFlagsTest {
     }
 
     @Test
-    public void noFilesToFormatRequiresEitherHelpOrVersion() throws UsageException {
+    void noFilesToFormatRequiresEitherHelpOrVersion() throws UsageException {
         Main.processArgs("-version");
 
         Main.processArgs("-help");
@@ -81,7 +81,7 @@ final class CommandLineFlagsTest {
     }
 
     @Test
-    public void stdinAndFiles() {
+    void stdinAndFiles() {
         try {
             Main.processArgs("-", "A.java");
             fail("fail");
@@ -91,7 +91,7 @@ final class CommandLineFlagsTest {
     }
 
     @Test
-    public void inPlaceStdin() {
+    void inPlaceStdin() {
         try {
             Main.processArgs("-i", "-");
             fail("fail");
@@ -101,7 +101,7 @@ final class CommandLineFlagsTest {
     }
 
     @Test
-    public void inPlaceDryRun() {
+    void inPlaceDryRun() {
         try {
             Main.processArgs("--replace", "--dry-run", "A.java");
             fail("fail");
@@ -118,7 +118,7 @@ final class CommandLineFlagsTest {
     }
 
     @Test
-    public void assumeFileNameOnlyWorksWithStdin() {
+    void assumeFileNameOnlyWorksWithStdin() {
         try {
             Main.processArgs("--assume-filename=Foo.java", "Foo.java");
             fail("fail");

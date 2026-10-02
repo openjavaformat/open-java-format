@@ -29,8 +29,8 @@ pluginManager.withPlugin('java-gradle-plugin') {
 }
 
 // The checks vfs-s3 makes build-breaking. The commented ones stay off until the code is fixed, one check at a
-// time: JUnitMethodDeclaration 206, StaticImport 84, LexicographicalAnnotationListing 46,
-// RedundantStringConversion 6, AlmostJavadoc 3 findings; the rest have none.
+// time: StaticImport 84, LexicographicalAnnotationListing 46, RedundantStringConversion 6, AlmostJavadoc 3
+// findings; the rest have none.
 tasks.withType(JavaCompile).configureEach {
     options.errorprone {
         //error('StaticImport')
@@ -41,7 +41,7 @@ tasks.withType(JavaCompile).configureEach {
         //error('PatternMatchingInstanceof')
         //error('UnnecessaryParentheses')
         //error('LexicographicalAnnotationListing')
-        //error('JUnitMethodDeclaration')
+        error('JUnitMethodDeclaration')
         error('JUnitClassModifiers')
         //error('MissingSummary')
         //error('AlmostJavadoc')

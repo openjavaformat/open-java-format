@@ -59,7 +59,7 @@ final class MainTest {
     private final Joiner joiner = Joiner.on(System.lineSeparator());
 
     @Test
-    public void testUsageOutput() {
+    void usageOutput() {
         StringWriter out = new StringWriter();
         StringWriter err = new StringWriter();
         Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
@@ -85,7 +85,7 @@ final class MainTest {
     }
 
     @Test
-    public void version() throws UsageException {
+    void version() throws UsageException {
         StringWriter out = new StringWriter();
         StringWriter err = new StringWriter();
         Main main = new Main(new PrintWriter(out, true), new PrintWriter(err, true), System.in);
@@ -96,7 +96,7 @@ final class MainTest {
     // Main used to leave its thread pool running after format returned. The command line does not notice, because it
     // exits, but anything that runs Main in-process kept the idle threads (#40, from google/google-java-format#384).
     @Test
-    public void formatLeavesNoPoolThreadRunning() throws Exception {
+    void formatLeavesNoPoolThreadRunning() throws Exception {
         Path path = Files.writeString(testFolder.resolve("A.java"), "class A {}\n");
         Main main = new Main(
                 new PrintWriter(new StringWriter(), true), new PrintWriter(new StringWriter(), true), System.in);
@@ -117,7 +117,7 @@ final class MainTest {
     }
 
     @Test
-    public void preserveOriginalFile() throws Exception {
+    void preserveOriginalFile() throws Exception {
         Path path = Files.createFile(testFolder.resolve("Test.java"));
         Files.write(path, "class Test {}\n".getBytes(UTF_8));
         try {
@@ -134,7 +134,7 @@ final class MainTest {
     }
 
     @Test
-    public void testMain() throws Exception {
+    void printsUsageWithoutArguments() throws Exception {
         Process process = formatterMain().start();
         process.waitFor();
         String err = new String(ByteStreams.toByteArray(process.getErrorStream()), UTF_8);
@@ -144,7 +144,7 @@ final class MainTest {
 
     // end to end javadoc formatting test
     @Test
-    public void javadoc() throws Exception {
+    void javadoc() throws Exception {
         String[] input = {
             "/**",
             " * graph",
@@ -190,7 +190,7 @@ final class MainTest {
 
     // end to end import fixing test
     @Test
-    public void imports() throws Exception {
+    void imports() throws Exception {
         String[] input = {
             "import java.util.LinkedList;",
             "import java.util.List;",
@@ -224,7 +224,7 @@ final class MainTest {
     }
 
     @Test
-    public void optimizeImportsDoesNotLeaveEmptyLines() throws Exception {
+    void optimizeImportsDoesNotLeaveEmptyLines() throws Exception {
         String[] input = {
             "package abc;",
             "",
@@ -265,7 +265,7 @@ final class MainTest {
 
     // test that -lines handling works with import removal
     @Test
-    public void importRemovalLines() throws Exception {
+    void importRemovalLines() throws Exception {
         String[] input = {
             "import java.util.ArrayList;",
             "import java.util.List;",
@@ -295,7 +295,7 @@ final class MainTest {
     // what a second run would, and what the entry point of the Gradle and Spotless step gives (#37, from
     // google/google-java-format#1436).
     @Test
-    public void unusedImportRemovalLeavesOneBlankLine() throws Exception {
+    void unusedImportRemovalLeavesOneBlankLine() throws Exception {
         String[] input = {
             "package com.example;",
             "",
@@ -333,7 +333,7 @@ final class MainTest {
 
     // test that errors are reported on the right line when imports are removed
     @Test
-    public void importRemoveErrorParseError() throws Exception {
+    void importRemoveErrorParseError() throws Exception {
         Locale backupLocale = Locale.getDefault();
         try {
             Locale.setDefault(Locale.ROOT);
@@ -359,7 +359,7 @@ final class MainTest {
     }
 
     @Test
-    public void packageInfo() throws Exception {
+    void packageInfo() throws Exception {
         String[] input = {
             "@CheckReturnValue",
             "@ParametersAreNonnullByDefault",
@@ -380,7 +380,7 @@ final class MainTest {
     }
 
     @Test
-    public void newline() throws Exception {
+    void newline() throws Exception {
         StringWriter out = new StringWriter();
         StringWriter err = new StringWriter();
         Main main = new Main(
@@ -392,7 +392,7 @@ final class MainTest {
     }
 
     @Test
-    public void dryRunStdinUnchanged() throws Exception {
+    void dryRunStdinUnchanged() throws Exception {
         StringWriter out = new StringWriter();
         StringWriter err = new StringWriter();
         Main main = new Main(
@@ -405,7 +405,7 @@ final class MainTest {
     }
 
     @Test
-    public void dryRunStdinChanged() throws Exception {
+    void dryRunStdinChanged() throws Exception {
         StringWriter out = new StringWriter();
         StringWriter err = new StringWriter();
         String input = "class Test {\n}\n";
@@ -419,7 +419,7 @@ final class MainTest {
     }
 
     @Test
-    public void dryRunFiles() throws Exception {
+    void dryRunFiles() throws Exception {
         Path a = Files.createFile(testFolder.resolve("A.java"));
         Path b = Files.createFile(testFolder.resolve("B.java"));
         Path c = Files.createFile(testFolder.resolve("C.java"));
@@ -447,7 +447,7 @@ final class MainTest {
     }
 
     @Test
-    public void keepGoingWhenFilesDontExist() throws Exception {
+    void keepGoingWhenFilesDontExist() throws Exception {
         Path a = Files.createFile(testFolder.resolve("A.java"));
         Path b = Files.createFile(testFolder.resolve("B.java"));
         Path c = Files.createFile(testFolder.resolve("C.java"));
@@ -478,7 +478,7 @@ final class MainTest {
     }
 
     @Test
-    public void exitIfChangedStdin() throws Exception {
+    void exitIfChangedStdin() throws Exception {
         Path path = Files.createFile(testFolder.resolve("Test.java"));
         Files.write(path, "class Test {\n}\n".getBytes(UTF_8));
         Process process = formatterMain("-").redirectInput(path.toFile()).start();
@@ -490,7 +490,7 @@ final class MainTest {
     }
 
     @Test
-    public void exitIfChangedFiles() throws Exception {
+    void exitIfChangedFiles() throws Exception {
         Path path = Files.createFile(testFolder.resolve("Test.java"));
         Files.write(path, "class Test {\n}\n".getBytes(UTF_8));
         Process process = formatterMain(path.toAbsolutePath().toString()).start();
@@ -502,7 +502,7 @@ final class MainTest {
     }
 
     @Test
-    public void styleIsAlwaysOjf() throws Exception {
+    void styleIsAlwaysOjf() throws Exception {
         String input = "class T {\nvoid f() {\nint x;\n}\n}\n";
         String expected = "class T {\n    void f() {\n        int x;\n    }\n}\n";
 
@@ -518,7 +518,7 @@ final class MainTest {
     }
 
     @Test
-    public void styleFlagIsIgnoredWithAWarning() throws Exception {
+    void styleFlagIsIgnoredWithAWarning() throws Exception {
         String input = "class T {\nvoid f() {\nint x;\n}\n}\n";
         String expected = "class T {\n    void f() {\n        int x;\n    }\n}\n";
 
@@ -537,7 +537,7 @@ final class MainTest {
     }
 
     @Test
-    public void unknownFlagIsAnError() throws Exception {
+    void unknownFlagIsAnError() throws Exception {
         Path path = Files.createFile(testFolder.resolve("Test.java"));
         Files.write(path, "class Test {\n}\n".getBytes(UTF_8));
         Process process =
@@ -550,7 +550,7 @@ final class MainTest {
     }
 
     @Test
-    public void noFilesIsNotAnError() throws Exception {
+    void noFilesIsNotAnError() throws Exception {
         // What a script gets when it passes on an empty list, as in $(git ls-files '*.java').
         Process process = formatterMain("--ojf", "--replace").start();
         process.waitFor();
@@ -560,7 +560,7 @@ final class MainTest {
     }
 
     @Test
-    public void helpIsNotAnError() throws Exception {
+    void helpIsNotAnError() throws Exception {
         Process process = formatterMain("--help").start();
         process.waitFor();
         String err = new String(ByteStreams.toByteArray(process.getErrorStream()), UTF_8);
@@ -569,7 +569,7 @@ final class MainTest {
     }
 
     @Test
-    public void exitIfChangedLosesToParseError() throws Exception {
+    void exitIfChangedLosesToParseError() throws Exception {
         Path unformatted = Files.createFile(testFolder.resolve("Unformatted.java"));
         Files.write(unformatted, "class Unformatted {\n}\n".getBytes(UTF_8));
         Path broken = Files.createFile(testFolder.resolve("Broken.java"));
@@ -588,7 +588,7 @@ final class MainTest {
     }
 
     @Test
-    public void assumeFilename_error() throws Exception {
+    void assumeFilename_error() throws Exception {
         String[] input = {
             "class Test {}}",
         };
@@ -603,7 +603,7 @@ final class MainTest {
     }
 
     @Test
-    public void assumeFilename_dryRun() throws Exception {
+    void assumeFilename_dryRun() throws Exception {
         String[] input = {
             "class Test {", //
             "}",
@@ -619,7 +619,7 @@ final class MainTest {
     }
 
     @Test
-    public void reflowLongStrings() throws Exception {
+    void reflowLongStrings() throws Exception {
         String[] input = {
             "class T {", //
             "  String s = \"one long incredibly unbroken sentence moving from topic to topic so that no"
@@ -645,7 +645,7 @@ final class MainTest {
     }
 
     @Test
-    public void noReflowLongStrings() throws Exception {
+    void noReflowLongStrings() throws Exception {
         String[] input = {
             "class T {", //
             "  String s = \"one long incredibly unbroken sentence moving from topic to topic so that no"
@@ -673,7 +673,7 @@ final class MainTest {
     // A comment between two imports goes with the import after it, where it used to fail the whole file with "Imports
     // not contiguous" (#39, from google/google-java-format#424). A second run leaves the result alone.
     @Test
-    public void commentBetweenImportsMovesWithTheImportAfterIt() throws Exception {
+    void commentBetweenImportsMovesWithTheImportAfterIt() throws Exception {
         String[] input = {
             "import b.B;", "", "// why we need A", "import a.A;", "", "class T {", "    A a;", "    B b;", "}", "",
         };

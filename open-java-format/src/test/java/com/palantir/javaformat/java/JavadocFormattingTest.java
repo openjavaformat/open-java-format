@@ -36,7 +36,7 @@ final class JavadocFormattingTest {
             false);
 
     @Test
-    public void notJavadoc() {
+    void notJavadoc() {
         String[] input = {
             "/**/", //
             "class Test {}",
@@ -49,7 +49,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void empty() {
+    void empty() {
         String[] input = {
             "/***/", //
             "class Test {}",
@@ -61,7 +61,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void bannerCommentIsNotJavadoc() {
+    void bannerCommentIsNotJavadoc() {
         // A comment that opens with three or more asterisks is left to the plain comment handling: reflowing it as
         // javadoc would push the asterisks onto a line of their own and turn its paragraphs into <p> tags.
         String[] input = {
@@ -78,7 +78,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void emptyMultipleLines() {
+    void emptyMultipleLines() {
         String[] input = {
             "/**", //
             " */",
@@ -91,7 +91,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void simple() {
+    void simple() {
         String[] input = {
             "/** */", //
             "class Test {}",
@@ -103,7 +103,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void commentMostlyUntouched() {
+    void commentMostlyUntouched() {
         // This test isn't necessarily what we'd want to do, but it's what we do now, and it's OK-ish.
         String[] input = {
             "/**", " * Foo.", " *", " *  <!--", "*abc", " *   def   ", " * </tr>", " *-->bar", " */", "class Test {}",
@@ -115,7 +115,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void moeComments() {
+    void moeComments() {
         String[] input = {
             "/**",
             " * Deatomizes the given user.",
@@ -168,7 +168,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void moeCommentBeginOnlyInMiddleOfDoc() {
+    void moeCommentBeginOnlyInMiddleOfDoc() {
         // We don't really care what happens here so long as we don't explode.
         String[] input = {
             "/**", //
@@ -190,7 +190,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void moeCommentBeginOnlyAtEndOfDoc() {
+    void moeCommentBeginOnlyAtEndOfDoc() {
         // We don't really care what happens here so long as we don't explode.
         // TODO(cpovirk): OK, maybe try to leave it in....
         String[] input = {
@@ -208,7 +208,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void moeCommentEndOnly() {
+    void moeCommentEndOnly() {
         // We don't really care what happens here so long as we don't explode.
         String[] input = {
             "/**", //
@@ -228,7 +228,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void tableMostlyUntouched() {
+    void tableMostlyUntouched() {
         String[] input = {
             "/**",
             " * Foo.",
@@ -261,7 +261,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void preMostlyUntouched() {
+    void preMostlyUntouched() {
         /*
          * Arguably we shouldn't insert the space between "*" and "4," since doing so changes the
          * rendered HTML output (by inserting a space there). However, inserting a space between "*" and
@@ -300,7 +300,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void preCodeExample() {
+    void preCodeExample() {
         // We should figure out whether we want a newline or blank line before <pre> or not.
         String[] input = {
             "/**",
@@ -326,7 +326,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void preNotWrapped() {
+    void preNotWrapped() {
         String[] input = {
             "/**",
             " * Example:",
@@ -353,7 +353,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void javaCodeInPre() {
+    void javaCodeInPre() {
         String[] input = {
             "/**",
             " * Example:",
@@ -380,7 +380,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void joinLines() {
+    void joinLines() {
         String[] input = {
             "/**", //
             " * foo",
@@ -397,7 +397,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void oneLinerIs100() {
+    void oneLinerIs100() {
         String[] input = {
             "/**",
             " * 567890123 567890123 567890123 567890123 567890123 567890123 567890123 567890123 " + "567890123 567",
@@ -412,7 +412,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void oneLinerWouldBe101() {
+    void oneLinerWouldBe101() {
         String[] input = {
             "/**",
             " * 567890123 567890123 567890123 567890123 567890123 567890123 567890123 567890123 " + "567890123 5678",
@@ -429,7 +429,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void multilineWrap() {
+    void multilineWrap() {
         String[] input = {
             "/**",
             " * 456789012 456789012 456789012 456789012 456789012 456789012 456789012 456789012 "
@@ -448,7 +448,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void tooLong() {
+    void tooLong() {
         String[] input = {
             "/**",
             " * abc",
@@ -471,7 +471,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void joinedTokens() {
+    void joinedTokens() {
         /*
          * Originally, 4, <b>, and 8901 are separate tokens. Test that we join them (and thus don't
          * split them across lines).
@@ -494,7 +494,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void joinedAtSign() {
+    void joinedAtSign() {
         /*
          * The last 456789012 would fit on the first line with the others. But putting it there would
          * mean the next line would start with @5678901, which would then be interpreted as a tag.
@@ -517,7 +517,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void joinedMultipleAtSign() {
+    void joinedMultipleAtSign() {
         // This is the same as above except that it tests multiple consecutive @... tokens.
         String[] input = {
             "/**",
@@ -537,7 +537,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void noAsterisk() {
+    void noAsterisk() {
         String[] input = {
             "/**", //
             " abc<p>def",
@@ -556,7 +556,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void significantAsterisks() {
+    void significantAsterisks() {
         String[] input = {
             "/** *", //
             " * *",
@@ -571,7 +571,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void links() {
+    void links() {
         String[] input = {
             "/**",
             " * 456789012 456789012 456789012 456789012 456789012 456789012 456789012 456789012 " + "456789012 4567 <a",
@@ -630,7 +630,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void heading() {
+    void heading() {
         String[] input = {
             "/**", //
             " * abc<h1>def</h1>ghi",
@@ -651,7 +651,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void blockquote() {
+    void blockquote() {
         String[] input = {
             "/**", //
             " * abc<blockquote><p>def</blockquote>ghi",
@@ -676,7 +676,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void lists() {
+    void lists() {
         String[] input = {
             "/**", //
             "* hi",
@@ -708,7 +708,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void lists2() {
+    void lists2() {
         String[] input = {
             "/**", //
             " * Foo.",
@@ -738,7 +738,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void closeInnerListStillNewline() {
+    void closeInnerListStillNewline() {
         String[] input = {
             "/**", //
             " * Foo.",
@@ -765,7 +765,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void listItemWrap() {
+    void listItemWrap() {
         String[] input = {
             "/**", //
             " * Foo.",
@@ -790,7 +790,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void unclosedList() {
+    void unclosedList() {
         String[] input = {
             "/**", //
             " * Foo.",
@@ -815,7 +815,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void br() {
+    void br() {
         String[] input = {
             "/**", //
             " * abc<br>def",
@@ -833,7 +833,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void brSpaceBug() {
+    void brSpaceBug() {
         // TODO(b/28983091): Remove the space before <br> here.
         String[] input = {
             "/**", //
@@ -852,7 +852,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void brAtSignBug() {
+    void brAtSignBug() {
         /*
          * This is a bug -- more of a "spec" bug than an implementation bug, and hard to fix.
          * Fortunately, some very quick searching didn't turn up any instances in the Google codebase.
@@ -874,7 +874,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void unicodeCharacterCountArguableBug() {
+    void unicodeCharacterCountArguableBug() {
         /*
          * We might prefer for multi-char characters like 𝄞 to be treated as taking up one column (or
          * perhaps for all characters to be treated based on their width in monospace fonts). But
@@ -898,7 +898,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void blankLineBeforeParams() {
+    void blankLineBeforeParams() {
         String[] input = {
             "/**", //
             " * hello world",
@@ -918,7 +918,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void onlyParams() {
+    void onlyParams() {
         String[] input = {
             "/**", //
             " *",
@@ -935,7 +935,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void paramsContinuationIndented() {
+    void paramsContinuationIndented() {
         String[] input = {
             "/**", //
             " * hello world",
@@ -960,7 +960,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void paramsOtherIndents() {
+    void paramsOtherIndents() {
         String[] input = {
             "/**", //
             " * hello world",
@@ -991,7 +991,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void paragraphTag() {
+    void paragraphTag() {
         String[] input = {
             "class Test {",
             "  /**",
@@ -1028,7 +1028,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void xhtmlParagraphTag() {
+    void xhtmlParagraphTag() {
         String[] input = {
             "class Test {", "  /**", "   * hello<p/>world", "   */", "  void f() {}", "", "}",
         };
@@ -1039,7 +1039,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void removeInitialParagraphTag() {
+    void removeInitialParagraphTag() {
         String[] input = {
             "/**", //
             " * <p>hello<p>world",
@@ -1058,7 +1058,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void inferParagraphTags() {
+    void inferParagraphTags() {
         String[] input = {
             "/**",
             " *",
@@ -1112,7 +1112,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void paragraphTagNewlines() throws Exception {
+    void paragraphTagNewlines() throws Exception {
         String input = new String(
                 ByteStreams.toByteArray(getClass().getResourceAsStream("testjavadoc/B28750242.input")), UTF_8);
         String expected = new String(
@@ -1122,7 +1122,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void listItemSpaces() throws Exception {
+    void listItemSpaces() throws Exception {
         String input = new String(
                 ByteStreams.toByteArray(getClass().getResourceAsStream("testjavadoc/B31404367.input")), UTF_8);
         String expected = new String(
@@ -1132,7 +1132,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void htmlTagsInCode() {
+    void htmlTagsInCode() {
         String[] input = {
             "/** abc {@code {} <p> <li> <pre> <table>} def */", //
             "class Test {}",
@@ -1145,7 +1145,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void loneBraceDoesNotStartInlineTag() {
+    void loneBraceDoesNotStartInlineTag() {
         String[] input = {
             "/** {  <p> } */", //
             "class Test {}",
@@ -1162,7 +1162,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void unicodeEscapesNotReplaced() {
+    void unicodeEscapesNotReplaced() {
         // Test that we don't replace them with their interpretations.
         String[] input = {
             "/** foo \\u0000 bar \\u6c34 baz */", //
@@ -1177,7 +1177,7 @@ final class JavadocFormattingTest {
 
     @Test
     @SuppressWarnings("UnicodeEscape")
-    public void unicodeEscapesNotInterpretedBug() {
+    void unicodeEscapesNotInterpretedBug() {
         /*
          * In theory, "\u003C" should be treated exactly like <, and so too should the escaped versions of
          * @, *, and other special chars. We don't recognize that, though, so we don't put what is
@@ -1195,7 +1195,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void trailingLink() {
+    void trailingLink() {
         // Eclipse's parser seems to want to discard the line break after {@link}. Test that we see it.
         String[] input = {
             "/**", //
@@ -1212,7 +1212,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void doesNotBreakLink() {
+    void doesNotBreakLink() {
         String[] input = {
             "/**", //
             " * This line is too long for the link to fit on a single line isn't it yes indeed too long {@link Foo}",
@@ -1234,7 +1234,7 @@ final class JavadocFormattingTest {
      * same line.
      */
     @Test
-    public void wrapsLongInlineTag_withoutBreakingFirstWhitespace() {
+    void wrapsLongInlineTag_withoutBreakingFirstWhitespace() {
         String[] input = {
             "/**", //
             " * This line is too long for the link to fit on a single line isn't it yes indeed too long {@link "
@@ -1281,7 +1281,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void codeInCode() {
+    void codeInCode() {
         // Eclipse's parser seems to get confused at the second {@code}. Test that we handle it.
         String[] input = {
             "/** abc {@code {@code foo}} def */", //
@@ -1295,7 +1295,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void quotedTextSplitAcrossLinks() {
+    void quotedTextSplitAcrossLinks() {
         /*
          * This demonstrates one of multiple reasons that we can't hand the Javadoc *content* to
          * Eclipse's lexer as if it were Java code.
@@ -1315,7 +1315,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void standardizeTags() {
+    void standardizeTags() {
         String[] input = {
             "/**", " * foo", " *", " * <P>bar", " *", " * <p class=clazz>baz<BR>", " * baz", " */", "class Test {}",
         };
@@ -1326,7 +1326,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void removeCloseTags() {
+    void removeCloseTags() {
         String[] input = {
             "/**", //
             " * foo</p>",
@@ -1347,7 +1347,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void javadocFullSentences() {
+    void javadocFullSentences() {
         String[] input = {
             "/** In our application, bats are often found hanging from the ceiling, especially on"
                     + " Wednesdays.  Sometimes sick bats have issues where their claws do not close entirely."
@@ -1366,7 +1366,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void javadocSentenceFragment() {
+    void javadocSentenceFragment() {
         String[] input = {
             "/** Provides a comfy, grippable surface for sick bats with claw-closing problems, which are"
                     + " sometimes found hanging from the ceiling on Wednesdays. */",
@@ -1383,7 +1383,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void javadocCanEndAnywhere() {
+    void javadocCanEndAnywhere() {
         String[] input = {
             "/** foo <pre*/", //
             "class Test {}",
@@ -1405,7 +1405,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void windowsLineSeparator() throws FormatterException {
+    void windowsLineSeparator() throws FormatterException {
         String[] input = {
             "/**", " * hello", " *", " * <p>world", " */", "class Test {}",
         };
@@ -1416,7 +1416,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void u2028LineSeparator() {
+    void u2028LineSeparator() {
         String[] input = {
             "public class Foo {",
             "  /**\u2028",
@@ -1437,7 +1437,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void blankLinesAroundSnippetAndNoMangling() {
+    void blankLinesAroundSnippetAndNoMangling() {
         String[] input = {
             "/**", //
             " * hello world",
@@ -1468,7 +1468,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void notASnippetUnlessOuterTag() {
+    void notASnippetUnlessOuterTag() {
         String[] input = {
             "/** I would like to tell you about the {@code {@snippet ...}} tag. */", "class Test {}",
         };
@@ -1479,7 +1479,7 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    public void snippetKeepsCommentsAndIndentation() {
+    void snippetKeepsCommentsAndIndentation() {
         String[] input = {
             "/**", //
             " * Example usage:",

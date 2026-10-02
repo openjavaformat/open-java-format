@@ -30,21 +30,21 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 final class ModifierOrdererTest {
 
     @Test
-    public void simple() throws FormatterException {
+    void simple() throws FormatterException {
         assertThat(ModifierOrderer.reorderModifiers("static abstract class InnerClass {}")
                         .getText())
                 .isEqualTo("abstract static class InnerClass {}");
     }
 
     @Test
-    public void comment() throws FormatterException {
+    void comment() throws FormatterException {
         assertThat(ModifierOrderer.reorderModifiers("static/*1*/abstract/*2*/public")
                         .getText())
                 .isEqualTo("public/*1*/abstract/*2*/static");
     }
 
     @Test
-    public void everything() throws FormatterException {
+    void everything() throws FormatterException {
         assertThat(ModifierOrderer.reorderModifiers(
                                 "strictfp native synchronized volatile transient final static abstract"
                                         + " private protected public")
@@ -54,7 +54,7 @@ final class ModifierOrdererTest {
     }
 
     @Test
-    public void everythingIncludingDefault() throws FormatterException {
+    void everythingIncludingDefault() throws FormatterException {
         assertThat(ModifierOrderer.reorderModifiers(
                                 "strictfp native synchronized volatile transient final static default abstract"
                                         + " private protected public")
@@ -64,7 +64,7 @@ final class ModifierOrdererTest {
     }
 
     @Test
-    public void subRange() throws FormatterException {
+    void subRange() throws FormatterException {
         String[] lines = {
             "class Test {", //
             "  static public int a;",
@@ -83,7 +83,7 @@ final class ModifierOrdererTest {
     }
 
     @Test
-    public void whitespace() throws FormatterException {
+    void whitespace() throws FormatterException {
         String[] lines = {
             "class Test {", //
             "  static",
@@ -101,13 +101,13 @@ final class ModifierOrdererTest {
     }
 
     @Test
-    public void sealedClass() throws FormatterException {
+    void sealedClass() throws FormatterException {
         assertThat(ModifierOrderer.reorderModifiers("non-sealed sealed public").getText())
                 .isEqualTo("public sealed non-sealed");
     }
 
     @Test
-    public void nonSealedBeforeAccessModifier() throws FormatterException {
+    void nonSealedBeforeAccessModifier() throws FormatterException {
         assertThat(ModifierOrderer.reorderModifiers("non-sealed private interface B extends I {}")
                         .getText())
                 .isEqualTo("private non-sealed interface B extends I {}");

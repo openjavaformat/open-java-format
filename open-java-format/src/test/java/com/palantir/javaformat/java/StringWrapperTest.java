@@ -39,7 +39,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 @Execution(ExecutionMode.CONCURRENT)
 final class StringWrapperTest {
     @Test
-    public void testAwkwardLineEndWrapping() throws Exception {
+    void awkwardLineEndWrapping() throws Exception {
         String input = lines(
                 "class T {",
                 // This is a wide line, but has to be split in code because of 100-char limit.
@@ -64,7 +64,7 @@ final class StringWrapperTest {
     }
 
     @Test
-    public void wrapsAStringWithEscapedBackslashes() throws Exception {
+    void wrapsAStringWithEscapedBackslashes() throws Exception {
         // In D:\\tempDb the second backslash and the t are not an escaped tab. Splitting there left a lone backslash
         // at the end of a piece, where it escaped the closing quote.
         String input = lines(
@@ -84,7 +84,7 @@ final class StringWrapperTest {
     }
 
     @Test
-    public void wrappingKeepsTheValueOfAStringWithEscapes() throws Exception {
+    void wrappingKeepsTheValueOfAStringWithEscapes() throws Exception {
         // At 40 columns the first line fills up right inside C:\\temp, where \\t is not an escaped tab.
         String input = lines("class T {", "  String s = \"copy the file to C:\\\\temp and back\";", "}");
 

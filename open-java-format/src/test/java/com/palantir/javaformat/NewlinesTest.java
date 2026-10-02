@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
 
 final class NewlinesTest {
     @Test
-    public void offsets() {
+    void offsets() {
         Truth.assertThat(ImmutableList.copyOf(Newlines.lineOffsetIterator("foo\nbar\n")))
                 .containsExactly(0, 4, 8);
         Truth.assertThat(ImmutableList.copyOf(Newlines.lineOffsetIterator("foo\nbar")))
@@ -44,7 +44,7 @@ final class NewlinesTest {
     }
 
     @Test
-    public void lines() {
+    void lines() {
         Truth.assertThat(ImmutableList.copyOf(Newlines.lineIterator("foo\nbar\n")))
                 .containsExactly("foo\n", "bar\n");
         Truth.assertThat(ImmutableList.copyOf(Newlines.lineIterator("foo\nbar")))
@@ -62,7 +62,7 @@ final class NewlinesTest {
     }
 
     @Test
-    public void terminalOffset() {
+    void terminalOffset() {
         Iterator<Integer> it = Newlines.lineOffsetIterator("foo\nbar\n");
         it.next();
         it.next();
@@ -86,7 +86,7 @@ final class NewlinesTest {
     }
 
     @Test
-    public void terminalLine() {
+    void terminalLine() {
         Iterator<String> it = Newlines.lineIterator("foo\nbar\n");
         it.next();
         it.next();

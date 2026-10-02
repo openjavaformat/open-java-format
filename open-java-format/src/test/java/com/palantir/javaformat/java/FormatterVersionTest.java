@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 final class FormatterVersionTest {
 
     @Test
-    public void runsOnTheJdkTheTestTaskAskedFor() {
+    void runsOnTheJdkTheTestTaskAskedFor() {
         String expected = System.getProperty("expectedJavaVersion");
         Assumptions.assumeTrue(expected != null, "expectedJavaVersion is set by the Gradle build");
         assertThat(Formatter.getRuntimeVersion()).isEqualTo(Integer.parseInt(expected));

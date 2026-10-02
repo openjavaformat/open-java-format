@@ -29,7 +29,7 @@ final class ReplacementTest {
             JsonMapper.builder().addModule(new GuavaModule()).build();
 
     @Test
-    void test_serialization() throws IOException {
+    void serialization() throws IOException {
         Replacement given = Replacement.create(3, 8, "Replacement Text");
 
         String rawJson = MAPPER.writeValueAsString(given);

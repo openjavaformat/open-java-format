@@ -26,7 +26,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 @Execution(ExecutionMode.CONCURRENT)
 final class TypeNameClassifierTest {
     @Test
-    public void caseFormat() throws Exception {
+    void caseFormat() throws Exception {
         assertThat(JavaCaseFormat.from("CONST")).isEqualTo(JavaCaseFormat.UPPERCASE);
         assertThat(JavaCaseFormat.from("TypeName")).isEqualTo(JavaCaseFormat.UPPER_CAMEL);
         assertThat(JavaCaseFormat.from("fieldName")).isEqualTo(JavaCaseFormat.LOWER_CAMEL);
@@ -49,7 +49,7 @@ final class TypeNameClassifierTest {
     }
 
     @Test
-    public void typePrefixLength() {
+    void typePrefixLength() {
         assertThat(getPrefix("fieldName")).isEmpty();
         assertThat(getPrefix("CONST")).isEmpty();
         assertThat(getPrefix("ClassName")).hasValue(0);
@@ -65,7 +65,7 @@ final class TypeNameClassifierTest {
     }
 
     @Test
-    public void ambiguousClass() {
+    void ambiguousClass() {
         assertThat(getPrefix("com.google.security.acl.proto2api.ACL.Entry.newBuilder"))
                 .hasValue(7);
         // A human would probably identify this as "class-shaped", but just looking

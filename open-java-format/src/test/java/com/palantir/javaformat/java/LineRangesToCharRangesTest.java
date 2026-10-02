@@ -39,12 +39,12 @@ final class LineRangesToCharRangesTest {
     }
 
     @Test
-    public void emptyLineRanges() throws Exception {
+    void emptyLineRanges() throws Exception {
         assertThat(getCharRanges("", Range.closedOpen(0, 1))).isEmpty();
     }
 
     @Test
-    public void lineRanges() throws Exception {
+    void lineRanges() throws Exception {
         assertThat(getCharRanges("_\n_\n_\n", Range.closedOpen(0, 1))).containsExactly(Range.closedOpen(0, 1));
         assertThat(getCharRanges("_\n_\n_\n", Range.closedOpen(1, 2))).containsExactly(Range.closedOpen(2, 3));
         assertThat(getCharRanges("_\n_\n_\n", Range.closedOpen(2, 3))).containsExactly(Range.closedOpen(4, 5));
@@ -52,7 +52,7 @@ final class LineRangesToCharRangesTest {
     }
 
     @Test
-    public void blankLineRange() throws Exception {
+    void blankLineRange() throws Exception {
         assertThat(getCharRanges("hello\n\nworld", Range.closedOpen(0, 1))).containsExactly(Range.closedOpen(0, 5));
         assertThat(getCharRanges("hello\n\nworld", Range.closedOpen(1, 2))).isEmpty();
         assertThat(getCharRanges("hello\n\nworld", Range.closedOpen(2, 3))).containsExactly(Range.closedOpen(7, 12));

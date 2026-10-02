@@ -46,7 +46,7 @@ final class PalantirJavaFormatConfigurableTest {
     private PalantirJavaFormatSettings settings;
 
     @BeforeEach
-    public void setUp() throws Exception {
+    void setUp() throws Exception {
         TestFixtureBuilder<IdeaProjectTestFixture> projectBuilder = IdeaTestFixtureFactory.getFixtureFactory()
                 .createLightFixtureBuilder(new DefaultLightProjectDescriptor(), getClass().getName());
         fixture = JavaTestFixtureFactory.getFixtureFactory().createCodeInsightFixture(projectBuilder.getFixture());
@@ -55,12 +55,12 @@ final class PalantirJavaFormatConfigurableTest {
     }
 
     @AfterEach
-    public void tearDown() throws Exception {
+    void tearDown() throws Exception {
         fixture.tearDown();
     }
 
     @Test
-    public void buildsAPanelWithItsControls() {
+    void buildsAPanelWithItsControls() {
         PalantirJavaFormatConfigurable configurable = new PalantirJavaFormatConfigurable(fixture.getProject());
 
         JComponent component = requireNonNull(configurable.createComponent());
@@ -69,7 +69,7 @@ final class PalantirJavaFormatConfigurableTest {
     }
 
     @Test
-    public void readsAndWritesTheEnabledSetting() throws Throwable {
+    void readsAndWritesTheEnabledSetting() throws Throwable {
         State disabled = new State();
         disabled.setEnabled("false");
         settings.loadState(disabled);
@@ -93,7 +93,7 @@ final class PalantirJavaFormatConfigurableTest {
     }
 
     @Test
-    public void showsTheVersionOfThePlugin() {
+    void showsTheVersionOfThePlugin() {
         // The "Plugin version" row: the version the platform read from the plugin's own descriptor, not "unknown".
         // Whatever the build stamped: CI checks out without tags, so there it is a commit hash rather than a
         // release-like version.

@@ -37,7 +37,7 @@ final class CommandLineOptionsParserTest {
     public Path testFolder;
 
     @Test
-    public void defaults() {
+    void defaults() {
         CommandLineOptions options = CommandLineOptionsParser.parse(Collections.<String>emptyList());
         assertThat(options.files()).isEmpty();
         assertThat(options.stdin()).isFalse();
@@ -56,7 +56,7 @@ final class CommandLineOptionsParserTest {
     }
 
     @Test
-    public void hello() {
+    void hello() {
         CommandLineOptions options =
                 CommandLineOptionsParser.parse(Arrays.asList("-lines=1:10,20:30", "-i", "Hello.java", "Goodbye.java"));
         assertThat(options.lines().asRanges()).containsExactly(Range.closedOpen(0, 10), Range.closedOpen(19, 30));
@@ -65,32 +65,32 @@ final class CommandLineOptionsParserTest {
     }
 
     @Test
-    public void stdin() {
+    void stdin() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("-")).stdin()).isTrue();
     }
 
     @Test
-    public void styleFlagsAreUnsupported() {
+    void styleFlagsAreUnsupported() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("-aosp", "--aosp", "-a", "--ojf", "-ojf"))
                         .unsupportedFlags())
                 .containsExactly("-aosp", "--aosp", "-a", "--ojf", "-ojf");
     }
 
     @Test
-    public void help() {
+    void help() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("-help")).help())
                 .isTrue();
     }
 
     @Test
-    public void lengths() {
+    void lengths() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("-length", "1", "--length", "2"))
                         .lengths())
                 .containsExactly(1, 2);
     }
 
     @Test
-    public void lines() {
+    void lines() {
         assertThat(CommandLineOptionsParser.parse(
                                 Arrays.asList("--lines", "1:2", "-lines=4:5", "--line", "7:8", "-line=10:11"))
                         .lines()
@@ -103,54 +103,54 @@ final class CommandLineOptionsParserTest {
     }
 
     @Test
-    public void offset() {
+    void offset() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("-offset", "1", "--offset", "2"))
                         .offsets())
                 .containsExactly(1, 2);
     }
 
     @Test
-    public void inPlace() {
+    void inPlace() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("-i", "A.java")).inPlace())
                 .isTrue();
     }
 
     @Test
-    public void version() {
+    void version() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("-v")).version())
                 .isTrue();
     }
 
     @Test
-    public void skipSortingImports() {
+    void skipSortingImports() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("--skip-sorting-imports"))
                         .sortImports())
                 .isFalse();
     }
 
     @Test
-    public void skipRemovingUnusedImports() {
+    void skipRemovingUnusedImports() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("--skip-removing-unused-imports"))
                         .removeUnusedImports())
                 .isFalse();
     }
 
     @Test
-    public void dryRun() {
+    void dryRun() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("--dry-run")).dryRun())
                 .isTrue();
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("-n")).dryRun()).isTrue();
     }
 
     @Test
-    public void setExitIfChanged() {
+    void setExitIfChanged() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("--set-exit-if-changed"))
                         .setExitIfChanged())
                 .isTrue();
     }
 
     @Test
-    public void mergedLines() {
+    void mergedLines() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("-lines=1:5", "-lines=2:8"))
                         .lines()
                         .asRanges())
@@ -158,7 +158,7 @@ final class CommandLineOptionsParserTest {
     }
 
     @Test
-    public void repeatedLines() {
+    void repeatedLines() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("-lines=1:1", "-lines=1:1"))
                         .lines()
                         .asRanges())
@@ -166,7 +166,7 @@ final class CommandLineOptionsParserTest {
     }
 
     @Test
-    public void paramsFile() throws IOException {
+    void paramsFile() throws IOException {
         Path outer = Files.createFile(testFolder.resolve("outer"));
         Path exit = Files.createFile(testFolder.resolve("exit"));
         Path nested = Files.createFile(testFolder.resolve("nested"));
@@ -182,7 +182,7 @@ final class CommandLineOptionsParserTest {
     }
 
     @Test
-    public void paramsFileWithNesting() throws IOException {
+    void paramsFileWithNesting() throws IOException {
         Path outer = Files.createFile(testFolder.resolve("outer"));
         Path exit = Files.createFile(testFolder.resolve("exit"));
         Path nested1 = Files.createFile(testFolder.resolve("nested1"));
@@ -202,7 +202,7 @@ final class CommandLineOptionsParserTest {
     }
 
     @Test
-    public void paramsFileWithRecursion() throws IOException {
+    void paramsFileWithRecursion() throws IOException {
         Path outer = Files.createFile(testFolder.resolve("outer"));
         Path exit = Files.createFile(testFolder.resolve("exit"));
         Path nested1 = Files.createFile(testFolder.resolve("nested1"));
@@ -221,7 +221,7 @@ final class CommandLineOptionsParserTest {
     }
 
     @Test
-    public void paramsFileWithQuotesAndWhitespaces() throws IOException {
+    void paramsFileWithQuotesAndWhitespaces() throws IOException {
         Path outer = Files.createFile(testFolder.resolve("outer with whitespace"));
         Path exit = Files.createFile(testFolder.resolve("exit with whitespace"));
         Path nested = Files.createFile(testFolder.resolve("nested with whitespace"));
@@ -237,7 +237,7 @@ final class CommandLineOptionsParserTest {
     }
 
     @Test
-    public void assumeFilename() {
+    void assumeFilename() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("--assume-filename", "Foo.java"))
                         .assumeFilename())
                 .hasValue("Foo.java");
@@ -246,7 +246,7 @@ final class CommandLineOptionsParserTest {
     }
 
     @Test
-    public void skipReflowLongStrings() {
+    void skipReflowLongStrings() {
         assertThat(CommandLineOptionsParser.parse(Arrays.asList("--skip-reflowing-long-strings"))
                         .reflowLongStrings())
                 .isFalse();
