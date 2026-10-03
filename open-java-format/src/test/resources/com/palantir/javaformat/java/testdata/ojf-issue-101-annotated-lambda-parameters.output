@@ -1,0 +1,30 @@
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+class AnnotatedLambdaParameters {
+    BiFunction<Integer, Integer, Integer> withArgs = (final var x, @SuppressWarnings("unused") var y) -> x + y;
+
+    Function<String, Integer> typed = (@SuppressWarnings("unused") String s) -> s.length();
+
+    BiFunction<Integer, Integer, Integer> two = (@Deprecated @SuppressWarnings("unused") var x, var y) -> x + y;
+
+    BiFunction<Integer, Integer, Integer> marker = (@Deprecated var x, @Deprecated final var y) -> x + y;
+
+    Consumer<String> block = (@SuppressWarnings({"unused", "rawtypes"}) String s) -> {
+        System.out.println(s);
+    };
+
+    BiFunction<Integer, Integer, Integer> tooLongForOneLine =
+            (@SuppressWarnings("unused") Integer first, @SuppressWarnings("unused") Integer second) -> first + second;
+
+    BiFunction<Integer, Integer, Integer> parametersDoNotFitOnOneLine =
+            (@SuppressWarnings("unused") Integer firstParameterWithAVeryLongName,
+                    @SuppressWarnings("unused") Integer secondParameterWithAVeryLongName) ->
+                    firstParameterWithAVeryLongName + secondParameterWithAVeryLongName;
+
+    void method(@SuppressWarnings("unused") int y, @Deprecated int z) {
+        @SuppressWarnings("unchecked")
+        Function<Object, String> local = o -> (String) o;
+    }
+}
