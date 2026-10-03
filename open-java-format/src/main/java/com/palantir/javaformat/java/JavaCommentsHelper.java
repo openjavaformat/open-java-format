@@ -167,10 +167,12 @@ public final class JavaCommentsHelper implements CommentsHelper {
         return matcher.lookingAt() && (matcher.group(1) != null || JBANG_DIRECTIVE_NAMES.contains(matcher.group(2)));
     }
 
+    private static final Pattern LINE_COMMENT_MISSING_SPACE_PREFIX = Pattern.compile("^(//+)[^\\s/]");
+
     // Preserve special `//noinspection` and `//$NON-NLS-x$` comments used by IDEs, which cannot
     // contain leading spaces.
-    private static final Pattern LINE_COMMENT_MISSING_SPACE_PREFIX =
-            Pattern.compile("^(//+)(?!noinspection|\\$NON-NLS-\\d+\\$)[^\\s/]");
+    private static final Pattern LINE_COMMENT_NO_SPACE_PREFIX =
+            Pattern.compile("^//+(noinspection|\\$NON-NLS-\\d+\\$)");
 
     private static String lineCommentPrefix(String line) {
         int prefixLength = 0;
@@ -191,7 +193,7 @@ public final class JavaCommentsHelper implements CommentsHelper {
             line = CharMatcher.whitespace().trimLeadingFrom(line);
             // Add missing leading spaces to line comments: `//foo` -> `// foo`.
             Matcher matcher = LINE_COMMENT_MISSING_SPACE_PREFIX.matcher(line);
-            if (matcher.find()) {
+            if (matcher.find() && !LINE_COMMENT_NO_SPACE_PREFIX.matcher(line).find()) {
                 int length = matcher.group(1).length();
                 line = "/".repeat(length) + " " + line.substring(length);
             }
