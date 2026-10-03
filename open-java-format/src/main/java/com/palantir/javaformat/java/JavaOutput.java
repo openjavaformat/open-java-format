@@ -56,6 +56,25 @@ public final class JavaOutput extends Output {
     // never ends in whitespace: trailing tabs inside a comment were kept before, and only a second run removed them.
     private StringBuilder spacesPending = new StringBuilder();
 
+    private static final int MAX_CACHED_SPACES = 100;
+    private static final String[] SPACES = new String[MAX_CACHED_SPACES + 1];
+
+    /** Returns an indentation string of the given number of spaces. */
+    static String spaces(int indent) {
+        if (indent <= 0) {
+            return "";
+        }
+        if (indent <= MAX_CACHED_SPACES) {
+            String result = SPACES[indent];
+            if (result == null) {
+                result = " ".repeat(indent);
+                SPACES[indent] = result;
+            }
+            return result;
+        }
+        return " ".repeat(indent);
+    }
+
     /**
      * {@code JavaOutput} constructor.
      *
@@ -157,7 +176,7 @@ public final class JavaOutput extends Output {
 
     @Override
     public void indent(int indent) {
-        spacesPending.append(" ".repeat(indent));
+        spacesPending.append(spaces(indent));
     }
 
     /** Flush any incomplete last line, then add the EOF token into our data structures. */
