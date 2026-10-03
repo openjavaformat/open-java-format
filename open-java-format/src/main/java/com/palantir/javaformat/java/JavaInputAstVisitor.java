@@ -1247,10 +1247,10 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
                 token(",");
                 builder.breakOp(" ");
             }
-            visitVariables(
-                    ImmutableList.of(parameter),
-                    DeclarationKind.NONE,
-                    inlineAnnotationDirection(parameter.getModifiers()));
+            // A lambda parameter is a parameter: its annotations stay on its line, as a method parameter's do. The
+            // vertical direction, a forced break after an annotation with arguments, is for local variable
+            // declarations.
+            visitVariables(ImmutableList.of(parameter), DeclarationKind.NONE, Direction.HORIZONTAL);
             first = false;
         }
         if (parens) {
