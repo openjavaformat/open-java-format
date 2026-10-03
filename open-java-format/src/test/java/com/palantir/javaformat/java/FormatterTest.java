@@ -368,6 +368,33 @@ final class FormatterTest {
     }
 
     @Test
+    void lineCommentGetsItsMissingSpaceExceptIdeMarkers() throws Exception {
+        // `//foo` gets a space after any number of slashes, while the IDE markers `//noinspection` and `//$NON-NLS-n$`
+        // are recognised by their tools only without one and stay as written.
+        String input = "class T {\n"
+                + "  //noinspection unchecked\n"
+                + "  //$NON-NLS-1$ //$NON-NLS-2$\n"
+                + "  //$NON-NLS-12$ and more\n"
+                + "  //foo\n"
+                + "  ///foo\n"
+                + "  // bar\n"
+                + "  //  two spaces\n"
+                + "  void m() {}\n"
+                + "}\n";
+        String expected = "class T {\n"
+                + "  //noinspection unchecked\n"
+                + "  //$NON-NLS-1$ //$NON-NLS-2$\n"
+                + "  //$NON-NLS-12$ and more\n"
+                + "  // foo\n"
+                + "  /// foo\n"
+                + "  // bar\n"
+                + "  //  two spaces\n"
+                + "  void m() {}\n"
+                + "}\n";
+        assertThat(Formatter.create().formatSource(input)).isEqualTo(expected);
+    }
+
+    @Test
     void throwsFormatterException() throws Exception {
         assertThatThrownBy(() -> Formatter.create().formatSourceAndFixImports("package foo; public class {"))
                 .isInstanceOf(FormatterException.class);
