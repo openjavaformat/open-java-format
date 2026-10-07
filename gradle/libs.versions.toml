@@ -19,7 +19,7 @@ jetbrainsAnnotations = { module = "org.jetbrains:annotations", version = "26.1.0
 junit-bom = { module = "org.junit:junit-bom", version = "6.1.3" }
 assertj = { module = "org.assertj:assertj-core", version = "3.27.7" }
 autoService = { module = "com.google.auto.service:auto-service", version = "1.1.1" }
-caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.4" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.3.0" }
 compileTesting = { module = "com.google.testing.compile:compile-testing", version = "0.23.0" }
 # Error Prone, the checks it runs: open-java-format.error-prone-conventions. error-prone-contrib is
 # Picnic's error-prone-support, built against one Error Prone release; keep the two in step.
