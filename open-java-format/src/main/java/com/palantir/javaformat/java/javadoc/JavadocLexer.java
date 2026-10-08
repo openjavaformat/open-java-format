@@ -55,12 +55,14 @@ import static java.util.regex.Pattern.DOTALL;
 import static java.util.regex.Pattern.compile;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.PeekingIterator;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** Lexer for the Javadoc formatter. */
@@ -74,8 +76,51 @@ final class JavadocLexer {
          */
         input = stripJavadocBeginAndEnd(input);
         input = normalizeLineEndings(input);
+        input = stripMargins(input);
         return new JavadocLexer(new CharStream(input)).generateTokens();
     }
+
+    /**
+     * Strips the margin from every continuation line: the {@code *} prefix (with the space after it) from lines that
+     * have one, and the comment's own indentation from lines that do not. What remains of a bare line's indentation is
+     * relative to the comment, as on {@code *} lines after their {@code * }, so a {@code <pre>{@code} block written
+     * without the {@code *} margin keeps its shape for {@link #deindentPreCodeBlocks}.
+     *
+     * <p>The indentation stripped from bare lines is the smaller of the shortest {@code *} prefix and the shortest
+     * indentation of a bare line, so a bare line is never cut into and lines of both kinds stay aligned with each
+     * other.
+     */
+    private static String stripMargins(String input) {
+        List<String> lines = Splitter.on('\n').splitToList(input);
+        List<String> continuations = lines.subList(1, lines.size());
+        int starPrefixLength = continuations.stream()
+                .map(STAR_PREFIX_PATTERN::matcher)
+                .filter(Matcher::find)
+                .mapToInt(Matcher::end)
+                .min()
+                .orElse(0);
+        int bareIndentation = continuations.stream()
+                .filter(line -> !STAR_PREFIX_PATTERN.matcher(line).find())
+                .filter(NOT_SPACE_OR_TAB::matchesAnyOf)
+                .mapToInt(NOT_SPACE_OR_TAB::indexIn)
+                .min()
+                .orElse(0);
+        int bareStrip = Math.min(starPrefixLength, bareIndentation);
+        StringBuilder result = new StringBuilder(lines.get(0));
+        for (String line : continuations) {
+            result.append('\n');
+            Matcher star = STAR_PREFIX_PATTERN.matcher(line);
+            if (star.find()) {
+                result.append(line, star.end(), line.length());
+            } else if (NOT_SPACE_OR_TAB.matchesAnyOf(line)) {
+                result.append(line, bareStrip, line.length());
+            }
+        }
+        return result.toString();
+    }
+
+    private static final Pattern STAR_PREFIX_PATTERN = compile("^[ \t]*[*][ \t]?");
+    private static final CharMatcher NOT_SPACE_OR_TAB = CharMatcher.noneOf(" \t");
 
     /** The lexer crashes on windows line endings, so for now just normalize to `\n`. */
     // TODO(cushon): use the platform line separator for output
@@ -528,8 +573,11 @@ final class JavadocLexer {
      *
      * We'd remove the trailing whitespace later on (in JavaCommentsHelper.rewrite), but I feel safer
      * stripping it now: It otherwise might confuse our line-length count, which we use for wrapping.
+     *
+     * The margin of the next line (its `*` and the comment's indentation) is gone already: see
+     * stripMargins().
      */
-    private static final Pattern NEWLINE_PATTERN = compile("^[ \t]*\n[ \t]*[*]?[ \t]?");
+    private static final Pattern NEWLINE_PATTERN = compile("^[ \t]*\n");
 
     // We ensure elsewhere that we match this only at the beginning of a line.
     // Only match tags that start with a lowercase letter, to avoid false matches on unescaped
