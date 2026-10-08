@@ -339,6 +339,16 @@ final class JavadocLexer {
                 continue;
             }
 
+            if (seenWhitespace.indexOf("\n") >= 0
+                    && !hasMultipleNewlines(seenWhitespace.toString())
+                    && isHyphenatedWordEnd(accumulated)
+                    && tokens.peek().getType() == LITERAL
+                    && isWordStart(tokens.peek().getValue())
+                    && !isSuspendedHyphenConjunction(tokens.peek().getValue())) {
+                accumulated.append(tokens.next().getValue());
+                continue;
+            }
+
             output.add(new Token(LITERAL, accumulated.toString()));
             accumulated.setLength(0);
 
@@ -350,11 +360,24 @@ final class JavadocLexer {
             // We have another token coming, possibly of type OTHER. Leave it for the next iteration.
         }
 
-        /*
-         * TODO(cpovirk): Another case where we could try to join tokens is if a line ends with
-         * /[^ -]-/, as in "non-\nblocking."
-         */
         return output.build();
+    }
+
+    private static boolean isHyphenatedWordEnd(CharSequence cs) {
+        int length = cs.length();
+        return length >= 2 && cs.charAt(length - 1) == '-' && isWordChar(cs.charAt(length - 2));
+    }
+
+    private static boolean isWordChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
+    }
+
+    private static boolean isWordStart(String s) {
+        return !s.isEmpty() && isWordChar(s.charAt(0));
+    }
+
+    private static boolean isSuspendedHyphenConjunction(String s) {
+        return s.equals("and") || s.equals("or");
     }
 
     /**
