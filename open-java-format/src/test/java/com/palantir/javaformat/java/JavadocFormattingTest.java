@@ -109,7 +109,7 @@ final class JavadocFormattingTest {
             "/**", " * Foo.", " *", " *  <!--", "*abc", " *   def   ", " * </tr>", " *-->bar", " */", "class Test {}",
         };
         String[] expected = {
-            "/**", " * Foo.", " * <!--", " *abc", " *   def", " * </tr>", " *-->", " * bar", " */", "class Test {}",
+            "/**", " * Foo.", " * <!--", " * abc", " *   def", " * </tr>", " * -->", " * bar", " */", "class Test {}",
         };
         doFormatTest(input, expected);
     }
@@ -1495,5 +1495,105 @@ final class JavadocFormattingTest {
             "class Test {}",
         };
         doFormatTest(input, input);
+    }
+
+    @Test
+    void preCodeWithoutLeadingStarPreservesIndent() {
+        String[] input = {
+            "/**", //
+            " * Example:",
+            " * <pre>{@code",
+            "class Demo {",
+            "  // Comment",
+            "  static final int X = 1;",
+            "",
+            "  public static void example() {",
+            "    int y = 2;",
+            "  }",
+            "}",
+            " * }</pre>",
+            " */",
+            "class Test {}",
+        };
+        String[] expected = {
+            "/**", //
+            " * Example:",
+            " *",
+            " * <pre>{@code",
+            " * class Demo {",
+            " *   // Comment",
+            " *   static final int X = 1;",
+            " *",
+            " *   public static void example() {",
+            " *     int y = 2;",
+            " *   }",
+            " * }",
+            " * }</pre>",
+            " */",
+            "class Test {}",
+        };
+        doFormatTest(input, expected);
+    }
+
+    @Test
+    void preCodeWithoutLeadingStarInIndentedComment() {
+        String[] input = {
+            "class Outer {", //
+            "    /**",
+            "     * Usage:",
+            "     * <pre>{@code",
+            "        Demo demo = new Demo();",
+            "        if (demo.ready()) {",
+            "            demo.run();",
+            "        }",
+            "     * }</pre>",
+            "     */",
+            "    void m() {}",
+            "}",
+        };
+        String[] expected = {
+            "class Outer {", //
+            "  /**",
+            "   * Usage:",
+            "   *",
+            "   * <pre>{@code",
+            "   * Demo demo = new Demo();",
+            "   * if (demo.ready()) {",
+            "   *     demo.run();",
+            "   * }",
+            "   * }</pre>",
+            "   */",
+            "  void m() {}",
+            "}",
+        };
+        doFormatTest(input, expected);
+    }
+
+    @Test
+    void preCodeMixedStarAndBareLinesKeepRelativeIndent() {
+        String[] input = {
+            "/**", //
+            " * Example:",
+            " * <pre>{@code",
+            " * class Demo {",
+            "     int x;",
+            " * }",
+            " * }</pre>",
+            " */",
+            "class Test {}",
+        };
+        String[] expected = {
+            "/**", //
+            " * Example:",
+            " *",
+            " * <pre>{@code",
+            " * class Demo {",
+            " *   int x;",
+            " * }",
+            " * }</pre>",
+            " */",
+            "class Test {}",
+        };
+        doFormatTest(input, expected);
     }
 }

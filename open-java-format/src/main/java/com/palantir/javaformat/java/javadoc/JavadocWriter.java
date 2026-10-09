@@ -23,11 +23,13 @@ import static com.palantir.javaformat.java.javadoc.JavadocWriter.RequestedWhites
 import static com.palantir.javaformat.java.javadoc.JavadocWriter.RequestedWhitespace.NONE;
 import static com.palantir.javaformat.java.javadoc.JavadocWriter.RequestedWhitespace.WHITESPACE;
 import static com.palantir.javaformat.java.javadoc.Token.Type.HEADER_OPEN_TAG;
+import static com.palantir.javaformat.java.javadoc.Token.Type.HTML_COMMENT;
 import static com.palantir.javaformat.java.javadoc.Token.Type.LIST_ITEM_OPEN_TAG;
 import static com.palantir.javaformat.java.javadoc.Token.Type.PARAGRAPH_OPEN_TAG;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Ordering;
+import java.util.List;
 import javax.annotation.Nullable;
 
 /**
@@ -263,7 +265,14 @@ final class JavadocWriter {
     void writeHtmlComment(Token token) {
         requestNewline();
 
-        writeToken(token);
+        // The lexer has stripped the margin from every line, so each one gets the margin back here.
+        List<String> lines = token.getValue().lines().toList();
+        writeToken(new Token(HTML_COMMENT, lines.get(0)));
+        for (String line : lines.subList(1, lines.size())) {
+            writeNewline(NO_AUTO_INDENT);
+            output.append(line);
+            remainingOnLine -= line.length();
+        }
 
         requestNewline();
     }
