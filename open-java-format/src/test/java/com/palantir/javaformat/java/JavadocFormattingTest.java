@@ -1625,4 +1625,90 @@ final class JavadocFormattingTest {
         };
         doFormatTest(input, expected);
     }
+
+    @Test
+    void hyphenatedLineBreakJoined() {
+        String[] input = {
+            "/**", //
+            " * This calculation requires an infinite-",
+            " * precision number.",
+            " */",
+            "class Test {}",
+        };
+        String[] expected = {
+            "/** This calculation requires an infinite-precision number. */", //
+            "class Test {}",
+        };
+        doFormatTest(input, expected);
+    }
+
+    @Test
+    void suspendedHyphenPreserved() {
+        String[] input = {
+            "/**", //
+            " * Both pre-",
+            " * and post-processing steps.",
+            " */",
+            "class Test {}",
+        };
+        String[] expected = {
+            "/** Both pre- and post-processing steps. */", //
+            "class Test {}",
+        };
+        doFormatTest(input, expected);
+    }
+
+    @Test
+    void hyphenBeforeParagraphBreakNotJoined() {
+        String[] input = {
+            "/**", //
+            " * Ends with a non-",
+            " *",
+            " * blocking paragraph.",
+            " */",
+            "class Test {}",
+        };
+        String[] expected = {
+            "/**", //
+            " * Ends with a non-",
+            " *",
+            " * <p>blocking paragraph.",
+            " */",
+            "class Test {}",
+        };
+        doFormatTest(input, expected);
+    }
+
+    @Test
+    void preBlockAsFirstContentGetsNoBlankLines() {
+        String[] input = {
+            "/**", //
+            " * <pre>{@code",
+            " * class Demo {",
+            " *   int x;",
+            " * }",
+            " * }</pre>",
+            " */",
+            "class Test {}",
+        };
+        doFormatTest(input, input);
+    }
+
+    @Test
+    void listAsFirstContentGetsNoBlankLines() {
+        String[] input = {
+            "/** <ul><li>one <li>two</ul> */", //
+            "class Test {}",
+        };
+        String[] expected = {
+            "/**", //
+            " * <ul>",
+            " *   <li>one",
+            " *   <li>two",
+            " * </ul>",
+            " */",
+            "class Test {}",
+        };
+        doFormatTest(input, expected);
+    }
 }

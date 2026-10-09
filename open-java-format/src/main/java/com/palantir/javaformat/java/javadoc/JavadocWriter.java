@@ -114,9 +114,7 @@ final class JavadocWriter {
          */
         postWriteModifiedContinuingListCount.reset();
 
-        if (!wroteAnythingSignificant) {
-            // Javadoc consists solely of tags. This is frowned upon in general but OK for @Overrides.
-        } else if (!continuingFooterTag) {
+        if (!continuingFooterTag) {
             // First footer tag after a body tag.
             requestBlankLine();
         } else {
@@ -326,6 +324,12 @@ final class JavadocWriter {
     private void writeToken(Token token) {
         if (requestedMoeBeginStripComment != null) {
             requestNewline();
+        }
+
+        if (!wroteAnythingSignificant) {
+            // Nothing precedes the first token but the opening ∕✱✱ and its newline, so no requested
+            // whitespace (e.g., the blank line a <pre> or <ul> asks for) belongs before it.
+            requestedWhitespace = NONE;
         }
 
         if (requestedWhitespace == BLANK_LINE
