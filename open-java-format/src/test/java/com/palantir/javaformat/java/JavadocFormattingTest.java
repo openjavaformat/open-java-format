@@ -571,6 +571,35 @@ final class JavadocFormattingTest {
     }
 
     @Test
+    void trailingAsterisksBeforeClose() {
+        String[] input = {
+            "/** Version information for all the QuotaKeys that we have data for **/", //
+            "class Test {}",
+        };
+        String[] expected = {
+            "/** Version information for all the QuotaKeys that we have data for */", //
+            "class Test {}",
+        };
+        doFormatTest(input, expected);
+    }
+
+    @Test
+    void trailingAsterisksOnTheirOwnLine() {
+        String[] input = {
+            "/**", //
+            " * Summary line",
+            " * continues here.",
+            " ***/",
+            "class Test {}",
+        };
+        String[] expected = {
+            "/** Summary line continues here. */", //
+            "class Test {}",
+        };
+        doFormatTest(input, expected);
+    }
+
+    @Test
     void links() {
         String[] input = {
             "/**",
