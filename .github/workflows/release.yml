@@ -67,7 +67,7 @@ jobs:
 
       - name: Keep JReleaser's log
         if: ${{ failure() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: jreleaser-log-jars
           path: build/jreleaser/trace.log
@@ -126,7 +126,7 @@ jobs:
           JDK21_HOME: ${{ steps.jdk21.outputs.path }}
 
       - name: Hand the binary to the deploy job
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: native-image-${{ matrix.platform }}
           path: |
@@ -187,7 +187,7 @@ jobs:
 
       - name: Keep JReleaser's log
         if: ${{ failure() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: jreleaser-log-native
           path: build/jreleaser/trace.log
@@ -230,7 +230,7 @@ jobs:
 
       - name: Keep JReleaser's log
         if: ${{ failure() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: jreleaser-log-publish-${{ matrix.deployment }}
           path: build/jreleaser/trace.log
@@ -305,7 +305,7 @@ jobs:
 
       - name: Keep the verifier's report
         if: ${{ failure() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: plugin-verifier-report
           path: open-java-format-idea-plugin/build/reports/pluginVerifier
@@ -356,7 +356,7 @@ jobs:
 
       - name: Keep JReleaser's log
         if: ${{ failure() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: jreleaser-log-github
           path: build/jreleaser/trace.log
