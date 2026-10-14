@@ -27,7 +27,7 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath 'org.jetbrains.intellij.platform:org.jetbrains.intellij.platform.gradle.plugin:2.18.1'
+        classpath 'org.jetbrains.intellij.platform:org.jetbrains.intellij.platform.gradle.plugin:2.19.0'
     }
 }
 
