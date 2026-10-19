@@ -138,9 +138,9 @@ mise trust && mise install
 ```
 
 `-PjavaRuntime=25` runs the same tests on JDK 25, as CI's `jdk` jobs do for 25, 26 and 27, and for
-the Valhalla early-access build, the one JDK whose value classes the `value` modifier tests need.
-The code is compiled for Java 21 either way. Gradle has to find that JDK: installed with mise, or
-named with `-Porg.gradle.java.installations.paths=/path/to/jdk`.
+the early-access builds of 28, where value classes are a preview feature and the `value` modifier
+tests run. The code is compiled for Java 21 either way. Gradle has to find that JDK: installed with
+mise, or named with `-Porg.gradle.java.installations.paths=/path/to/jdk`.
 
 Nothing inside the build downloads a JDK. `gradle.properties` turns toolchain auto-download off and
 reads the installations from `JDK21_HOME` and `GRAALVM_HOME`, so a missing JDK is an error you can

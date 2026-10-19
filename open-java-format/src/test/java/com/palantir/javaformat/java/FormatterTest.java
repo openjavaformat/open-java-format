@@ -592,11 +592,8 @@ final class FormatterTest {
 
             value public record PointValueRecord(int x, int y) {}
             """;
-        // The orderer follows the Modifier enum, and the JEP 401 early-access builds declare VALUE between NON_SEALED
-        // and FINAL. Upstream expects `final value`, the order of Valhalla's lworld branch, where VALUE comes last.
-        // Re-check when CI moves to a newer build.
         String expected = """
-            public value final class PointValueClass {
+            public final value class PointValueClass {
                 final int x;
                 final int y;
 

@@ -50,7 +50,7 @@ jobs:
   # formatter parses with. The IntelliJ plugin's tests stay on the runtime of the IDE they start.
   # JDK 21 itself is `build`, the check the default branch requires.
   jdk:
-    name: build (JDK ${{ matrix.jdk }}${{ matrix.valhalla && ', Valhalla EA' || '' }})
+    name: build (JDK ${{ matrix.jdk }}${{ matrix.ea && '-ea' || '' }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -68,40 +68,25 @@ jobs:
               Gradle 9.7.1 does not run on Java 27 yet, and the Gradle plugin's tests run their TestKit builds on
               the test JVM, where they fail with "Unsupported class file major version 71". Those tests are left
               out until the wrapper's Gradle supports Java 27.
-          # The JEP 401 early-access build from https://jdk.java.net/valhalla/, the one JDK with value classes
-          # until they reach a release: the value class tests (#131) are skipped on every other JDK. No
-          # setup-java distribution serves it, so the build is pinned here by URL and checksum from the
-          # download page; bump both when a newer build appears there.
-          - jdk: 27
-            valhalla: https://download.java.net/java/early_access/valhalla/27/1/openjdk-27-jep401ea3+1-1_linux-x64_bin.tar.gz
-            valhalla_sha256: b8bdd7b181c6a5ea2dd9959255e222cd9d9a9f42cca4f2400991b9b2ff7ffb7d
+          # Value classes (JEP 401) are a preview feature of JDK 28, so until it is released the `value` modifier
+          # tests (#131) run on its early-access builds and are skipped everywhere else.
+          - jdk: 28
+            ea: true
             gradle_args: -x :gradle-open-java-format:test
-            gradle_args_reason: As for JDK 27, the release this build is based on.
+            gradle_args_reason: As on JDK 27, the wrapper's Gradle does not run on Java 28 either.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Download the Valhalla early-access JDK
-        if: ${{ matrix.valhalla }}
-        id: valhalla
-        env:
-          URL: ${{ matrix.valhalla }}
-          SHA256: ${{ matrix.valhalla_sha256 }}
-        run: |
-          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/valhalla.tar.gz" "$URL"
-          echo "$SHA256  $RUNNER_TEMP/valhalla.tar.gz" | sha256sum --check
-          echo "archive=$RUNNER_TEMP/valhalla.tar.gz" >> "$GITHUB_OUTPUT"
-
-      # No problem matcher in this job: `build` annotates the warnings. The Valhalla build is the archive
-      # downloaded above: jdkfile is the distribution for a JDK that setup-java did not fetch itself.
+      # No problem matcher in this job: `build` annotates the warnings. An `ea` leg takes the newest
+      # early-access build of its version.
       - name: Install JDK ${{ matrix.jdk }} for the tests
         id: test-jdk
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
-          distribution: ${{ matrix.valhalla && 'jdkfile' || 'temurin' }}
-          jdk-file: ${{ steps.valhalla.outputs.archive }}
-          java-version: ${{ matrix.jdk }}
+          distribution: temurin
+          java-version: ${{ matrix.jdk }}${{ matrix.ea && '-ea' || '' }}
           problem-matcher: false
 
       # Installed last, so that it is the JAVA_HOME Gradle runs and compiles on.
