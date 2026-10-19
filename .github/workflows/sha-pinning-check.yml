@@ -2,9 +2,9 @@ name: Ensure SHA-pinned actions
 
 on:
   pull_request:
-    branches: [ 'main' ]
+    branches: [ '*.X.X' ]
   push:
-    branches: [ 'main' ]
+    branches: [ '*.X.X' ]
 
 permissions:
   contents: read
