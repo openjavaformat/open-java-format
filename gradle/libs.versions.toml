@@ -29,7 +29,7 @@ nullaway = { module = "com.uber.nullaway:nullaway", version = "0.14.2" }
 functionaljava = { module = "org.functionaljava:functionaljava", version = "5.0" }
 guava = { module = "com.google.guava:guava", version = "33.7.2-jre" }
 guava-testlib = { module = "com.google.guava:guava-testlib", version = "33.7.2-jre" }
-immutables-value = { module = "org.immutables:value", version = "2.12.2" }
+immutables-value = { module = "org.immutables:value", version = "2.12.3" }
 jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version = "2.22" }
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version = "2.22.3" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version = "2.22.3" }
