@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - '*.X.X' # a release line is named after the Java version it is built for: 21.X.X
   pull_request:
 
 permissions:
@@ -48,7 +49,7 @@ jobs:
   # jobs and nothing they build is kept. The code is still compiled for Java 21 by JDK 21, as in the
   # release; -PjavaRuntime moves only the test JVMs, and with them the javac whose internals the
   # formatter parses with. The IntelliJ plugin's tests stay on the runtime of the IDE they start.
-  # JDK 21 itself is `build`, the check the main branch requires.
+  # JDK 21 itself is `build`, the check the default branch requires.
   jdk:
     name: build (JDK ${{ matrix.jdk }})
     runs-on: ubuntu-latest
