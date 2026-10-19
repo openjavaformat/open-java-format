@@ -21,6 +21,8 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Range;
 import java.util.Arrays;
+import javax.lang.model.element.Modifier;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -111,5 +113,22 @@ final class ModifierOrdererTest {
         assertThat(ModifierOrderer.reorderModifiers("non-sealed private interface B extends I {}")
                         .getText())
                 .isEqualTo("private non-sealed interface B extends I {}");
+    }
+
+    @Test
+    void valueClass() throws FormatterException {
+        Assumptions.assumeTrue(
+                Arrays.stream(Modifier.values())
+                        .anyMatch(modifier -> modifier.name().equals("VALUE")),
+                "`value` is a modifier only on a JDK with Project Valhalla's value classes");
+        assertThat(ModifierOrderer.reorderModifiers("value final public").getText())
+                .isEqualTo("public final value");
+    }
+
+    @Test
+    void nonMinusValueIsAnExpression() throws FormatterException {
+        // `non - value` lexes like `non-sealed`, and there is no NON_VALUE modifier to look up for it
+        assertThat(ModifierOrderer.reorderModifiers("int x = non - value;").getText())
+                .isEqualTo("int x = non - value;");
     }
 }
