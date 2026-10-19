@@ -116,10 +116,13 @@ A version is three numbers, `<java>.<minor>.<build>`, and each one answers a que
 
 - **The first is the Java version the formatter is built for**, 21 today. It moves when the minimum
   Java version moves.
-- **The second counts changes to the output**: a fix in wrapping or alignment, a new rule, a new
-  feature. A newer minor version can reformat code that the previous one left alone.
-- **The third counts builds that leave the output alone**: regressions, internal bugs, dependency
-  and build updates. A newer build formats every file exactly as the previous one did.
+- **The second moves with every change to the output**: a fix in wrapping or alignment, a new rule,
+  a new feature. A newer minor version can reformat code that the previous one left alone.
+- **The third moves with fixes that leave the output alone**: a crash, a regression, an internal
+  bug, a dependency update. A newer build formats every file exactly as the previous one did.
+
+The line between the last two numbers is the output, not the kind of change: a fix that changes
+the output raises the second number, a fix that does not raises the third.
 
 Up to 2.98.0.6 the version was palantir-java-format's with a build number appended. Once the bug
 fixes made the output differ from upstream, that numbering lost its meaning.
