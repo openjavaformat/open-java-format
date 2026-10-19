@@ -50,7 +50,7 @@ jobs:
   # formatter parses with. The IntelliJ plugin's tests stay on the runtime of the IDE they start.
   # JDK 21 itself is `build`, the check the default branch requires.
   jdk:
-    name: build (JDK ${{ matrix.jdk }}${{ matrix.ea && '-ea' || '' }})
+    name: build (JDK ${{ matrix.jdk }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -69,9 +69,9 @@ jobs:
               the test JVM, where they fail with "Unsupported class file major version 71". Those tests are left
               out until the wrapper's Gradle supports Java 27.
           # Value classes (JEP 401) are a preview feature of JDK 28, so until it is released the `value` modifier
-          # tests (#131) run on its early-access builds and are skipped everywhere else.
-          - jdk: 28
-            ea: true
+          # tests (#131) run on its early-access builds and are skipped everywhere else. The version is spelled
+          # as setup-java spells it; Gradle gets the number alone.
+          - jdk: 28-ea
             gradle_args: -x :gradle-open-java-format:test
             gradle_args_reason: As on JDK 27, the wrapper's Gradle does not run on Java 28 either.
     steps:
@@ -79,14 +79,13 @@ jobs:
         with:
           persist-credentials: false
 
-      # No problem matcher in this job: `build` annotates the warnings. An `ea` leg takes the newest
-      # early-access build of its version.
+      # No problem matcher in this job: `build` annotates the warnings.
       - name: Install JDK ${{ matrix.jdk }} for the tests
         id: test-jdk
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
-          java-version: ${{ matrix.jdk }}${{ matrix.ea && '-ea' || '' }}
+          java-version: ${{ matrix.jdk }}
           problem-matcher: false
 
       # Installed last, so that it is the JAVA_HOME Gradle runs and compiles on.
@@ -106,11 +105,13 @@ jobs:
 
       # Gradle does not look into the runner's tool cache, so it is told where the test JDK is. The path is
       # a step's output, so it reaches the shell as a variable rather than being pasted into the script.
+      # -PjavaRuntime takes a number, so an early-access leg loses its -ea suffix here.
       - name: Build
         env:
           TEST_JDK: ${{ steps.test-jdk.outputs.path }}
+          JDK: ${{ matrix.jdk }}
         run: >-
-          ./gradlew test -PjavaRuntime=${{ matrix.jdk }} ${{ matrix.gradle_args }}
+          ./gradlew test -PjavaRuntime="${JDK%-ea}" ${{ matrix.gradle_args }}
           -Porg.gradle.java.installations.paths="$TEST_JDK"
 
       - name: Publish Test Report
