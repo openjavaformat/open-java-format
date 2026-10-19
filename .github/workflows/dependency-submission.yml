@@ -2,7 +2,7 @@ name: Submit dependency graph
 
 on:
   push:
-    branches: [ 'main', '*.X.X' ]
+    branches: [ '*.X.X' ]
 
 permissions:
   contents: write

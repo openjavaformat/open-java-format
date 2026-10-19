@@ -3,7 +3,6 @@ name: CI
 on:
   push:
     branches:
-      - main
       - '*.X.X' # a release line is named after the Java version it is built for: 21.X.X
   pull_request:
 

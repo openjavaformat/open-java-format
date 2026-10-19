@@ -2,13 +2,13 @@ version: 2
 # A release is proposed only once it is a week old: a compromised or broken release is usually pulled
 # within days. The cooldown holds back version updates only; security updates still come at once.
 #
-# No target-branch: the pull requests go to the default branch, which is the current release line,
-# 21.X.X today.
+# target-branch names the current release line; it moves when the next line starts.
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    target-branch: "21.X.X"
     cooldown:
       default-days: 7
 
@@ -16,5 +16,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    target-branch: "21.X.X"
     cooldown:
       default-days: 7
