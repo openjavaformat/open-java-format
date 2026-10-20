@@ -19,6 +19,7 @@ package com.palantir.javaformat.java;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Iterables.getLast;
 
+import com.google.common.base.Enums;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Range;
@@ -201,7 +202,7 @@ final class ModifierOrderer {
         if (modifier == null) {
             return null;
         }
-        return Modifier.valueOf("NON_" + modifier.name());
+        return Enums.getIfPresent(Modifier.class, "NON_" + modifier.name()).orNull();
     }
 
     /**
@@ -254,6 +255,7 @@ final class ModifierOrderer {
         }
         return switch (token.getTok().getText()) {
             case "sealed" -> Modifier.valueOf("SEALED");
+            case "value" -> Enums.getIfPresent(Modifier.class, "VALUE").orNull();
             default -> null;
         };
     }

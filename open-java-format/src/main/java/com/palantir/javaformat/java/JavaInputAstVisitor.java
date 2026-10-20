@@ -34,6 +34,7 @@ import static com.sun.source.tree.Tree.Kind.EXTENDS_WILDCARD;
 import static com.sun.source.tree.Tree.Kind.STRING_LITERAL;
 import static java.util.stream.Collectors.toList;
 
+import com.google.common.base.Enums;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
@@ -146,6 +147,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 
 /** An AST visitor that builds a stream of {@link Op}s to format from the given {@link CompilationUnitTree}. */
@@ -1420,8 +1422,11 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
                 }
             }
         }
-        builder.addAll(
-                visitModifiers(annotations, Direction.VERTICAL, /* declarationAnnotationBreak= */ Optional.empty()));
+        builder.addAll(visitModifiers(
+                annotations,
+                node.getModifiers().getFlags(),
+                Direction.VERTICAL,
+                /* declarationAnnotationBreak= */ Optional.empty()));
 
         Tree baseReturnType = null;
         Deque<List<? extends AnnotationTree>> dims = null;
@@ -2236,22 +2241,28 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
             Optional<BreakTag> declarationAnnotationBreak) {
         boolean isRecordParameter = modifiersTree instanceof JCTree.JCModifiers && isInRecord(modifiersTree);
         return visitModifiers(
-                modifiersTree.getAnnotations(), annotationsDirection, declarationAnnotationBreak, isRecordParameter);
+                modifiersTree.getAnnotations(),
+                modifiersTree.getFlags(),
+                annotationsDirection,
+                declarationAnnotationBreak,
+                isRecordParameter);
     }
 
     private List<Op> visitModifiers(
             List<? extends AnnotationTree> annotationTrees,
+            Set<Modifier> flags,
             Direction annotationsDirection,
             Optional<BreakTag> declarationAnnotationBreak) {
-        return visitModifiers(annotationTrees, annotationsDirection, declarationAnnotationBreak, false);
+        return visitModifiers(annotationTrees, flags, annotationsDirection, declarationAnnotationBreak, false);
     }
 
     private List<Op> visitModifiers(
             List<? extends AnnotationTree> annotationTrees,
+            Set<Modifier> flags,
             Direction annotationsDirection,
             Optional<BreakTag> declarationAnnotationBreak,
             boolean isRecordParameter) {
-        if (annotationTrees.isEmpty() && !nextIsModifier()) {
+        if (annotationTrees.isEmpty() && !nextIsModifier(flags)) {
             return EMPTY_LIST;
         }
         Deque<AnnotationTree> annotations = new ArrayDeque<>(annotationTrees);
@@ -2259,7 +2270,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         boolean first = true;
         boolean lastWasAnnotation = false;
         while (!annotations.isEmpty()) {
-            if (nextIsModifier()) {
+            if (nextIsModifier(flags)) {
                 break;
             }
             if (!first) {
@@ -2286,7 +2297,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
                 : annotationsDirection.isVertical()
                         ? forceBreakList(declarationAnnotationBreak)
                         : breakList(declarationAnnotationBreak);
-        if (annotations.isEmpty() && !nextIsModifier()) {
+        if (annotations.isEmpty() && !nextIsModifier(flags)) {
             return trailingBreak;
         }
         if (lastWasAnnotation) {
@@ -2295,11 +2306,11 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
         builder.open(ZERO);
         first = true;
-        while (nextIsModifier() || !annotations.isEmpty()) {
+        while (nextIsModifier(flags) || !annotations.isEmpty()) {
             if (!first) {
                 builder.addAll(breakFillList(Optional.empty()));
             }
-            if (nextIsModifier()) {
+            if (nextIsModifier(flags)) {
                 String currentToken = builder.peekToken().get();
                 token(currentToken);
                 if (currentToken.equals("non")) {
@@ -2316,23 +2327,39 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         return breakFillList(Optional.empty());
     }
 
-    boolean nextIsModifier() {
+    /**
+     * The {@code value} modifier of Project Valhalla's value classes, on a JDK that has it. It is looked up by name so
+     * that the formatter still compiles for JDK 21.
+     */
+    @Nullable
+    private static final Modifier VALUE_MODIFIER =
+            Enums.getIfPresent(Modifier.class, "VALUE").orNull();
+
+    /**
+     * Whether the next token is one of {@code flags}, the modifiers of the declaration being visited. The text alone
+     * does not tell the contextual modifiers {@code sealed} and {@code value} from identifiers of that name, and a
+     * lambda parameter named so starts its declaration with it.
+     */
+    boolean nextIsModifier(Set<Modifier> flags) {
+        if (flags.isEmpty()) {
+            return false;
+        }
         return switch (builder.peekToken().get()) {
-            case "public",
-                    "protected",
-                    "private",
-                    "abstract",
-                    "static",
-                    "final",
-                    "transient",
-                    "volatile",
-                    "synchronized",
-                    "native",
-                    "strictfp",
-                    "default",
-                    "sealed",
-                    "non",
-                    "-" -> true;
+            case "public" -> flags.contains(Modifier.PUBLIC);
+            case "protected" -> flags.contains(Modifier.PROTECTED);
+            case "private" -> flags.contains(Modifier.PRIVATE);
+            case "abstract" -> flags.contains(Modifier.ABSTRACT);
+            case "static" -> flags.contains(Modifier.STATIC);
+            case "final" -> flags.contains(Modifier.FINAL);
+            case "transient" -> flags.contains(Modifier.TRANSIENT);
+            case "volatile" -> flags.contains(Modifier.VOLATILE);
+            case "synchronized" -> flags.contains(Modifier.SYNCHRONIZED);
+            case "native" -> flags.contains(Modifier.NATIVE);
+            case "strictfp" -> flags.contains(Modifier.STRICTFP);
+            case "default" -> flags.contains(Modifier.DEFAULT);
+            case "sealed" -> flags.contains(Modifier.SEALED) || flags.contains(Modifier.NON_SEALED);
+            case "non", "-" -> flags.contains(Modifier.NON_SEALED);
+            case "value" -> VALUE_MODIFIER != null && flags.contains(VALUE_MODIFIER);
             default -> false;
         };
     }

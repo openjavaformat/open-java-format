@@ -147,6 +147,13 @@ def writeNativeImagePath = tasks.register("writeNativeImagePath") {
 tasks.named("test").configure {
     dependsOn(writeImplClasspath)
 
+    // The Gradle the TestKit builds run on, read by GradleTestProject, which defaults to the oldest Gradle 9
+    // the plugins support. CI's jdk legs pass the oldest release that runs on their JDK; empty means none.
+    def testkitGradleVersion = providers.gradleProperty('testkitGradleVersion').filter { !it.isEmpty() }
+    if (testkitGradleVersion.isPresent()) {
+        systemProperty 'testkit.gradleVersion', testkitGradleVersion.get()
+    }
+
     if (rootProject.ext.nativeImageRequested) {
         dependsOn(writeNativeImagePath)
     } else {

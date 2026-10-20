@@ -34,12 +34,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
+import javax.lang.model.element.Modifier;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @Execution(ExecutionMode.CONCURRENT)
 final class FormatterTest {
@@ -567,5 +571,69 @@ final class FormatterTest {
                 JavaFormatterOptions.builder().style(Style.OJF).build());
 
         assertThat(formatter.formatSource(input)).isEqualTo(expected);
+    }
+
+    @Test
+    void valueClassAndRecord() throws FormatterException {
+        Assumptions.assumeTrue(
+                Arrays.stream(Modifier.values())
+                        .anyMatch(modifier -> modifier.name().equals("VALUE")),
+                "`value` is a modifier only on a JDK with Project Valhalla's value classes");
+        String input = """
+            value final public class PointValueClass {
+                final int x;
+                final int y;
+
+                PointValueClass(int x, int y) {
+                    this.x = x;
+                    this.y = y;
+                }
+            }
+
+            value public record PointValueRecord(int x, int y) {}
+            """;
+        String expected = """
+            public final value class PointValueClass {
+                final int x;
+                final int y;
+
+                PointValueClass(int x, int y) {
+                    this.x = x;
+                    this.y = y;
+                }
+            }
+
+            public value record PointValueRecord(int x, int y) {}
+            """;
+        Formatter formatter = Formatter.createFormatter(
+                JavaFormatterOptions.builder().style(Style.OJF).build());
+
+        assertThat(formatter.formatSource(input)).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"non", "sealed", "value"})
+    void contextualKeywordAsIdentifier(String name) throws FormatterException {
+        // `value`, `sealed` and `non-sealed` are modifiers only in front of a declaration that carries them. Anywhere
+        // else they are identifiers, and a lambda parameter is the one declaration that starts with its name.
+        String input = """
+            import java.util.Map;
+
+            class T {
+                private final int NAME;
+
+                T(int NAME) {
+                    this.NAME = NAME;
+                }
+
+                void f(Map<String, Integer> map) {
+                    map.forEach((key, NAME) -> System.err.println(key + NAME));
+                }
+            }
+            """.replace("NAME", name);
+        Formatter formatter = Formatter.createFormatter(
+                JavaFormatterOptions.builder().style(Style.OJF).build());
+
+        assertThat(formatter.formatSource(input)).isEqualTo(input);
     }
 }
