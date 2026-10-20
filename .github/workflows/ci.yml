@@ -55,25 +55,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `gradle` is what the Gradle plugins' tests build their projects with: the oldest release that runs on
+        # the leg's JDK (https://docs.gradle.org/current/userguide/compatibility.html#java_runtime), or 9.3.1,
+        # the oldest the plugins support, where that is older. Each leg thus tests the far end of what it can.
         include:
           - jdk: 25
+            gradle: 9.3.1
             gradle_args: ''
             gradle_args_reason: ''
           - jdk: 26
+            gradle: 9.4.0
             gradle_args: ''
             gradle_args_reason: ''
           - jdk: 27
-            gradle_args: -x :gradle-open-java-format:test
-            gradle_args_reason: >-
-              Gradle 9.7.1 does not run on Java 27 yet, and the Gradle plugin's tests run their TestKit builds on
-              the test JVM, where they fail with "Unsupported class file major version 71". Those tests are left
-              out until the wrapper's Gradle supports Java 27.
+            gradle: 9.8.0
+            gradle_args: ''
+            gradle_args_reason: ''
           # Value classes (JEP 401) are a preview feature of JDK 28, so until it is released the `value` modifier
           # tests (#131) run on its early-access builds and are skipped everywhere else. The version is spelled
           # as setup-java spells it; Gradle gets the number alone.
           - jdk: 28-ea
+            gradle: ''
             gradle_args: -x :gradle-open-java-format:test
-            gradle_args_reason: As on JDK 27, the wrapper's Gradle does not run on Java 28 either.
+            gradle_args_reason: >-
+              No Gradle release runs on Java 28 yet, and the Gradle plugins' tests build their projects with Gradle
+              on the test JVM. They are left out until one does.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -110,8 +116,9 @@ jobs:
         env:
           TEST_JDK: ${{ steps.test-jdk.outputs.path }}
           JDK: ${{ matrix.jdk }}
+          TESTKIT_GRADLE: ${{ matrix.gradle }}
         run: >-
-          ./gradlew test -PjavaRuntime="${JDK%-ea}" ${{ matrix.gradle_args }}
+          ./gradlew test -PjavaRuntime="${JDK%-ea}" -PtestkitGradleVersion="$TESTKIT_GRADLE" ${{ matrix.gradle_args }}
           -Porg.gradle.java.installations.paths="$TEST_JDK"
 
       - name: Publish Test Report

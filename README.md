@@ -142,6 +142,10 @@ the early-access builds of 28, where value classes are a preview feature and the
 tests run. The code is compiled for Java 21 either way. Gradle has to find that JDK: installed with
 mise, or named with `-Porg.gradle.java.installations.paths=/path/to/jdk`.
 
+The Gradle plugins' tests build their projects with Gradle 9.3.1, the oldest the plugins support.
+`-PtestkitGradleVersion=9.8.0` builds them with another, as CI's JDK 27 leg does: 9.3.1 does not run
+on Java 27, and 9.8.0 is the oldest release that does.
+
 Nothing inside the build downloads a JDK. `gradle.properties` turns toolchain auto-download off and
 reads the installations from `JDK21_HOME` and `GRAALVM_HOME`, so a missing JDK is an error you can
 read rather than a silent download.

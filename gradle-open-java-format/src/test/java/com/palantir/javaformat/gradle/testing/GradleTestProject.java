@@ -45,10 +45,12 @@ import org.gradle.testkit.runner.GradleRunner;
 public final class GradleTestProject {
 
     /**
-     * The oldest Gradle 9 we claim to support — the interesting end of the range to test against. There is no version
-     * matrix any more: Gradle 8 was dropped when the build itself moved to 9.
+     * The Gradle the generated projects build with: the oldest Gradle 9 we claim to support, the interesting end of
+     * the range to test against. There is no version matrix any more: Gradle 8 was dropped when the build itself moved
+     * to 9. On a JDK that old a Gradle cannot run on, the build names the oldest one that can in
+     * {@code testkit.gradleVersion}; CI's jdk legs take it from Gradle's compatibility table.
      */
-    private static final String GRADLE_VERSION = "9.3.1";
+    private static final String GRADLE_VERSION = System.getProperty("testkit.gradleVersion", "9.3.1");
 
     /** Written by java-gradle-plugin: the classpath {@link GradleRunner#withPluginClasspath()} injects. */
     private static final String PLUGIN_METADATA = "plugin-under-test-metadata.properties";
