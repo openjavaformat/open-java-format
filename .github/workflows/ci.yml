@@ -33,6 +33,23 @@ jobs:
           java-version: '21'
           problem-matcher: true
 
+      # Gradle's downloads come from the Actions cache rather than the network: the wrapper's distribution
+      # (services.gradle.org timed out and failed DNS on macos-15-intel, twice in a month) and the
+      # dependencies (Maven Central reset the connection on three runners and failed DNS on a fourth, all
+      # on 2026-10-19). Only builds of the default branch write the cache; pull requests read it. Two
+      # things stay out: the local build cache, left out on purpose for now, and the IDE the IntelliJ
+      # plugin's tests start, whose 852 MB zip and the 2.1 GB it unpacks to under transforms would take
+      # longer to restore than to download and fill much of the repository's 10 GB. Leaving paths out is a
+      # feature of the default, proprietary cache provider, bundled in the action and free for public
+      # repositories; the open-source one has none.
+      - name: Cache Gradle's downloads
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          gradle-home-cache-excludes: |
+            caches/build-cache-1
+            caches/modules-2/files-2.1/com.jetbrains.intellij.idea
+            caches/*/transforms
+
       - name: Build
         run: ./gradlew test
 
@@ -103,6 +120,15 @@ jobs:
           distribution: temurin
           java-version: '21'
           problem-matcher: false
+
+      # The same cache as in `build`.
+      - name: Cache Gradle's downloads
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          gradle-home-cache-excludes: |
+            caches/build-cache-1
+            caches/modules-2/files-2.1/com.jetbrains.intellij.idea
+            caches/*/transforms
 
       - name: Explain the extra Gradle arguments
         if: ${{ matrix.gradle_args != '' }}
@@ -179,6 +205,15 @@ jobs:
           java-version: '25'
           distribution: 'graalvm-community'
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The same cache as in `build`.
+      - name: Cache Gradle's downloads
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          gradle-home-cache-excludes: |
+            caches/build-cache-1
+            caches/modules-2/files-2.1/com.jetbrains.intellij.idea
+            caches/*/transforms
 
       - name: Compile the native image
         run: ./gradlew -PnativeImage=true :open-java-format-native:nativeCompile
