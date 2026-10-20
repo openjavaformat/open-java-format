@@ -636,4 +636,40 @@ final class FormatterTest {
 
         assertThat(formatter.formatSource(input)).isEqualTo(input);
     }
+
+    @Test
+    void trailingCommentAfterOpenBraceIsIdempotent() throws FormatterException {
+        // A block comment that trails `{` is broken onto its own line. It used to land one indent deeper than the
+        // statements that follow, and only a second run moved it back (google-java-format#1260, #129).
+        String input = """
+            class T {
+              void f() {
+                { /* c */ int x = 1; }
+              }
+
+              int[] a = { /* c */ 1 };
+            }
+            """;
+        String expected = """
+            class T {
+              void f() {
+                {
+                  /* c */
+                  int x = 1;
+                }
+              }
+
+              int[] a = {
+                /* c */
+                1
+              };
+            }
+            """;
+        Formatter formatter = Formatter.createFormatter(
+                JavaFormatterOptions.builder().style(Style.GOOGLE).build());
+
+        String once = formatter.formatSource(input);
+        assertThat(once).isEqualTo(expected);
+        assertThat(formatter.formatSource(once)).isEqualTo(once);
+    }
 }

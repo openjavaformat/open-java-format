@@ -541,7 +541,8 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
             builder.open(ZERO, BreakBehaviour.breakThisLevel(), LastLevelBreakability.ACCEPT_INLINE_CHAIN);
             builder.open(plusTwo, BreakBehaviour.breakThisLevel(), LastLevelBreakability.ACCEPT_INLINE_CHAIN);
-            tokenBreakTrailingComment("{", plusTwo);
+            // Same as visitBlock: the break is already inside the plusTwo level, and this branch has elements.
+            tokenBreakTrailingComment("{", ZERO);
             boolean hasTrailingComma = hasTrailingToken(builder.getInput(), expressions, ",");
             builder.breakOp(hasTrailingComma ? FillMode.FORCED : FillMode.UNIFIED, "", ZERO);
             if (allowFilledElementsOnOwnLine) {
@@ -2154,7 +2155,11 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         } else {
             builder.open(ZERO);
             builder.open(plusTwo);
-            tokenBreakTrailingComment("{", plusTwo);
+            // OpsBuilder.build puts a comment that trails "{" right after the token, inside the plusTwo level, so a
+            // non-empty block adds no indent of its own: the comment lines up with the statements, and a second run
+            // leaves it there. An empty block closes the level right after "{", and build moves the comment past that
+            // close, so it keeps plusTwo to sit inside the braces.
+            tokenBreakTrailingComment("{", node.getStatements().isEmpty() ? plusTwo : ZERO);
             if (allowLeadingBlankLine == AllowLeadingBlankLine.NO) {
                 builder.blankLineWanted(BlankLineWanted.NO);
             } else {
