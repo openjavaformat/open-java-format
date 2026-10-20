@@ -58,6 +58,7 @@ jobs:
         # `gradle` is what the Gradle plugins' tests build their projects with: the oldest release that runs on
         # the leg's JDK (https://docs.gradle.org/current/userguide/compatibility.html#java_runtime), or 9.3.1,
         # the oldest the plugins support, where that is older. Each leg thus tests the far end of what it can.
+        # 28-ea has no release that claims to run on it yet and tries the newest.
         include:
           - jdk: 25
             gradle: 9.3.1
@@ -75,11 +76,9 @@ jobs:
           # tests (#131) run on its early-access builds and are skipped everywhere else. The version is spelled
           # as setup-java spells it; Gradle gets the number alone.
           - jdk: 28-ea
-            gradle: ''
-            gradle_args: -x :gradle-open-java-format:test
-            gradle_args_reason: >-
-              No Gradle release runs on Java 28 yet, and the Gradle plugins' tests build their projects with Gradle
-              on the test JVM. They are left out until one does.
+            gradle: 9.8.2
+            gradle_args: ''
+            gradle_args_reason: ''
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
