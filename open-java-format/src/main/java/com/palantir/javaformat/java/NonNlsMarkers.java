@@ -34,7 +34,8 @@ public final class NonNlsMarkers {
             Pattern.compile("//\\$NON-NLS-\\d{1,9}\\$([ \\t]+//\\$NON-NLS-\\d{1,9}\\$)*");
 
     public static boolean isMarkersOnly(String comment) {
-        return comment.startsWith("//$NON-NLS-") && MARKERS_ONLY.matcher(comment).matches();
+        return comment.startsWith("//$NON-NLS-")
+                && MARKERS_ONLY.matcher(comment).matches();
     }
 
     /** The numbers of the markers in a comment, in order; an unmodifiable list. */

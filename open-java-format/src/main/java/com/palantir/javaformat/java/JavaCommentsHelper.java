@@ -181,9 +181,9 @@ public final class JavaCommentsHelper implements CommentsHelper {
      * written flat, for which {@link #rewrite} is not called.
      */
     public static String addMissingSpace(String line) {
-        Matcher matcher = LINE_COMMENT_MISSING_SPACE_PREFIX.matcher(line);
+        var matcher = LINE_COMMENT_MISSING_SPACE_PREFIX.matcher(line);
         if (matcher.find() && !LINE_COMMENT_NO_SPACE_PREFIX.matcher(line).find()) {
-            int length = matcher.group(1).length();
+            var length = matcher.group(1).length();
             return "/".repeat(length) + " " + line.substring(length);
         }
         return line;

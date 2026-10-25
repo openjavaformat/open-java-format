@@ -163,23 +163,23 @@ public final class JavaOutput extends Output {
      */
     @Override
     public void appendNonNlsMarkers(State state, String comment, Range<Integer> range, List<Integer> literals) {
-        List<Integer> numbers = NonNlsMarkers.numbers(comment);
-        int current = mutableLines.size();
+        var numbers = NonNlsMarkers.numbers(comment);
+        var current = mutableLines.size();
         if (numbers.size() != literals.size() || range.isEmpty() || newlinesPending > 0 || ranges.size() <= current) {
             // Not a comment as paired with its literals, or not trailing the code of the current line.
             append(state, comment, range);
             return;
         }
-        List<String> remaining = new ArrayList<>();
-        for (int i = 0; i < numbers.size(); i++) {
+        var remaining = new ArrayList<String>();
+        for (var i = 0; i < numbers.size(); i++) {
             int literal = literals.get(i);
-            int line = literal < 0 ? -1 : outputLineOf(literal, current);
+            var line = literal < 0 ? -1 : outputLineOf(literal, current);
             if (line < 0) {
                 remaining.add(NonNlsMarkers.marker(numbers.get(i)));
             } else if (line == current) {
                 remaining.add(NonNlsMarkers.marker(stringLiteralsOnOutputLine(line, literal)));
             } else {
-                String marker = NonNlsMarkers.marker(stringLiteralsOnOutputLine(line, literal));
+                var marker = NonNlsMarkers.marker(stringLiteralsOnOutputLine(line, literal));
                 mutableLines.set(line, mutableLines.get(line) + " " + marker);
             }
         }
@@ -195,7 +195,7 @@ public final class JavaOutput extends Output {
 
     /** The output line, searched back from {@code current}, that holds tok {@code k}, or -1 if it is not written. */
     private int outputLineOf(int k, int current) {
-        for (int line = current; line >= 0; line--) {
+        for (var line = current; line >= 0; line--) {
             if (ranges.get(line).contains(k)) {
                 return line;
             }
@@ -205,9 +205,9 @@ public final class JavaOutput extends Output {
 
     /** The position of the string literal {@code k} among the string literals written on an output line. */
     private int stringLiteralsOnOutputLine(int line, int k) {
-        int count = 0;
+        var count = 0;
         for (int i = ranges.get(line).lowerEndpoint(); i <= k; i++) {
-            Input.Tok tok = javaInput.getToken(i).getTok();
+            var tok = javaInput.getToken(i).getTok();
             if (tok.getIndex() == i && tok.getText().startsWith("\"")) {
                 count++;
             }

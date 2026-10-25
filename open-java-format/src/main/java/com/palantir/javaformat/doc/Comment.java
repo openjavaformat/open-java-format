@@ -69,9 +69,9 @@ public final class Comment extends Doc implements Op {
     @Override
     protected float computeWidth() {
         if (!nonNlsLiterals.isEmpty()) {
-            int width = 0;
-            List<Integer> numbers = NonNlsMarkers.numbers(tok.getOriginalText());
-            for (int i = 0; i < numbers.size(); i++) {
+            var width = 0;
+            var numbers = NonNlsMarkers.numbers(tok.getOriginalText());
+            for (var i = 0; i < numbers.size(); i++) {
                 if (nonNlsLiterals.get(i) < 0) {
                     width += (width > 0 ? 1 : 0)
                             + NonNlsMarkers.marker(numbers.get(i)).length();

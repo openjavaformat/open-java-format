@@ -403,7 +403,7 @@ final class FormatterTest {
     void trailingLineCommentGetsItsMissingSpaceExceptIdeMarkers() throws Exception {
         // The same rule for a comment that trails a statement which fits on one line. Such a statement is written
         // from its flat text, which skips the comment rewriting, so the IDE markers used to get the space too (#23).
-        String input = """
+        var input = """
             class T {
               void m() {
                 String a = "x"; //$NON-NLS-1$
@@ -415,7 +415,7 @@ final class FormatterTest {
               }
             }
             """;
-        String expected = """
+        var expected = """
             class T {
               void m() {
                 String a = "x"; //$NON-NLS-1$
@@ -428,7 +428,7 @@ final class FormatterTest {
             }
             """;
 
-        String once = Formatter.create().formatSource(input);
+        var once = Formatter.create().formatSource(input);
         assertThat(once).isEqualTo(expected);
         assertThat(Formatter.create().formatSource(once)).isEqualTo(once);
     }
@@ -438,7 +438,7 @@ final class FormatterTest {
         // Eclipse numbers a marker by the position of its literal on the line. When a statement is wrapped, each
         // marker moves to the line of its literal and is renumbered for that line; when a literal is reflowed, every
         // piece gets one (#23). A marker whose number has no literal stays where it is.
-        String input = """
+        var input = """
             class T {
               void m() {
                 String s = Messages.format("first argument that is long enough to matter", "second argument that is also rather long", "third one"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
@@ -447,7 +447,7 @@ final class FormatterTest {
               }
             }
             """;
-        String expected = """
+        var expected = """
             class T {
                 void m() {
                     String s = Messages.format(
@@ -465,9 +465,9 @@ final class FormatterTest {
             }
             """;
 
-        Formatter formatter = Formatter.createFormatter(
+        var formatter = Formatter.createFormatter(
                 JavaFormatterOptions.builder().style(Style.OJF).build());
-        String once = formatter.formatSourceAndFixImports(input);
+        var once = formatter.formatSourceAndFixImports(input);
         assertThat(once).isEqualTo(expected);
         assertThat(formatter.formatSourceAndFixImports(once)).isEqualTo(once);
     }

@@ -26,7 +26,7 @@ final class ReservedWidthTest {
 
     @Test
     void takesItsWidthOnTheLineButHasNoText() {
-        ReservedWidth reserved = ReservedWidth.make(WIDTH);
+        var reserved = ReservedWidth.make(WIDTH);
 
         assertThat(reserved.getWidth()).isEqualTo((float) WIDTH);
         assertThat(reserved.getFlat()).isEmpty();
@@ -35,10 +35,10 @@ final class ReservedWidthTest {
 
     @Test
     void movesTheColumnByItsWidthWhenTheBreaksAreComputed() {
-        State before = State.startingState().withColumn(10);
+        var before = State.startingState().withColumn(10);
         CommentsHelper noRewrite = (tok, maxWidth, column0) -> tok.getOriginalText();
 
-        State after = ReservedWidth.make(WIDTH).computeBreaks(noRewrite, 120, before, Obs.createRoot(new NoopSink()));
+        var after = ReservedWidth.make(WIDTH).computeBreaks(noRewrite, 120, before, Obs.createRoot(new NoopSink()));
 
         assertThat(after.column()).isEqualTo(10 + WIDTH);
     }

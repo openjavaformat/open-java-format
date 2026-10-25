@@ -20,7 +20,6 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.Range;
 import com.google.errorprone.annotations.Immutable;
 import com.palantir.javaformat.Indent.Const;
 import com.palantir.javaformat.Input.Tok;
@@ -511,8 +510,8 @@ public final class OpsBuilder {
         // Rewrite the ops to insert comments.
         Multimap<Integer, Op> tokOps = ArrayListMultimap.create();
         // The room after a string literal for the NON-NLS markers written on its line, see Comment.makeNonNlsMarkers.
-        Multimap<Integer, Op> reservations = ArrayListMultimap.create();
-        Map<Input.Token, Integer> tokenOps = new HashMap<>();
+        var reservations = ArrayListMultimap.<Integer, Op>create();
+        var tokenOps = new HashMap<Input.Token, Integer>();
         Map<Integer, Input.Token> tokenByIndex = null;
         int opsN = ops.size();
         for (int i = 0; i < opsN; i++) {
@@ -608,14 +607,14 @@ public final class OpsBuilder {
                                         tokenByIndex.put(t.getTok().getIndex(), t);
                                     }
                                 }
-                                List<Integer> literals = nonNlsLiterals(token, tokAfter, tokenByIndex, tokenOps);
-                                List<Integer> numbers = NonNlsMarkers.numbers(tokAfter.getText());
-                                for (int m = 0; m < literals.size(); m++) {
-                                    Integer literalOp = literals.get(m) < 0
+                                var literals = nonNlsLiterals(token, tokAfter, tokenByIndex, tokenOps);
+                                var numbers = NonNlsMarkers.numbers(tokAfter.getText());
+                                for (var m = 0; m < literals.size(); m++) {
+                                    var literalOp = literals.get(m) < 0
                                             ? null
                                             : tokenOps.get(tokenByIndex.get(literals.get(m)));
                                     if (literalOp != null) {
-                                        String marker = NonNlsMarkers.marker(numbers.get(m));
+                                        var marker = NonNlsMarkers.marker(numbers.get(m));
                                         reservations.put(literalOp + 1, ReservedWidth.make(marker.length() + 1));
                                     }
                                 }
@@ -706,20 +705,20 @@ public final class OpsBuilder {
             Input.Tok comment,
             Map<Integer, Input.Token> tokenByIndex,
             Map<Input.Token, Integer> tokenOps) {
-        int line = input.getLineNumber(token.getTok().getPosition()) - 1;
-        Range<Integer> toks = input.getRanges(line);
-        List<Integer> literals = new ArrayList<>();
+        var line = input.getLineNumber(token.getTok().getPosition()) - 1;
+        var toks = input.getRanges(line);
+        var literals = new ArrayList<Integer>();
         for (int k = toks.lowerEndpoint(); k < Math.min(toks.upperEndpoint(), comment.getIndex()); k++) {
-            Input.Token candidate = tokenByIndex.get(k);
+            var candidate = tokenByIndex.get(k);
             if (candidate != null && candidate.getTok().getText().startsWith("\"")) {
                 literals.add(k);
             }
         }
-        Range<Integer> region = inputMetadataBuilder.regionContaining(comment.getIndex());
-        List<Integer> result = new ArrayList<>();
+        var region = inputMetadataBuilder.regionContaining(comment.getIndex());
+        var result = new ArrayList<Integer>();
         for (int n : NonNlsMarkers.numbers(comment.getText())) {
-            int literal = 1 <= n && n <= literals.size() ? literals.get(n - 1) : -1;
-            boolean usable = literal >= 0
+            var literal = 1 <= n && n <= literals.size() ? literals.get(n - 1) : -1;
+            var usable = literal >= 0
                     && region != null
                     && region.contains(literal)
                     && tokenOps.containsKey(tokenByIndex.get(literal));

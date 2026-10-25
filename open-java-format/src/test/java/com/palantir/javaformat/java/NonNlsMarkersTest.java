@@ -31,10 +31,15 @@ final class NonNlsMarkersTest {
     @Test
     void anyOtherTextMakesACommentNotMarkersOnly() {
         // A blank after the slashes, text next to a marker, or a marker without its number or its closing dollar.
-        List<String> comments = List.of(
-                "// $NON-NLS-1$", "//$NON-NLS-1$ note", "// note //$NON-NLS-1$", "//$NON-NLS-$", "//$NON-NLS-1", "// foo");
+        var comments = List.of(
+                "// $NON-NLS-1$",
+                "//$NON-NLS-1$ note",
+                "// note //$NON-NLS-1$",
+                "//$NON-NLS-$",
+                "//$NON-NLS-1",
+                "// foo");
 
-        for (String comment : comments) {
+        for (var comment : comments) {
             assertThat(NonNlsMarkers.isMarkersOnly(comment)).as(comment).isFalse();
         }
     }
