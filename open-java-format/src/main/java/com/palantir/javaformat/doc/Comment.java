@@ -25,6 +25,7 @@ import com.palantir.javaformat.Input;
 import com.palantir.javaformat.Newlines;
 import com.palantir.javaformat.Op;
 import com.palantir.javaformat.Output;
+import com.palantir.javaformat.java.JavaCommentsHelper;
 
 /** A leaf node in a {@link Doc} for a non-token. */
 @Immutable
@@ -57,9 +58,9 @@ public final class Comment extends Doc implements Op {
         if (tok.isComment()) {
             if (idx > 0) {
                 return idx;
-            } else if (tok.isSlashSlashComment() && !tok.getOriginalText().startsWith("// ")) {
-                // Account for line comments with missing spaces, see computeFlat.
-                return tok.length() + 1;
+            } else if (tok.isSlashSlashComment()) {
+                // The flat text may have gained the space after the slashes, see computeFlat.
+                return getFlat().length();
             } else {
                 return tok.length();
             }
@@ -69,11 +70,11 @@ public final class Comment extends Doc implements Op {
 
     @Override
     protected String computeFlat() {
-        // TODO(cushon): commentsHelper.rewrite doesn't get called for spans that fit in a single
-        // line. That's fine for multi-line comment reflowing, but problematic for adding missing
-        // spaces in line comments.
-        if (tok.isSlashSlashComment() && !tok.getOriginalText().startsWith("// ")) {
-            return "// " + tok.getOriginalText().substring("//".length());
+        // A level that fits on one line is written from its flat text, and commentsHelper.rewrite is not called for
+        // the comments in it. So the space a line comment gets after its slashes is added here as well, by the rule
+        // that rewrite applies: a trailing `//foo` and a trailing `//$NON-NLS-1$` then come out the same either way.
+        if (tok.isSlashSlashComment()) {
+            return JavaCommentsHelper.addMissingSpace(tok.getOriginalText());
         }
         return tok.getOriginalText();
     }

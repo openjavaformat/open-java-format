@@ -400,6 +400,40 @@ final class FormatterTest {
     }
 
     @Test
+    void trailingLineCommentGetsItsMissingSpaceExceptIdeMarkers() throws Exception {
+        // The same rule for a comment that trails a statement which fits on one line. Such a statement is written
+        // from its flat text, which skips the comment rewriting, so the IDE markers used to get the space too (#23).
+        String input = """
+            class T {
+              void m() {
+                String a = "x"; //$NON-NLS-1$
+                String b = "y"; //noinspection unchecked
+                String c = "z"; //foo
+                String d = "w"; ///foo
+                String e = "v"; // bar
+                String f = "u"; /// baz
+              }
+            }
+            """;
+        String expected = """
+            class T {
+              void m() {
+                String a = "x"; //$NON-NLS-1$
+                String b = "y"; //noinspection unchecked
+                String c = "z"; // foo
+                String d = "w"; /// foo
+                String e = "v"; // bar
+                String f = "u"; /// baz
+              }
+            }
+            """;
+
+        String once = Formatter.create().formatSource(input);
+        assertThat(once).isEqualTo(expected);
+        assertThat(Formatter.create().formatSource(once)).isEqualTo(once);
+    }
+
+    @Test
     void throwsFormatterException() throws Exception {
         assertThatThrownBy(() -> Formatter.create().formatSourceAndFixImports("package foo; public class {"))
                 .isInstanceOf(FormatterException.class);
