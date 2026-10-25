@@ -608,9 +608,8 @@ public final class OpsBuilder {
                                         tokenByIndex.put(t.getTok().getIndex(), t);
                                     }
                                 }
-                                ImmutableList<Integer> literals =
-                                        nonNlsLiterals(token, tokAfter, tokenByIndex, tokenOps);
-                                ImmutableList<Integer> numbers = NonNlsMarkers.numbers(tokAfter.getText());
+                                List<Integer> literals = nonNlsLiterals(token, tokAfter, tokenByIndex, tokenOps);
+                                List<Integer> numbers = NonNlsMarkers.numbers(tokAfter.getText());
                                 for (int m = 0; m < literals.size(); m++) {
                                     Integer literalOp = literals.get(m) < 0
                                             ? null
@@ -702,7 +701,7 @@ public final class OpsBuilder {
      * another partial-format region counts as none too: a partial format of its region would otherwise lose the
      * marker, which belongs to the comment's region. So does a literal without an op of its own.
      */
-    private ImmutableList<Integer> nonNlsLiterals(
+    private List<Integer> nonNlsLiterals(
             Input.Token token,
             Input.Tok comment,
             Map<Integer, Input.Token> tokenByIndex,
@@ -717,7 +716,7 @@ public final class OpsBuilder {
             }
         }
         Range<Integer> region = inputMetadataBuilder.regionContaining(comment.getIndex());
-        ImmutableList.Builder<Integer> result = ImmutableList.builder();
+        List<Integer> result = new ArrayList<>();
         for (int n : NonNlsMarkers.numbers(comment.getText())) {
             int literal = 1 <= n && n <= literals.size() ? literals.get(n - 1) : -1;
             boolean usable = literal >= 0
@@ -726,7 +725,7 @@ public final class OpsBuilder {
                     && tokenOps.containsKey(tokenByIndex.get(literal));
             result.add(usable ? literal : -1);
         }
-        return result.build();
+        return List.copyOf(result);
     }
 
     private static boolean isForcedBreak(Op op) {

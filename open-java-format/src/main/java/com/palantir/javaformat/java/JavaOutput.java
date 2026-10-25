@@ -162,9 +162,8 @@ public final class JavaOutput extends Output {
      * literal stays here.
      */
     @Override
-    public void appendNonNlsMarkers(
-            State state, String comment, Range<Integer> range, ImmutableList<Integer> literals) {
-        ImmutableList<Integer> numbers = NonNlsMarkers.numbers(comment);
+    public void appendNonNlsMarkers(State state, String comment, Range<Integer> range, List<Integer> literals) {
+        List<Integer> numbers = NonNlsMarkers.numbers(comment);
         int current = mutableLines.size();
         if (numbers.size() != literals.size() || range.isEmpty() || newlinesPending > 0 || ranges.size() <= current) {
             // Not a comment as paired with its literals, or not trailing the code of the current line.

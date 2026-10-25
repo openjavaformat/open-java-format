@@ -521,21 +521,21 @@ public final class StringWrapper {
                     .filter(literal -> getStartPosition(literal) < chain.start())
                     .count();
             return new LineMarkers(
-                    ImmutableList.copyOf(before),
+                    List.copyOf(before),
                     (int) beforeOnFirstLine,
                     chainMarked,
-                    ImmutableList.copyOf(after),
-                    ImmutableList.copyOf(unmatched),
+                    List.copyOf(after),
+                    List.copyOf(unmatched),
                     tail.substring(0, comment));
         }
 
         /** See {@link #lineMarkers}; {@code code} is the text between the chain and its line's comment. */
         private record LineMarkers(
-                ImmutableList<String> before,
+                List<String> before,
                 int beforeOnFirstLine,
                 boolean chainMarked,
-                ImmutableList<Integer> after,
-                ImmutableList<String> unmatched,
+                List<Integer> after,
+                List<String> unmatched,
                 String code) {
 
             /** The markers after the first piece, when it ends its line. */

@@ -16,8 +16,7 @@
 
 package com.palantir.javaformat.java;
 
-import com.google.common.collect.ImmutableList;
-import java.util.regex.Matcher;
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -40,14 +39,12 @@ public final class NonNlsMarkers {
         return comment.startsWith("//$NON-NLS-") && MARKERS_ONLY.matcher(comment).matches();
     }
 
-    /** The numbers of the markers in a comment, in order. */
-    public static ImmutableList<Integer> numbers(String comment) {
-        ImmutableList.Builder<Integer> numbers = ImmutableList.builder();
-        Matcher matcher = MARKER.matcher(comment);
-        while (matcher.find()) {
-            numbers.add(Integer.parseInt(matcher.group(1)));
-        }
-        return numbers.build();
+    /** The numbers of the markers in a comment, in order; an unmodifiable list. */
+    public static List<Integer> numbers(String comment) {
+        return MARKER.matcher(comment)
+                .results()
+                .map(result -> Integer.parseInt(result.group(1)))
+                .toList();
     }
 
     public static String marker(int n) {

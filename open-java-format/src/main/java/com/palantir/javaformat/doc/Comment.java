@@ -17,7 +17,6 @@
 package com.palantir.javaformat.doc;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Range;
 import com.google.errorprone.annotations.Immutable;
@@ -28,6 +27,7 @@ import com.palantir.javaformat.Op;
 import com.palantir.javaformat.Output;
 import com.palantir.javaformat.java.JavaCommentsHelper;
 import com.palantir.javaformat.java.NonNlsMarkers;
+import java.util.List;
 
 /** A leaf node in a {@link Doc} for a non-token. */
 @Immutable
@@ -35,9 +35,10 @@ public final class Comment extends Doc implements Op {
     private final Input.Tok tok;
 
     /** For a comment of NON-NLS markers, the index of the string literal each marker marks, or -1; else empty. */
-    private final ImmutableList<Integer> nonNlsLiterals;
+    @SuppressWarnings("Immutable") // List.of and List.copyOf: unmodifiable
+    private final List<Integer> nonNlsLiterals;
 
-    private Comment(Input.Tok tok, ImmutableList<Integer> nonNlsLiterals) {
+    private Comment(Input.Tok tok, List<Integer> nonNlsLiterals) {
         this.tok = tok;
         this.nonNlsLiterals = nonNlsLiterals;
     }
@@ -49,7 +50,7 @@ public final class Comment extends Doc implements Op {
      * @return the new {@code Tok}
      */
     public static Comment make(Input.Tok tok) {
-        return new Comment(tok, ImmutableList.of());
+        return new Comment(tok, List.of());
     }
 
     /**
@@ -59,8 +60,8 @@ public final class Comment extends Doc implements Op {
      *
      * @param literals for each marker, the index of the string literal it marks, or -1
      */
-    public static Comment makeNonNlsMarkers(Input.Tok tok, ImmutableList<Integer> literals) {
-        return new Comment(tok, literals);
+    public static Comment makeNonNlsMarkers(Input.Tok tok, List<Integer> literals) {
+        return new Comment(tok, List.copyOf(literals));
     }
 
     @Override
@@ -72,7 +73,7 @@ public final class Comment extends Doc implements Op {
     protected float computeWidth() {
         if (!nonNlsLiterals.isEmpty()) {
             int width = 0;
-            ImmutableList<Integer> numbers = NonNlsMarkers.numbers(tok.getOriginalText());
+            List<Integer> numbers = NonNlsMarkers.numbers(tok.getOriginalText());
             for (int i = 0; i < numbers.size(); i++) {
                 if (nonNlsLiterals.get(i) < 0) {
                     width += (width > 0 ? 1 : 0)

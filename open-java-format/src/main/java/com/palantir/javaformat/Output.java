@@ -15,9 +15,9 @@
 package com.palantir.javaformat;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.palantir.javaformat.doc.State;
+import java.util.List;
 
 /** An output from the formatter. */
 public abstract class Output extends InputOutput {
@@ -42,8 +42,7 @@ public abstract class Output extends InputOutput {
      *
      * @param literals for each marker, the index of the string literal it marks, or -1
      */
-    public abstract void appendNonNlsMarkers(
-            State state, String comment, Range<Integer> range, ImmutableList<Integer> literals);
+    public abstract void appendNonNlsMarkers(State state, String comment, Range<Integer> range, List<Integer> literals);
 
     @Override
     public String toString() {
