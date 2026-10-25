@@ -19,6 +19,7 @@ package com.palantir.javaformat.java;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.palantir.javaformat.java.JavaFormatterOptions.Style;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -120,5 +121,29 @@ final class JavaCommentsHelperTest {
                 + " //$NON-NLS-8$ //$NON-NLS-9$";
 
         assertThat(rewrite(run, Style.OJF)).isEqualTo(run);
+    }
+
+    @Test
+    void addMissingSpacePutsABlankAfterTheSlashesWhateverTheirNumber() {
+        assertThat(JavaCommentsHelper.addMissingSpace("//foo")).isEqualTo("// foo");
+        assertThat(JavaCommentsHelper.addMissingSpace("///foo")).isEqualTo("/// foo");
+        assertThat(JavaCommentsHelper.addMissingSpace("//-- foo")).isEqualTo("// -- foo");
+    }
+
+    @Test
+    void addMissingSpaceLeavesSpacedCommentsAndIdeMarkersAlone() {
+        // A blank or a tab after the slashes is a space already; the IDE markers are recognised only without one.
+        List<String> comments = List.of(
+                "// foo",
+                "//  two spaces",
+                "//\tfoo",
+                "//",
+                "///",
+                "//$NON-NLS-1$ //$NON-NLS-2$",
+                "//noinspection unchecked");
+
+        for (String comment : comments) {
+            assertThat(JavaCommentsHelper.addMissingSpace(comment)).as(comment).isEqualTo(comment);
+        }
     }
 }
