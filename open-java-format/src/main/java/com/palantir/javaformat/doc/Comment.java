@@ -19,20 +19,25 @@ package com.palantir.javaformat.doc;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Range;
-import com.google.errorprone.annotations.Immutable;
 import com.palantir.javaformat.CommentsHelper;
 import com.palantir.javaformat.Input;
 import com.palantir.javaformat.Newlines;
 import com.palantir.javaformat.Op;
 import com.palantir.javaformat.Output;
+import com.palantir.javaformat.java.JavaCommentsHelper;
+import com.palantir.javaformat.java.NonNlsMarkers;
+import java.util.List;
 
 /** A leaf node in a {@link Doc} for a non-token. */
-@Immutable
 public final class Comment extends Doc implements Op {
     private final Input.Tok tok;
 
-    private Comment(Input.Tok tok) {
+    /** For a comment of NON-NLS markers, the index of the string literal each marker marks, or -1; else empty. */
+    private final List<Integer> nonNlsLiterals;
+
+    private Comment(Input.Tok tok, List<Integer> nonNlsLiterals) {
         this.tok = tok;
+        this.nonNlsLiterals = nonNlsLiterals;
     }
 
     /**
@@ -42,7 +47,18 @@ public final class Comment extends Doc implements Op {
      * @return the new {@code Tok}
      */
     public static Comment make(Input.Tok tok) {
-        return new Comment(tok);
+        return new Comment(tok, List.of());
+    }
+
+    /**
+     * A comment of {@code //$NON-NLS-n$} markers, see {@link NonNlsMarkers}. A marker with a literal is written at
+     * the end of the literal's output line and takes its room there, as a {@link ReservedWidth} after the literal;
+     * only the markers without one take room here.
+     *
+     * @param literals for each marker, the index of the string literal it marks, or -1
+     */
+    public static Comment makeNonNlsMarkers(Input.Tok tok, List<Integer> literals) {
+        return new Comment(tok, List.copyOf(literals));
     }
 
     @Override
@@ -52,14 +68,25 @@ public final class Comment extends Doc implements Op {
 
     @Override
     protected float computeWidth() {
+        if (!nonNlsLiterals.isEmpty()) {
+            var width = 0;
+            var numbers = NonNlsMarkers.numbers(tok.getOriginalText());
+            for (var i = 0; i < numbers.size(); i++) {
+                if (nonNlsLiterals.get(i) < 0) {
+                    width += (width > 0 ? 1 : 0)
+                            + NonNlsMarkers.marker(numbers.get(i)).length();
+                }
+            }
+            return width;
+        }
         int idx = Newlines.firstBreak(tok.getOriginalText());
         // only count the first line of multi-line block comments
         if (tok.isComment()) {
             if (idx > 0) {
                 return idx;
-            } else if (tok.isSlashSlashComment() && !tok.getOriginalText().startsWith("// ")) {
-                // Account for line comments with missing spaces, see computeFlat.
-                return tok.length() + 1;
+            } else if (tok.isSlashSlashComment()) {
+                // The flat text may have gained the space after the slashes, see computeFlat.
+                return getFlat().length();
             } else {
                 return tok.length();
             }
@@ -69,11 +96,11 @@ public final class Comment extends Doc implements Op {
 
     @Override
     protected String computeFlat() {
-        // TODO(cushon): commentsHelper.rewrite doesn't get called for spans that fit in a single
-        // line. That's fine for multi-line comment reflowing, but problematic for adding missing
-        // spaces in line comments.
-        if (tok.isSlashSlashComment() && !tok.getOriginalText().startsWith("// ")) {
-            return "// " + tok.getOriginalText().substring("//".length());
+        // A level that fits on one line is written from its flat text, and commentsHelper.rewrite is not called for
+        // the comments in it. So the space a line comment gets after its slashes is added here as well, by the rule
+        // that rewrite applies: a trailing `//foo` and a trailing `//$NON-NLS-1$` then come out the same either way.
+        if (tok.isSlashSlashComment()) {
+            return JavaCommentsHelper.addMissingSpace(tok.getOriginalText());
         }
         return tok.getOriginalText();
     }
@@ -101,7 +128,11 @@ public final class Comment extends Doc implements Op {
 
     @Override
     public void write(State state, Output output) {
-        output.append(state, state.getTokText(this), range());
+        if (nonNlsLiterals.isEmpty()) {
+            output.append(state, state.getTokText(this), range());
+        } else {
+            output.appendNonNlsMarkers(state, state.getTokText(this), range(), nonNlsLiterals);
+        }
     }
 
     @Override

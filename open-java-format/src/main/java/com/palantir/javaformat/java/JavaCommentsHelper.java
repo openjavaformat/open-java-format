@@ -174,6 +174,21 @@ public final class JavaCommentsHelper implements CommentsHelper {
     private static final Pattern LINE_COMMENT_NO_SPACE_PREFIX =
             Pattern.compile("^//+(noinspection|\\$NON-NLS-\\d+\\$)");
 
+    /**
+     * Adds the missing space after the slashes of a line comment: {@code //foo} becomes {@code // foo}. The IDE markers
+     * {@code //noinspection} and {@code //$NON-NLS-n$} stay as written, since their tools recognise them only without
+     * the space. {@link com.palantir.javaformat.doc.Comment#computeFlat()} applies the same rule to a comment that is
+     * written flat, for which {@link #rewrite} is not called.
+     */
+    public static String addMissingSpace(String line) {
+        var matcher = LINE_COMMENT_MISSING_SPACE_PREFIX.matcher(line);
+        if (matcher.find() && !LINE_COMMENT_NO_SPACE_PREFIX.matcher(line).find()) {
+            var length = matcher.group(1).length();
+            return "/".repeat(length) + " " + line.substring(length);
+        }
+        return line;
+    }
+
     private static String lineCommentPrefix(String line) {
         int prefixLength = 0;
         while (prefixLength < line.length() && line.charAt(prefixLength) == '/') {
@@ -191,14 +206,9 @@ public final class JavaCommentsHelper implements CommentsHelper {
             // be read from the trimmed text: otherwise the prefix comes back empty and the wrapped
             // remainder is emitted as bare code.
             line = CharMatcher.whitespace().trimLeadingFrom(line);
-            // Add missing leading spaces to line comments: `//foo` -> `// foo`.
-            Matcher matcher = LINE_COMMENT_MISSING_SPACE_PREFIX.matcher(line);
-            if (matcher.find() && !LINE_COMMENT_NO_SPACE_PREFIX.matcher(line).find()) {
-                int length = matcher.group(1).length();
-                line = "/".repeat(length) + " " + line.substring(length);
-            }
-            if (line.startsWith("// MOE:")) {
-                // don't wrap comments for https://github.com/google/MOE
+            line = addMissingSpace(line);
+            if (NonNlsMarkers.isMarkersOnly(line)) {
+                // Eclipse reads the markers only on the line of their literal, so a run of them is never wrapped.
                 result.add(line);
                 continue;
             }

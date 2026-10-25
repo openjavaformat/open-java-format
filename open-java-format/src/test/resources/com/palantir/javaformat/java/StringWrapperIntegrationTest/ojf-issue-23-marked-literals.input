@@ -1,0 +1,7 @@
+class T {
+  void f() {
+    String s = "one long incredibly unbroken sentence moving from topic to topic"; //$NON-NLS-1$
+    foo("x", "a long unbroken sentence", "y"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    String t = "short" + " and one long sentence"; //$NON-NLS-1$ //$NON-NLS-2$
+  }
+}

@@ -155,6 +155,66 @@ public final class JavaOutput extends Output {
         }
     }
 
+    /**
+     * Writes each marker of a {@code //$NON-NLS-1$ //$NON-NLS-2$} comment, see {@link NonNlsMarkers}, to the output
+     * line of the literal it marks, numbered by the position of the literal among the string literals written on
+     * that line, so that every marker stays with its literal when the statement is wrapped (#23). A marker without a
+     * literal stays here.
+     */
+    @Override
+    public void appendNonNlsMarkers(State state, String comment, Range<Integer> range, List<Integer> literals) {
+        var numbers = NonNlsMarkers.numbers(comment);
+        var current = mutableLines.size();
+        if (numbers.size() != literals.size() || range.isEmpty() || newlinesPending > 0 || ranges.size() <= current) {
+            // Not a comment as paired with its literals, or not trailing the code of the current line.
+            append(state, comment, range);
+            return;
+        }
+        var remaining = new ArrayList<String>();
+        for (var i = 0; i < numbers.size(); i++) {
+            int literal = literals.get(i);
+            var line = literal < 0 ? -1 : outputLineOf(literal, current);
+            if (line < 0) {
+                remaining.add(NonNlsMarkers.marker(numbers.get(i)));
+            } else if (line == current) {
+                remaining.add(NonNlsMarkers.marker(stringLiteralsOnOutputLine(line, literal)));
+            } else {
+                var marker = NonNlsMarkers.marker(stringLiteralsOnOutputLine(line, literal));
+                mutableLines.set(line, mutableLines.get(line) + " " + marker);
+            }
+        }
+        if (remaining.isEmpty()) {
+            // Every marker went to an earlier line. The comment still counts to this line, where it was written, so
+            // that a partial format of the statement covers it.
+            ranges.set(current, union(ranges.get(current), range));
+            lastK = range.upperEndpoint();
+        } else {
+            append(state, String.join(" ", remaining), range);
+        }
+    }
+
+    /** The output line, searched back from {@code current}, that holds tok {@code k}, or -1 if it is not written. */
+    private int outputLineOf(int k, int current) {
+        for (var line = current; line >= 0; line--) {
+            if (ranges.get(line).contains(k)) {
+                return line;
+            }
+        }
+        return -1;
+    }
+
+    /** The position of the string literal {@code k} among the string literals written on an output line. */
+    private int stringLiteralsOnOutputLine(int line, int k) {
+        var count = 0;
+        for (int i = ranges.get(line).lowerEndpoint(); i <= k; i++) {
+            var tok = javaInput.getToken(i).getTok();
+            if (tok.getIndex() == i && tok.getText().startsWith("\"")) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     @Override
     public void indent(int indent) {
         spacesPending.append(" ".repeat(indent));

@@ -43,6 +43,7 @@ import com.sun.tools.javac.util.Position;
 import com.sun.tools.javac.util.Position.LineMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -50,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 
 /** Wraps string literals that exceed the column limit. */
 public final class StringWrapper {
@@ -165,10 +167,13 @@ public final class StringWrapper {
             List<TreePath> longStringLiterals = new ArrayList<>();
             // Paths to text blocks to be re-indented.
             List<TreePath> textBlocks = new ArrayList<>();
-            new LongStringsAndTextBlockScanner(longStringLiterals, textBlocks).scan(new TreePath(unit), null);
+            // Every string literal, for the numbering of the NON-NLS markers of a line.
+            List<Tree> stringLiterals = new ArrayList<>();
+            new LongStringsAndTextBlockScanner(longStringLiterals, textBlocks, stringLiterals)
+                    .scan(new TreePath(unit), null);
             TreeRangeMap<Integer, String> replacements = TreeRangeMap.create();
             indentTextBlocks(replacements, textBlocks);
-            wrapLongStrings(replacements, longStringLiterals);
+            wrapLongStrings(replacements, longStringLiterals, stringLiterals);
             return replacements;
         }
 
@@ -176,10 +181,13 @@ public final class StringWrapper {
 
             private final List<TreePath> longStringLiterals;
             private final List<TreePath> textBlocks;
+            private final List<Tree> stringLiterals;
 
-            LongStringsAndTextBlockScanner(List<TreePath> longStringLiterals, List<TreePath> textBlocks) {
+            LongStringsAndTextBlockScanner(
+                    List<TreePath> longStringLiterals, List<TreePath> textBlocks, List<Tree> stringLiterals) {
                 this.longStringLiterals = longStringLiterals;
                 this.textBlocks = textBlocks;
+                this.stringLiterals = stringLiterals;
             }
 
             @Override
@@ -187,6 +195,7 @@ public final class StringWrapper {
                 if (literalTree.getKind() != Kind.STRING_LITERAL) {
                     return null;
                 }
+                stringLiterals.add(literalTree);
                 int pos = getStartPosition(literalTree);
                 if (input.substring(pos, Math.min(input.length(), pos + TEXT_BLOCK_DELIMITER.length()))
                         .equals(TEXT_BLOCK_DELIMITER)) {
@@ -351,8 +360,26 @@ public final class StringWrapper {
             return " ".repeat(extraIndent + startParentColumn);
         }
 
+        /**
+         * A long literal with its neighbours in a chain of {@code +}, reflowed as one text; see {@link #flatten}.
+         * {@code plain} is its text reflowed without regard to markers, in pieces, one per line.
+         */
+        private record Chain(
+                List<Tree> flat,
+                boolean firstInChain,
+                int start,
+                int end,
+                int lineEnd,
+                int startColumn,
+                int firstLineColumn,
+                List<String> plain) {}
+
         @SuppressWarnings("for-rollout:NullAway")
-        private void wrapLongStrings(TreeRangeMap<Integer, String> replacements, List<TreePath> longStringLiterals) {
+        private void wrapLongStrings(
+                TreeRangeMap<Integer, String> replacements,
+                List<TreePath> longStringLiterals,
+                List<Tree> stringLiterals) {
+            var chains = new ArrayList<Chain>();
             for (TreePath path : longStringLiterals) {
                 // Find the outermost contiguous enclosing concatenation expression
                 TreePath enclosing = path;
@@ -391,10 +418,180 @@ public final class StringWrapper {
 
                 // Get the original source text of the string literals, excluding `"` and `+`.
                 ImmutableList<String> components = stringComponents(input, unit, flat);
-                replacements.put(
-                        Range.closedOpen(getStartPosition(flat.get(0)), getEndPosition(unit, getLast(flat))),
-                        reflow(separator, columnLimit, trailing, components, first.get(), startColumn, fistLineCol));
+                var plain = reflow(columnLimit, trailing, components, first.get(), startColumn, fistLineCol, "", "");
+                chains.add(new Chain(
+                        flat,
+                        first.get(),
+                        getStartPosition(flat.get(0)),
+                        end,
+                        lineEnd,
+                        startColumn,
+                        fistLineCol,
+                        plain));
             }
+            for (var chain : chains) {
+                var joined = join(chain, chain.plain(), "", "");
+                if (joined.equals(input.substring(chain.start(), chain.end()))) {
+                    // Every literal on a line past the limit is a candidate; this one does not change.
+                    continue;
+                }
+                var markers = lineMarkers(chains, chain, stringLiterals);
+                if (markers == null) {
+                    replacements.put(Range.closedOpen(chain.start(), chain.end()), joined);
+                    continue;
+                }
+                var components = stringComponents(input, unit, chain.flat());
+                var pieces = reflow(
+                        columnLimit,
+                        markers.tail(2).length(),
+                        components,
+                        chain.firstInChain(),
+                        chain.startColumn(),
+                        chain.firstLineColumn(),
+                        markers.firstLine(),
+                        markers.otherLines());
+                replacements.put(
+                        Range.closedOpen(chain.start(), chain.lineEnd()),
+                        join(chain, pieces, markers.firstLine(), markers.otherLines()) + markers.tail(pieces.size()));
+            }
+        }
+
+        private String join(Chain chain, List<String> pieces, String firstLineMarkers, String otherLineMarkers) {
+            return render(
+                    separator,
+                    pieces,
+                    chain.firstInChain() ? chain.firstLineColumn() + 4 : chain.startColumn() - 2,
+                    firstLineMarkers,
+                    otherLineMarkers);
+        }
+
+        /**
+         * The NON-NLS markers of the line a chain ends on, see {@link NonNlsMarkers}, sorted by where they go once the
+         * chain is reflowed: a marker of a literal before the chain keeps its number on the first line; the chain, if
+         * marked, gets a marker after every piece, numbered by the piece's line; a marker of a literal after the chain
+         * is counted from the last piece on the last line; and a marker without a literal stays at the end. Null when
+         * the markers are left alone: when the comment holds anything else, or when another chain of the line
+         * changes too, since the chain rewrites the rest of its line.
+         */
+        @Nullable
+        private LineMarkers lineMarkers(List<Chain> chains, Chain chain, List<Tree> stringLiterals) {
+            var tail = input.substring(chain.end(), chain.lineEnd());
+            var comment = lineCommentStart(tail);
+            if (comment < 0
+                    || !NonNlsMarkers.isMarkersOnly(tail.substring(comment).stripTrailing())) {
+                return null;
+            }
+            var lastLine = lineMap.getLineNumber(chain.end() - 1);
+            for (var other : chains) {
+                // The same chain is found once per long literal in it.
+                if (other.start() != chain.start()
+                        && lineMap.getLineNumber(other.end() - 1) == lastLine
+                        && !join(other, other.plain(), "", "").equals(input.substring(other.start(), other.end()))) {
+                    return null;
+                }
+            }
+            var literals = literalsOnLine(stringLiterals, lastLine);
+            var lastOfChain = literals.indexOf(getLast(chain.flat()));
+            if (lastOfChain < 0) {
+                // A text block, which starts on another line.
+                return null;
+            }
+            var firstOfChain = lastOfChain;
+            while (firstOfChain > 0 && chain.flat().contains(literals.get(firstOfChain - 1))) {
+                firstOfChain--;
+            }
+            var before = new ArrayList<String>();
+            var after = new ArrayList<Integer>();
+            var unmatched = new ArrayList<String>();
+            var chainMarked = false;
+            for (int n : NonNlsMarkers.numbers(tail.substring(comment))) {
+                var i = n - 1;
+                if (i < 0 || i >= literals.size()) {
+                    unmatched.add(NonNlsMarkers.marker(n));
+                } else if (i < firstOfChain) {
+                    before.add(NonNlsMarkers.marker(n));
+                } else if (i <= lastOfChain) {
+                    chainMarked = true;
+                } else {
+                    after.add(i - lastOfChain);
+                }
+            }
+            var beforeOnFirstLine = literalsOnLine(stringLiterals, lineMap.getLineNumber(chain.start())).stream()
+                    .filter(literal -> getStartPosition(literal) < chain.start())
+                    .count();
+            return new LineMarkers(
+                    List.copyOf(before),
+                    (int) beforeOnFirstLine,
+                    chainMarked,
+                    List.copyOf(after),
+                    List.copyOf(unmatched),
+                    tail.substring(0, comment));
+        }
+
+        /** See {@link #lineMarkers}; {@code code} is the text between the chain and its line's comment. */
+        private record LineMarkers(
+                List<String> before,
+                int beforeOnFirstLine,
+                boolean chainMarked,
+                List<Integer> after,
+                List<String> unmatched,
+                String code) {
+
+            /** The markers after the first piece, when it ends its line. */
+            String firstLine() {
+                var markers = new ArrayList<>(before);
+                if (chainMarked) {
+                    markers.add(NonNlsMarkers.marker(beforeOnFirstLine + 1));
+                }
+                return markers.isEmpty() ? "" : " " + String.join(" ", markers);
+            }
+
+            /** The markers after a piece in the middle. */
+            String otherLines() {
+                return chainMarked ? " " + NonNlsMarkers.marker(1) : "";
+            }
+
+            /** The text after the last of {@code pieces}: the code, then the markers of that line. */
+            String tail(int pieces) {
+                var markers = new ArrayList<String>();
+                var chainPosition = pieces > 1 ? 1 : beforeOnFirstLine + 1;
+                if (pieces == 1) {
+                    markers.addAll(before);
+                }
+                if (chainMarked) {
+                    markers.add(NonNlsMarkers.marker(chainPosition));
+                }
+                for (int position : after) {
+                    markers.add(NonNlsMarkers.marker(chainPosition + position));
+                }
+                markers.addAll(unmatched);
+                return markers.isEmpty() ? code.stripTrailing() : code + String.join(" ", markers);
+            }
+        }
+
+        /** The string literals that start on a line, in order. */
+        private List<Tree> literalsOnLine(List<Tree> stringLiterals, long line) {
+            return stringLiterals.stream()
+                    .filter(literal -> lineMap.getLineNumber(getStartPosition(literal)) == line)
+                    .sorted(Comparator.comparingInt(StringWrapper::getStartPosition))
+                    .toList();
+        }
+
+        /** The index of the line comment in a line of code, the first {@code //} outside a literal, or -1. */
+        private static int lineCommentStart(String line) {
+            for (var i = 0; i < line.length(); i++) {
+                var c = line.charAt(i);
+                if (c == '"' || c == '\'') {
+                    for (i++; i < line.length() && line.charAt(i) != c; i++) {
+                        if (line.charAt(i) == '\\') {
+                            i++;
+                        }
+                    }
+                } else if (c == '/' && line.startsWith("//", i)) {
+                    return i;
+                }
+            }
+            return -1;
         }
 
         private static boolean onSameLineAsParent(LineMap lineMap, TreePath path) {
@@ -479,9 +676,9 @@ public final class StringWrapper {
     }
 
     /**
-     * Reflows the given source text, trying to split on word boundaries.
+     * Reflows the given source text, trying to split on word boundaries. Returns the pieces, one per line; see
+     * {@link #render}.
      *
-     * @param separator the line separator
      * @param columnLimit the number of columns to wrap at
      * @param trailing extra space to leave after the last line
      * @param components the text to reflow
@@ -489,18 +686,22 @@ public final class StringWrapper {
      * @param textStartColumn the column position of the beginning of the original text
      * @param firstLineStartColumn the column where the very first line starts (can be less than textStartColumn if text
      * follows variable declaration)
+     * @param firstLineMarkers the NON-NLS markers that trail the first line, with their leading blank, or empty
+     * @param otherLineMarkers the NON-NLS markers that trail every further line but the last, whose markers are part
+     * of {@code trailing}
      */
-    private static String reflow(
-            String separator,
+    private static List<String> reflow(
             int columnLimit,
             int trailing,
             ImmutableList<String> components,
             boolean first0,
             int textStartColumn,
-            int firstLineStartColumn) {
+            int firstLineStartColumn,
+            String firstLineMarkers,
+            String otherLineMarkers) {
         // We have space between the start column and the limit to output the first line.
-        // Reserve two spaces for the quotes.
-        int width = columnLimit - textStartColumn - 2;
+        // Reserve two spaces for the quotes, and room for the markers of the line.
+        var width = columnLimit - textStartColumn - 2 - firstLineMarkers.length();
         Deque<String> input = new ArrayDeque<>(components);
         List<String> lines = new ArrayList<>();
         boolean first = first0;
@@ -508,7 +709,8 @@ public final class StringWrapper {
             int length = 0;
             List<String> line = new ArrayList<>();
             if (input.stream().mapToInt(String::length).sum() <= width) {
-                width -= trailing;
+                // The last line, probably: its markers are in the trailing text, not reserved on their own.
+                width -= trailing - (lines.isEmpty() ? 0 : otherLineMarkers.length());
             }
             while (!input.isEmpty()
                     && (length <= 4 || (length + input.peekFirst().length()) < width)) {
@@ -535,13 +737,28 @@ public final class StringWrapper {
                 width += textStartColumn - firstLineStartColumn;
                 first = false;
             }
+            if (lines.size() == 1) {
+                width += firstLineMarkers.length() - otherLineMarkers.length();
+            }
         }
+        return lines;
+    }
 
-        return lines.stream()
-                .collect(joining(
-                        "\"" + separator + " ".repeat(first0 ? firstLineStartColumn + 4 : textStartColumn - 2) + "+ \"",
-                        "\"",
-                        "\""));
+    /** Renders reflowed pieces as literals in a chain of {@code +}, one per line, indented by {@code column}. */
+    private static String render(
+            String separator, List<String> pieces, int column, String firstLineMarkers, String otherLineMarkers) {
+        var continuation = separator + " ".repeat(column) + "+ ";
+        var result = new StringBuilder();
+        for (var i = 0; i < pieces.size(); i++) {
+            if (i > 0) {
+                result.append(continuation);
+            }
+            result.append('"').append(pieces.get(i)).append('"');
+            if (i < pieces.size() - 1) {
+                result.append(i == 0 ? firstLineMarkers : otherLineMarkers);
+            }
+        }
+        return result.toString();
     }
 
     /**

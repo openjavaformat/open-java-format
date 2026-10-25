@@ -400,6 +400,79 @@ final class FormatterTest {
     }
 
     @Test
+    void trailingLineCommentGetsItsMissingSpaceExceptIdeMarkers() throws Exception {
+        // The same rule for a comment that trails a statement which fits on one line. Such a statement is written
+        // from its flat text, which skips the comment rewriting, so the IDE markers used to get the space too (#23).
+        var input = """
+            class T {
+              void m() {
+                String a = "x"; //$NON-NLS-1$
+                String b = "y"; //noinspection unchecked
+                String c = "z"; //foo
+                String d = "w"; ///foo
+                String e = "v"; // bar
+                String f = "u"; /// baz
+              }
+            }
+            """;
+        var expected = """
+            class T {
+              void m() {
+                String a = "x"; //$NON-NLS-1$
+                String b = "y"; //noinspection unchecked
+                String c = "z"; // foo
+                String d = "w"; /// foo
+                String e = "v"; // bar
+                String f = "u"; /// baz
+              }
+            }
+            """;
+
+        var once = Formatter.create().formatSource(input);
+        assertThat(once).isEqualTo(expected);
+        assertThat(Formatter.create().formatSource(once)).isEqualTo(once);
+    }
+
+    @Test
+    void nonNlsMarkersStayOnTheLineOfTheirLiteral() throws Exception {
+        // Eclipse numbers a marker by the position of its literal on the line. When a statement is wrapped, each
+        // marker moves to the line of its literal and is renumbered for that line; when a literal is reflowed, every
+        // piece gets one (#23). A marker whose number has no literal stays where it is.
+        var input = """
+            class T {
+              void m() {
+                String s = Messages.format("first argument that is long enough to matter", "second argument that is also rather long", "third one"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                String reflowed = "a single string literal that is far too long to fit into one hundred and twenty columns, so the formatter reflows it"; //$NON-NLS-1$
+                String n = Messages.format("first argument that is long enough to matter", "second argument that is also rather long", "third one"); //$NON-NLS-5$
+              }
+            }
+            """;
+        var expected = """
+            class T {
+                void m() {
+                    String s = Messages.format(
+                            "first argument that is long enough to matter", //$NON-NLS-1$
+                            "second argument that is also rather long", //$NON-NLS-1$
+                            "third one"); //$NON-NLS-1$
+                    String reflowed =
+                            "a single string literal that is far too long to fit into one hundred and twenty" //$NON-NLS-1$
+                                    + " columns, so the formatter reflows it"; //$NON-NLS-1$
+                    String n = Messages.format(
+                            "first argument that is long enough to matter",
+                            "second argument that is also rather long",
+                            "third one"); //$NON-NLS-5$
+                }
+            }
+            """;
+
+        var formatter = Formatter.createFormatter(
+                JavaFormatterOptions.builder().style(Style.OJF).build());
+        var once = formatter.formatSourceAndFixImports(input);
+        assertThat(once).isEqualTo(expected);
+        assertThat(formatter.formatSourceAndFixImports(once)).isEqualTo(once);
+    }
+
+    @Test
     void throwsFormatterException() throws Exception {
         assertThatThrownBy(() -> Formatter.create().formatSourceAndFixImports("package foo; public class {"))
                 .isInstanceOf(FormatterException.class);
@@ -470,21 +543,6 @@ final class FormatterTest {
                 + "  void m() {}\n"
                 + "}\n";
         assertThat(Formatter.create().formatSource(input)).isEqualTo(expected);
-    }
-
-    @Test
-    void dontWrapMoeLineComments() throws Exception {
-        assertThat(Formatter.create()
-                        .formatSource("class T {\n"
-                                + "  // MOE: one long incredibly"
-                                + " unbroken sentence moving from topic to topic so that no-one had a"
-                                + " chance to interrupt;\n"
-                                + "}\n"))
-                .isEqualTo("class T {\n"
-                        + "  // MOE: one long incredibly"
-                        + " unbroken sentence moving from topic to topic so that no-one had a"
-                        + " chance to interrupt;\n"
-                        + "}\n");
     }
 
     @Test

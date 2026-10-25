@@ -1,0 +1,20 @@
+class NonNlsTrailingMarker {
+  private static final String FIELD = "field";  //$NON-NLS-1$
+
+  String markers() {
+    String a = "x"; //$NON-NLS-1$
+    String two = "x" + "y";   //$NON-NLS-1$ //$NON-NLS-2$
+    log( "message" ); //$NON-NLS-1$
+    return  a; //noinspection ReturnOfNull
+  }
+
+  void ownLine() {
+    //$NON-NLS-1$
+    String b = "x";
+  }
+
+  void otherComments() {
+    String c = "x";  //foo
+    String d = "x"; // bar
+  }
+}

@@ -19,6 +19,7 @@ package com.palantir.javaformat.java;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.palantir.javaformat.java.JavaFormatterOptions.Style;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -110,5 +111,39 @@ final class JavaCommentsHelperTest {
 
         assertThat(rewritten.lines()).hasSize(2);
         assertThat(rewritten.lines()).allSatisfy(line -> assertThat(line.trim()).startsWith("// "));
+    }
+
+    @Test
+    void aRunOfNonNlsMarkersIsNeverWrapped() throws Exception {
+        // Eclipse reads a marker only on the line of its literal, so a run that reaches past the limit stays as it is
+        // instead of being wrapped at a blank into a `// //$NON-NLS-3$` line of its own.
+        var run = "//$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$ //$NON-NLS-7$"
+                + " //$NON-NLS-8$ //$NON-NLS-9$";
+
+        assertThat(rewrite(run, Style.OJF)).isEqualTo(run);
+    }
+
+    @Test
+    void addMissingSpacePutsABlankAfterTheSlashesWhateverTheirNumber() {
+        assertThat(JavaCommentsHelper.addMissingSpace("//foo")).isEqualTo("// foo");
+        assertThat(JavaCommentsHelper.addMissingSpace("///foo")).isEqualTo("/// foo");
+        assertThat(JavaCommentsHelper.addMissingSpace("//-- foo")).isEqualTo("// -- foo");
+    }
+
+    @Test
+    void addMissingSpaceLeavesSpacedCommentsAndIdeMarkersAlone() {
+        // A blank or a tab after the slashes is a space already; the IDE markers are recognised only without one.
+        var comments = List.of(
+                "// foo",
+                "//  two spaces",
+                "//\tfoo",
+                "//",
+                "///",
+                "//$NON-NLS-1$ //$NON-NLS-2$",
+                "//noinspection unchecked");
+
+        for (var comment : comments) {
+            assertThat(JavaCommentsHelper.addMissingSpace(comment)).as(comment).isEqualTo(comment);
+        }
     }
 }
