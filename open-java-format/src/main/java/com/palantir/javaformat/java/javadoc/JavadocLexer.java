@@ -37,8 +37,6 @@ import static com.palantir.javaformat.java.javadoc.Token.Type.LIST_ITEM_CLOSE_TA
 import static com.palantir.javaformat.java.javadoc.Token.Type.LIST_ITEM_OPEN_TAG;
 import static com.palantir.javaformat.java.javadoc.Token.Type.LIST_OPEN_TAG;
 import static com.palantir.javaformat.java.javadoc.Token.Type.LITERAL;
-import static com.palantir.javaformat.java.javadoc.Token.Type.MOE_BEGIN_STRIP_COMMENT;
-import static com.palantir.javaformat.java.javadoc.Token.Type.MOE_END_STRIP_COMMENT;
 import static com.palantir.javaformat.java.javadoc.Token.Type.OPTIONAL_LINE_BREAK;
 import static com.palantir.javaformat.java.javadoc.Token.Type.PARAGRAPH_CLOSE_TAG;
 import static com.palantir.javaformat.java.javadoc.Token.Type.PARAGRAPH_OPEN_TAG;
@@ -292,10 +290,6 @@ final class JavadocLexer {
             return HEADER_CLOSE_TAG;
         } else if (input.tryConsumeRegex(BR_PATTERN)) {
             return BR_TAG;
-        } else if (input.tryConsumeRegex(MOE_BEGIN_STRIP_COMMENT_PATTERN)) {
-            return MOE_BEGIN_STRIP_COMMENT;
-        } else if (input.tryConsumeRegex(MOE_END_STRIP_COMMENT_PATTERN)) {
-            return MOE_END_STRIP_COMMENT;
         } else if (input.tryConsumeRegex(HTML_COMMENT_PATTERN)) {
             return HTML_COMMENT;
         } else if (input.tryConsumeRegex(LITERAL_PATTERN)) {
@@ -611,9 +605,6 @@ final class JavadocLexer {
     // annotations inside code blocks.
     // Match "@param <T>" specially in case the <T> is a <P> or other HTML tag we treat specially.
     private static final Pattern FOOTER_TAG_PATTERN = compile("^@(param\\s+<\\w+>|[a-z]\\w*)");
-    private static final Pattern MOE_BEGIN_STRIP_COMMENT_PATTERN =
-            compile("^<!--\\s*MOE:begin_intracomment_strip\\s*-->");
-    private static final Pattern MOE_END_STRIP_COMMENT_PATTERN = compile("^<!--\\s*MOE:end_intracomment_strip\\s*-->");
     private static final Pattern HTML_COMMENT_PATTERN = fullCommentPattern();
     private static final Pattern PRE_OPEN_PATTERN = openTagPattern("pre");
     private static final Pattern PRE_CLOSE_PATTERN = closeTagPattern("pre");

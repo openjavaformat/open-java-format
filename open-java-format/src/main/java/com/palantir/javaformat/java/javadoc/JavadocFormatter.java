@@ -81,8 +81,6 @@ public final class JavadocFormatter {
                 case CODE_CLOSE_TAG -> output.writeCodeClose(token);
                 case TABLE_OPEN_TAG -> output.writeTableOpen(token);
                 case TABLE_CLOSE_TAG -> output.writeTableClose(token);
-                case MOE_BEGIN_STRIP_COMMENT -> output.requestMoeBeginStripComment(token);
-                case MOE_END_STRIP_COMMENT -> output.writeMoeEndStripComment(token);
                 case HTML_COMMENT -> output.writeHtmlComment(token);
                 case BR_TAG -> output.writeBr(standardizeBrToken(token));
                 case WHITESPACE -> output.requestWhitespace();
