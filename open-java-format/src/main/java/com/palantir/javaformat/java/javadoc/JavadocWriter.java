@@ -14,7 +14,6 @@
 
 package com.palantir.javaformat.java.javadoc;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Sets.immutableEnumSet;
 import static com.palantir.javaformat.java.javadoc.JavadocWriter.AutoIndent.AUTO_INDENT;
 import static com.palantir.javaformat.java.javadoc.JavadocWriter.AutoIndent.NO_AUTO_INDENT;
@@ -30,7 +29,6 @@ import static com.palantir.javaformat.java.javadoc.Token.Type.PARAGRAPH_OPEN_TAG
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Ordering;
 import java.util.List;
-import javax.annotation.Nullable;
 
 /**
  * Stateful object that accepts "requests" and "writes," producing formatted Javadoc.
@@ -56,11 +54,6 @@ final class JavadocWriter {
     private int remainingOnLine;
     private boolean atStartOfLine;
     private RequestedWhitespace requestedWhitespace = NONE;
-
-    @Nullable
-    private Token requestedMoeBeginStripComment;
-
-    private int indentForMoeEndStripComment;
     private boolean wroteAnythingSignificant;
 
     JavadocWriter(int blockIndent, int maxLineLength) {
@@ -74,11 +67,6 @@ final class JavadocWriter {
      */
     void requestWhitespace() {
         requestWhitespace(WHITESPACE);
-    }
-
-    void requestMoeBeginStripComment(Token token) {
-        // We queue this up so that we can put it after any requested whitespace.
-        requestedMoeBeginStripComment = checkNotNull(token);
     }
 
     void writeBeginJavadoc() {
@@ -250,16 +238,6 @@ final class JavadocWriter {
         requestBlankLine();
     }
 
-    void writeMoeEndStripComment(Token token) {
-        writeLineBreakNoAutoIndent();
-        appendSpaces(indentForMoeEndStripComment);
-
-        // Or maybe just "output.append(token.getValue())?" I'm kind of surprised this is so easy.
-        writeToken(token);
-
-        requestNewline();
-    }
-
     void writeHtmlComment(Token token) {
         requestNewline();
 
@@ -322,10 +300,6 @@ final class JavadocWriter {
     }
 
     private void writeToken(Token token) {
-        if (requestedMoeBeginStripComment != null) {
-            requestNewline();
-        }
-
         if (!wroteAnythingSignificant) {
             // Nothing precedes the first token but the opening ∕✱✱ and its newline, so no requested
             // whitespace (e.g., the blank line a <pre> or <ul> asks for) belongs before it.
@@ -364,15 +338,6 @@ final class JavadocWriter {
         if (!atStartOfLine && needWhitespace) {
             output.append(" ");
             remainingOnLine--;
-        }
-
-        if (requestedMoeBeginStripComment != null) {
-            output.append(requestedMoeBeginStripComment.getValue());
-            requestedMoeBeginStripComment = null;
-            indentForMoeEndStripComment = innerIndent();
-            requestNewline();
-            writeToken(token);
-            return;
         }
 
         output.append(token.getValue());

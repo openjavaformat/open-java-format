@@ -115,7 +115,9 @@ final class JavadocFormattingTest {
     }
 
     @Test
-    void moeComments() {
+    void moeStripMarkersAreOrdinaryHtmlComments() {
+        // google/MOE is gone: its intracomment-strip markers are HTML comments like any other, each on a line of its
+        // own, indented like the text around it, with the blank line a <p> asks for staying with the <p>.
         String[] input = {
             "/**",
             " * Deatomizes the given user.",
@@ -147,8 +149,8 @@ final class JavadocFormattingTest {
             " * See go/deatomizer-v5 for the design doc.",
             " * <!-- MOE:end_intracomment_strip -->",
             " * To reatomize, call {@link reatomize}.",
-            " *",
             " * <!-- MOE:begin_intracomment_strip -->",
+            " *",
             " * <p>This method is used in the Google teleporter.",
             " *",
             " * <p>Yes, we have a teleporter.",
@@ -158,69 +160,9 @@ final class JavadocFormattingTest {
             " *     <!-- MOE:begin_intracomment_strip -->",
             " *     Users must sign go/deatomize-waiver ahead of time.",
             " *     <!-- MOE:end_intracomment_strip -->",
-            " * <!-- MOE:begin_intracomment_strip -->",
+            " *     <!-- MOE:begin_intracomment_strip -->",
             " * @deprecated Sometimes turns the user into a goat.",
-            " * <!-- MOE:end_intracomment_strip -->",
-            " */",
-            "class Test {}",
-        };
-        doFormatTest(input, expected);
-    }
-
-    @Test
-    void moeCommentBeginOnlyInMiddleOfDoc() {
-        // We don't really care what happens here so long as we don't explode.
-        String[] input = {
-            "/**", //
-            " * Foo.",
-            " * <!-- MOE:begin_intracomment_strip -->",
-            " * Bar.",
-            " */",
-            "class Test {}",
-        };
-        String[] expected = {
-            "/**", //
-            " * Foo.",
-            " * <!-- MOE:begin_intracomment_strip -->",
-            " * Bar.",
-            " */",
-            "class Test {}",
-        };
-        doFormatTest(input, expected);
-    }
-
-    @Test
-    void moeCommentBeginOnlyAtEndOfDoc() {
-        // We don't really care what happens here so long as we don't explode.
-        // TODO(cpovirk): OK, maybe try to leave it in....
-        String[] input = {
-            "/**", //
-            " * Foo.",
-            " * <!-- MOE:begin_intracomment_strip -->",
-            " */",
-            "class Test {}",
-        };
-        String[] expected = {
-            "/** Foo. */", //
-            "class Test {}",
-        };
-        doFormatTest(input, expected);
-    }
-
-    @Test
-    void moeCommentEndOnly() {
-        // We don't really care what happens here so long as we don't explode.
-        String[] input = {
-            "/**", //
-            " * Foo.",
-            " * <!-- MOE:end_intracomment_strip -->",
-            " */",
-            "class Test {}",
-        };
-        String[] expected = {
-            "/**", //
-            " * Foo.",
-            " * <!-- MOE:end_intracomment_strip -->",
+            " *     <!-- MOE:end_intracomment_strip -->",
             " */",
             "class Test {}",
         };
