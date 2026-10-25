@@ -207,9 +207,8 @@ public final class JavaCommentsHelper implements CommentsHelper {
             // remainder is emitted as bare code.
             line = CharMatcher.whitespace().trimLeadingFrom(line);
             line = addMissingSpace(line);
-            if (line.startsWith("// MOE:") || NonNlsMarkers.isMarkersOnly(line)) {
-                // don't wrap comments for https://github.com/google/MOE, nor the markers Eclipse reads only on the
-                // line of their literal
+            if (NonNlsMarkers.isMarkersOnly(line)) {
+                // Eclipse reads the markers only on the line of their literal, so a run of them is never wrapped.
                 result.add(line);
                 continue;
             }

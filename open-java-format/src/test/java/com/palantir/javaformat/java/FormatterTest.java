@@ -546,21 +546,6 @@ final class FormatterTest {
     }
 
     @Test
-    void dontWrapMoeLineComments() throws Exception {
-        assertThat(Formatter.create()
-                        .formatSource("class T {\n"
-                                + "  // MOE: one long incredibly"
-                                + " unbroken sentence moving from topic to topic so that no-one had a"
-                                + " chance to interrupt;\n"
-                                + "}\n"))
-                .isEqualTo("class T {\n"
-                        + "  // MOE: one long incredibly"
-                        + " unbroken sentence moving from topic to topic so that no-one had a"
-                        + " chance to interrupt;\n"
-                        + "}\n");
-    }
-
-    @Test
     void canParse_java9_private_interface_methods() {
         assertThatCode(() -> Formatter.create()
                         .formatSourceAndFixImports(""
