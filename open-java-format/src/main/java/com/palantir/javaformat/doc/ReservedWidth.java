@@ -16,7 +16,6 @@ package com.palantir.javaformat.doc;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Range;
-import com.google.errorprone.annotations.Immutable;
 import com.palantir.javaformat.CommentsHelper;
 import com.palantir.javaformat.Op;
 import com.palantir.javaformat.Output;
@@ -26,7 +25,6 @@ import com.palantir.javaformat.Output;
  * {@code //$NON-NLS-n$} marker after the string literal it marks, which {@link Comment} writes at the end of the
  * literal's line once the line breaks are known. So the layout already counts the marker on that line.
  */
-@Immutable
 public final class ReservedWidth extends Doc implements Op {
     private final int width;
 

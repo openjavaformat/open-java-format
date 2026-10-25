@@ -19,7 +19,6 @@ package com.palantir.javaformat.doc;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Range;
-import com.google.errorprone.annotations.Immutable;
 import com.palantir.javaformat.CommentsHelper;
 import com.palantir.javaformat.Input;
 import com.palantir.javaformat.Newlines;
@@ -30,12 +29,10 @@ import com.palantir.javaformat.java.NonNlsMarkers;
 import java.util.List;
 
 /** A leaf node in a {@link Doc} for a non-token. */
-@Immutable
 public final class Comment extends Doc implements Op {
     private final Input.Tok tok;
 
     /** For a comment of NON-NLS markers, the index of the string literal each marker marks, or -1; else empty. */
-    @SuppressWarnings("Immutable") // List.of and List.copyOf: unmodifiable
     private final List<Integer> nonNlsLiterals;
 
     private Comment(Input.Tok tok, List<Integer> nonNlsLiterals) {
