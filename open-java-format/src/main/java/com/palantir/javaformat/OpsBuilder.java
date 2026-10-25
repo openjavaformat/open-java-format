@@ -20,6 +20,7 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Range;
 import com.google.errorprone.annotations.Immutable;
 import com.palantir.javaformat.Indent.Const;
 import com.palantir.javaformat.Input.Tok;
@@ -30,14 +31,18 @@ import com.palantir.javaformat.doc.Doc;
 import com.palantir.javaformat.doc.DocBuilder;
 import com.palantir.javaformat.doc.FillMode;
 import com.palantir.javaformat.doc.NonBreakingSpace;
+import com.palantir.javaformat.doc.ReservedWidth;
 import com.palantir.javaformat.doc.State;
 import com.palantir.javaformat.doc.Token;
 import com.palantir.javaformat.doc.Token.RealOrImaginary;
 import com.palantir.javaformat.java.FormatterDiagnostic;
 import com.palantir.javaformat.java.InputMetadata;
 import com.palantir.javaformat.java.InputMetadataBuilder;
+import com.palantir.javaformat.java.NonNlsMarkers;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /** An {@code OpsBuilder} creates a list of {@link Op}s, which is turned into a {@link Doc} by {@link DocBuilder}. */
@@ -505,6 +510,10 @@ public final class OpsBuilder {
         markForPartialFormat();
         // Rewrite the ops to insert comments.
         Multimap<Integer, Op> tokOps = ArrayListMultimap.create();
+        // The room after a string literal for the NON-NLS markers written on its line, see Comment.makeNonNlsMarkers.
+        Multimap<Integer, Op> reservations = ArrayListMultimap.create();
+        Map<Input.Token, Integer> tokenOps = new HashMap<>();
+        Map<Integer, Input.Token> tokenByIndex = null;
         int opsN = ops.size();
         for (int i = 0; i < opsN; i++) {
             Op op = ops.get(i);
@@ -528,6 +537,7 @@ public final class OpsBuilder {
                      * Regular input token. Copy out toksBefore before token, and toksAfter after it. Insert
                      * this token's toksBefore at position j.
                      */
+                    tokenOps.put(token, i);
                     int newlines = 0; // Count of newlines in a row.
                     boolean space = false; // Do we need an extra space after a previous "/*" comment?
                     boolean lastWasComment = false; // Was the last thing we output a comment?
@@ -591,7 +601,30 @@ public final class OpsBuilder {
                             } else {
                                 tokOps.put(tokAfterPos, SPACE);
                             }
-                            tokOps.putAll(tokAfterPos, makeComment(tokAfter));
+                            if (tokAfter.isSlashSlashComment() && NonNlsMarkers.isMarkersOnly(tokAfter.getText())) {
+                                if (tokenByIndex == null) {
+                                    tokenByIndex = new HashMap<>();
+                                    for (Input.Token t : input.getTokens()) {
+                                        tokenByIndex.put(t.getTok().getIndex(), t);
+                                    }
+                                }
+                                ImmutableList<Integer> literals =
+                                        nonNlsLiterals(token, tokAfter, tokenByIndex, tokenOps);
+                                ImmutableList<Integer> numbers = NonNlsMarkers.numbers(tokAfter.getText());
+                                for (int m = 0; m < literals.size(); m++) {
+                                    Integer literalOp = literals.get(m) < 0
+                                            ? null
+                                            : tokenOps.get(tokenByIndex.get(literals.get(m)));
+                                    if (literalOp != null) {
+                                        String marker = NonNlsMarkers.marker(numbers.get(m));
+                                        reservations.put(literalOp + 1, ReservedWidth.make(marker.length() + 1));
+                                    }
+                                }
+                                tokOps.put(tokAfterPos, Comment.makeNonNlsMarkers(tokAfter, literals));
+                                tokOps.put(tokAfterPos, Break.makeForced());
+                            } else {
+                                tokOps.putAll(tokAfterPos, makeComment(tokAfter));
+                            }
                             if (breakAfter) {
                                 tokOps.put(tokAfterPos, Break.make(FillMode.FORCED, "", ZERO));
                             }
@@ -630,6 +663,7 @@ public final class OpsBuilder {
         ImmutableList.Builder<Op> newOps = ImmutableList.builder();
         boolean afterForcedBreak = false; // Was the last Op a forced break? If so, suppress spaces.
         for (int i = 0; i < opsN; i++) {
+            newOps.addAll(reservations.get(i));
             for (Op op : tokOps.get(i)) {
                 if (!(afterForcedBreak && op instanceof NonBreakingSpace)) {
                     newOps.add(op);
@@ -660,6 +694,39 @@ public final class OpsBuilder {
 
     private static boolean isNonNlsComment(Input.Tok tokAfter) {
         return tokAfter.isSlashSlashComment() && tokAfter.getText().contains("$NON-NLS");
+    }
+
+    /**
+     * For each marker of a {@code //$NON-NLS-1$ //$NON-NLS-2$} comment that trails {@code token}, the index of the
+     * string literal it marks, the n-th one on the comment's input line, or -1 when there is none. A literal in
+     * another partial-format region counts as none too: a partial format of its region would otherwise lose the
+     * marker, which belongs to the comment's region. So does a literal without an op of its own.
+     */
+    private ImmutableList<Integer> nonNlsLiterals(
+            Input.Token token,
+            Input.Tok comment,
+            Map<Integer, Input.Token> tokenByIndex,
+            Map<Input.Token, Integer> tokenOps) {
+        int line = input.getLineNumber(token.getTok().getPosition()) - 1;
+        Range<Integer> toks = input.getRanges(line);
+        List<Integer> literals = new ArrayList<>();
+        for (int k = toks.lowerEndpoint(); k < Math.min(toks.upperEndpoint(), comment.getIndex()); k++) {
+            Input.Token candidate = tokenByIndex.get(k);
+            if (candidate != null && candidate.getTok().getText().startsWith("\"")) {
+                literals.add(k);
+            }
+        }
+        Range<Integer> region = inputMetadataBuilder.regionContaining(comment.getIndex());
+        ImmutableList.Builder<Integer> result = ImmutableList.builder();
+        for (int n : NonNlsMarkers.numbers(comment.getText())) {
+            int literal = 1 <= n && n <= literals.size() ? literals.get(n - 1) : -1;
+            boolean usable = literal >= 0
+                    && region != null
+                    && region.contains(literal)
+                    && tokenOps.containsKey(tokenByIndex.get(literal));
+            result.add(usable ? literal : -1);
+        }
+        return result.build();
     }
 
     private static boolean isForcedBreak(Op op) {

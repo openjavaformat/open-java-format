@@ -1,0 +1,11 @@
+class WrappedArguments {
+  void markers() {
+    String message = Messages.format("first argument that is long enough to matter", "second argument that is also rather long", "third one"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    String second = Messages.format( "first argument that is long enough to matter", "second argument that is also rather long", "third one" );  //$NON-NLS-2$
+    String twoOnALine = Messages.format("first argument that is long enough to matter", "a" + "b", "third argument that is also rather long"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+    String keyAndValue = Messages.format(KEY, "an argument that is long enough to matter", "second argument that is also rather long", VALUE);	//$NON-NLS-1$ //$NON-NLS-2$
+    String chained = builder.append("first argument that is long enough to matter").append("second argument that is also rather long").toString(); //$NON-NLS-1$ //$NON-NLS-2$
+    String noSuchLiteral = Messages.format("first argument that is long enough to matter", "second argument that is also rather long", "third one"); //$NON-NLS-1$ //$NON-NLS-5$
+    String fitsOnTheNextLine = Messages.format("first argument", "second one", "third");   //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+  }
+}

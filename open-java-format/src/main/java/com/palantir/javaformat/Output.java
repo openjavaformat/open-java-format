@@ -15,6 +15,7 @@
 package com.palantir.javaformat;
 
 import com.google.common.base.MoreObjects;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.palantir.javaformat.doc.State;
 
@@ -35,6 +36,14 @@ public abstract class Output extends InputOutput {
      * @param range the {@link Range} corresponding to the string
      */
     public abstract void append(State state, String text, Range<Integer> range);
+
+    /**
+     * Output a comment of {@code //$NON-NLS-n$} markers, see {@link com.palantir.javaformat.java.NonNlsMarkers}.
+     *
+     * @param literals for each marker, the index of the string literal it marks, or -1
+     */
+    public abstract void appendNonNlsMarkers(
+            State state, String comment, Range<Integer> range, ImmutableList<Integer> literals);
 
     @Override
     public String toString() {

@@ -111,4 +111,14 @@ final class JavaCommentsHelperTest {
         assertThat(rewritten.lines()).hasSize(2);
         assertThat(rewritten.lines()).allSatisfy(line -> assertThat(line.trim()).startsWith("// "));
     }
+
+    @Test
+    void aRunOfNonNlsMarkersIsNeverWrapped() throws Exception {
+        // Eclipse reads a marker only on the line of its literal, so a run that reaches past the limit stays as it is
+        // instead of being wrapped at a blank into a `// //$NON-NLS-3$` line of its own.
+        String run = "//$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$ //$NON-NLS-7$"
+                + " //$NON-NLS-8$ //$NON-NLS-9$";
+
+        assertThat(rewrite(run, Style.OJF)).isEqualTo(run);
+    }
 }

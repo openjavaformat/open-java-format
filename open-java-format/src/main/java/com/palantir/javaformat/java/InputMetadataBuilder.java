@@ -24,6 +24,7 @@ import com.palantir.javaformat.Input;
 import com.palantir.javaformat.OpsBuilder.BlankLineWanted;
 import java.util.HashMap;
 import java.util.Map;
+import javax.annotation.Nullable;
 
 public final class InputMetadataBuilder {
     private final Map<Integer, BlankLineWanted> blankLines = new HashMap<>(); // Info on blank lines.
@@ -48,6 +49,12 @@ public final class InputMetadataBuilder {
         int lo = JavaOutput.startTok(start).getIndex();
         int hi = JavaOutput.endTok(end).getIndex();
         partialFormatRanges.add(Range.closed(lo, hi));
+    }
+
+    /** The region marked for partial formatting that holds tok {@code k}, or null. */
+    @Nullable
+    public Range<Integer> regionContaining(int k) {
+        return partialFormatRanges.rangeContaining(k);
     }
 
     public InputMetadata build() {

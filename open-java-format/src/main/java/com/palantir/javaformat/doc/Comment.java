@@ -17,6 +17,7 @@
 package com.palantir.javaformat.doc;
 
 import com.google.common.base.MoreObjects;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Range;
 import com.google.errorprone.annotations.Immutable;
@@ -26,14 +27,19 @@ import com.palantir.javaformat.Newlines;
 import com.palantir.javaformat.Op;
 import com.palantir.javaformat.Output;
 import com.palantir.javaformat.java.JavaCommentsHelper;
+import com.palantir.javaformat.java.NonNlsMarkers;
 
 /** A leaf node in a {@link Doc} for a non-token. */
 @Immutable
 public final class Comment extends Doc implements Op {
     private final Input.Tok tok;
 
-    private Comment(Input.Tok tok) {
+    /** For a comment of NON-NLS markers, the index of the string literal each marker marks, or -1; else empty. */
+    private final ImmutableList<Integer> nonNlsLiterals;
+
+    private Comment(Input.Tok tok, ImmutableList<Integer> nonNlsLiterals) {
         this.tok = tok;
+        this.nonNlsLiterals = nonNlsLiterals;
     }
 
     /**
@@ -43,7 +49,18 @@ public final class Comment extends Doc implements Op {
      * @return the new {@code Tok}
      */
     public static Comment make(Input.Tok tok) {
-        return new Comment(tok);
+        return new Comment(tok, ImmutableList.of());
+    }
+
+    /**
+     * A comment of {@code //$NON-NLS-n$} markers, see {@link NonNlsMarkers}. A marker with a literal is written at
+     * the end of the literal's output line and takes its room there, as a {@link ReservedWidth} after the literal;
+     * only the markers without one take room here.
+     *
+     * @param literals for each marker, the index of the string literal it marks, or -1
+     */
+    public static Comment makeNonNlsMarkers(Input.Tok tok, ImmutableList<Integer> literals) {
+        return new Comment(tok, literals);
     }
 
     @Override
@@ -53,6 +70,17 @@ public final class Comment extends Doc implements Op {
 
     @Override
     protected float computeWidth() {
+        if (!nonNlsLiterals.isEmpty()) {
+            int width = 0;
+            ImmutableList<Integer> numbers = NonNlsMarkers.numbers(tok.getOriginalText());
+            for (int i = 0; i < numbers.size(); i++) {
+                if (nonNlsLiterals.get(i) < 0) {
+                    width += (width > 0 ? 1 : 0)
+                            + NonNlsMarkers.marker(numbers.get(i)).length();
+                }
+            }
+            return width;
+        }
         int idx = Newlines.firstBreak(tok.getOriginalText());
         // only count the first line of multi-line block comments
         if (tok.isComment()) {
@@ -102,7 +130,11 @@ public final class Comment extends Doc implements Op {
 
     @Override
     public void write(State state, Output output) {
-        output.append(state, state.getTokText(this), range());
+        if (nonNlsLiterals.isEmpty()) {
+            output.append(state, state.getTokText(this), range());
+        } else {
+            output.appendNonNlsMarkers(state, state.getTokText(this), range(), nonNlsLiterals);
+        }
     }
 
     @Override
