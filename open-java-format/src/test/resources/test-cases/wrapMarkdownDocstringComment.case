@@ -1,3 +1,4 @@
+----------
 class T {
   /// one long incredibly unbroken sentence moving from topic to topic so that no-one in the room had a chance to interrupt;
   void m() {}

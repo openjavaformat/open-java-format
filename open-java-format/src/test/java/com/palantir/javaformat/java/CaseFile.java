@@ -18,60 +18,48 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * A formatter test case written as a file: the code before formatting and the code expected after it, separated by a
- * line of six or more dashes. A file with two such lines starts with a settings block. There are no settings yet, so
- * the block holds only blank lines and {@code #} comments, which explain the case.
+ * A formatter test case written as a file: an optional header, a line of six or more dashes, the code before
+ * formatting, a second such line and the code expected after it. There are no settings yet, so the header holds only
+ * blank lines and {@code #} comments, which explain the case; a file without one starts with the first dashes.
  *
- * <p>Lines end in {@code \n} in both blocks, whatever the file uses. {@code afterLine} is the line of the file the
- * after block starts on, so that a failure can name the line of the file where the output departs from it.
+ * <p>The blocks are the text of the file as written. The before block runs from the line after the first dashes to
+ * the second, its last line break included, and the after block from the line after the second dashes to the end of
+ * the file. Line breaks stay {@code \n}, {@code \r\n} or {@code \r}, whichever the file has. {@code afterLine} is the
+ * line of the file the after block starts on, so that a failure can name the line where the output departs from it.
  */
 record CaseFile(String before, String after, int afterLine) {
     static final String EXTENSION = ".case";
 
-    private static final Pattern SEPARATOR = Pattern.compile("-{6,}");
+    /** Six or more dashes on a line of their own, with the line break that ends them. */
+    private static final Pattern SEPARATOR = Pattern.compile("(?:\\A|(?<=[\\r\\n]))-{6,}(?:\\r\\n|\\r|\\n|\\z)");
 
     /** Splits the text of the case file at {@code path}, which only names the file in an error. */
     static CaseFile parse(String path, String text) {
-        var blocks = new ArrayList<StringBuilder>();
-        blocks.add(new StringBuilder());
-        var number = 0;
-        var afterLine = 0;
+        var separators = SEPARATOR.matcher(text).results().toList();
 
-        for (var line : text.lines().toList()) {
-            number++;
-
-            if (SEPARATOR.matcher(line).matches()) {
-                blocks.add(new StringBuilder());
-                afterLine = number + 1;
-            } else {
-                blocks.getLast().append(line).append('\n');
-            }
-        }
-
-        var separators = blocks.size() - 1;
-
-        if (separators != 1 && separators != 2) {
+        if (separators.size() != 2) {
             throw new IllegalArgumentException(
-                    path + ": a case has one or two lines of six or more dashes, found " + separators);
+                    path + ": a case has two lines of six or more dashes, found " + separators.size());
         }
 
-        if (separators == 2) {
-            for (var line : blocks.getFirst().toString().lines().toList()) {
-                if (!line.isBlank() && !line.startsWith("#")) {
-                    throw new IllegalArgumentException(path
-                            + ": there are no settings yet, the first block takes blank lines and # comments only: "
-                            + line);
-                }
+        for (var line : text.substring(0, separators.getFirst().start()).lines().toList()) {
+            if (!line.isBlank() && !line.startsWith("#")) {
+                throw new IllegalArgumentException(path
+                        + ": there are no settings yet, the header takes blank lines and # comments only: " + line);
             }
         }
+
+        var afterStart = separators.getLast().end();
+        var afterLine = (int) text.substring(0, afterStart).lines().count() + 1;
 
         return new CaseFile(
-                blocks.get(separators - 1).toString(), blocks.get(separators).toString(), afterLine);
+                text.substring(separators.getFirst().end(), separators.getLast().start()),
+                text.substring(afterStart),
+                afterLine);
     }
 
     /**

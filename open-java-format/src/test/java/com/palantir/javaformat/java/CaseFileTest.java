@@ -25,13 +25,13 @@ import org.junit.jupiter.api.io.TempDir;
 
 final class CaseFileTest {
     @Test
-    void oneSeparatorSplitsBeforeFromAfter() {
-        assertThat(CaseFile.parse("a.case", "class A{}\n------\nclass A {}\n"))
-                .isEqualTo(new CaseFile("class A{}\n", "class A {}\n", 3));
+    void theBlocksLieBetweenTheTwoSeparatorLines() {
+        assertThat(CaseFile.parse("a.case", "------\nclass A{}\n------\nclass A {}\n"))
+                .isEqualTo(new CaseFile("class A{}\n", "class A {}\n", 4));
     }
 
     @Test
-    void twoSeparatorsStartWithTheSettingsBlock() {
+    void aHeaderBeforeTheFirstSeparatorExplainsTheCase() {
         var text = "# Why this case exists.\n\n----------\nclass A{}\n----------\nclass A {}\n";
 
         assertThat(CaseFile.parse("a.case", text)).isEqualTo(new CaseFile("class A{}\n", "class A {}\n", 6));
@@ -46,8 +46,16 @@ final class CaseFileTest {
     }
 
     @Test
+    void aFileWithOneSeparatorIsNotACase() {
+        assertThatThrownBy(() -> CaseFile.parse("a.case", "class A{}\n------\nclass A {}\n"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("a.case")
+                .hasMessageContaining("found 1");
+    }
+
+    @Test
     void aFileWithThreeSeparatorsIsNotACase() {
-        assertThatThrownBy(() -> CaseFile.parse("a.case", "x\n------\ny\n------\nz\n------\nw\n"))
+        assertThatThrownBy(() -> CaseFile.parse("a.case", "------\ny\n------\nz\n------\nw\n"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("a.case")
                 .hasMessageContaining("found 3");
@@ -55,16 +63,22 @@ final class CaseFileTest {
 
     @Test
     void fiveDashesOrATrailingSpaceAreNotASeparator() {
-        assertThat(CaseFile.parse("a.case", "a\n-----\nb\n------ \nc\n------\nd\n"))
-                .isEqualTo(new CaseFile("a\n-----\nb\n------ \nc\n", "d\n", 7));
+        assertThat(CaseFile.parse("a.case", "------\na\n-----\nb\n------ \nc\n------\nd\n"))
+                .isEqualTo(new CaseFile("a\n-----\nb\n------ \nc\n", "d\n", 8));
     }
 
     @Test
-    void linesEndInLfWhileTabsAndTrailingSpacesStay() {
-        var text = "class A {\r\n\tint x;  \r\n}\r\n------\r\nclass A {\r\n    int x;\r\n}";
+    void lineBreaksTabsAndTrailingSpacesStayAsWritten() {
+        var text = "------\r\nclass A {\r\n\tint x;  \r\n}\r\n------\r\nclass A {\r\n    int x;\r\n}";
 
         assertThat(CaseFile.parse("a.case", text))
-                .isEqualTo(new CaseFile("class A {\n\tint x;  \n}\n", "class A {\n    int x;\n}\n", 5));
+                .isEqualTo(new CaseFile("class A {\r\n\tint x;  \r\n}\r\n", "class A {\r\n    int x;\r\n}", 6));
+    }
+
+    @Test
+    void carriageReturnsAloneBreakLinesToo() {
+        assertThat(CaseFile.parse("a.case", "------\rclass A{}\r------\rclass A {}\r"))
+                .isEqualTo(new CaseFile("class A{}\r", "class A {}\r", 4));
     }
 
     @Test

@@ -1,0 +1,2 @@
+# A formatter test case is compared byte for byte, line breaks included, so git must not convert them.
+*.case -text
