@@ -1,7 +1,0 @@
-class PalantirDanglingMethodReference {
-    void foo() {
-        return engageNicely(
-                staleForksFigureBark, staleForksFigureConsecutiveFailedExecutions, isStaleForksFigureInProgress, this
-                        ::engageStaleForksUnsafely);
-    }
-}

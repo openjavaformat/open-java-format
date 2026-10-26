@@ -1,0 +1,24 @@
+----------
+class PalantirLambdaBreakChain {
+    void foo() {
+        return hello.read(txn -> {
+                    doSomeWork();
+                    doSomeMoreWork();
+                })
+                .chainedCall(() -> {
+                    doSomeWork();
+                });
+    }
+}
+----------
+class PalantirLambdaBreakChain {
+    void foo() {
+        return hello.read(txn -> {
+                    doSomeWork();
+                    doSomeMoreWork();
+                })
+                .chainedCall(() -> {
+                    doSomeWork();
+                });
+    }
+}

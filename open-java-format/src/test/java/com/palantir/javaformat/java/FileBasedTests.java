@@ -47,24 +47,9 @@ public final class FileBasedTests {
     // Test files that are only used when run with a minimum Java version
     private static final ImmutableMultimap<Integer, String> VERSIONED_TESTS =
             ImmutableMultimap.<Integer, String>builder()
-                    .putAll(14, "Records", "RSL", "Var", "ExpressionSwitch", "I574", "I594")
-                    .putAll(15, "I603")
-                    .putAll(16, "I588", "Sealed")
-                    .putAll(17, "I683", "I684", "I696")
-                    .putAll(
-                            21,
-                            "SwitchGuardClause",
-                            "SwitchRecord",
-                            "SwitchDouble",
-                            "SwitchUnderscore",
-                            "I880",
-                            "I1309",
-                            "Unnamed",
-                            "UnnamedPattern",
-                            "CompactSource",
-                            "MarkdownDoc",
-                            "FlexibleConstructor",
-                            "ojf-issue-24-jbang-compact-source")
+                    .putAll(14, "Records", "RSL", "Var", "I574")
+                    .putAll(16, "I588")
+                    .putAll(21, "I880")
                     .putAll(23, "ModuleImport")
                     .build();
 

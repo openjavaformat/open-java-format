@@ -1,9 +1,0 @@
-class ReflowedLiteral {
-  void markers() {
-    String reflowed = "a single string literal that is far too long to fit into one hundred and twenty columns, so the formatter reflows it"; //$NON-NLS-1$
-    String unmarked = "a single string literal that is far too long to fit into one hundred and twenty columns, so the formatter reflows it";
-    log( "short", "a string literal as the second argument that is far too long to fit into one hundred and twenty columns", "after" );  //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-    log(KEY, "a string literal as the second argument that is far too long to fit into one hundred and twenty columns, so it reflows", VALUE); //$NON-NLS-1$
-    String chain = "a string literal that is far too long to fit into one hundred and twenty columns, so it reflows" + "with another literal"; //$NON-NLS-1$ //$NON-NLS-2$
-  }
-}

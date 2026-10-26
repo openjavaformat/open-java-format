@@ -1,0 +1,1 @@
+----------class T {  {    f(        /* foo */ """        hello        """);  }}----------class T {    {        f(/* foo */ """            hello            """);    }}

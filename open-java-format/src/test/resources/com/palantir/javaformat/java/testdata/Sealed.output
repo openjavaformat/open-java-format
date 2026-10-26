@@ -1,9 +1,0 @@
-class T {
-    sealed interface I extends A permits C, B {}
-
-    final class C implements I {}
-
-    private sealed interface A permits I {}
-
-    private non-sealed interface B extends I {}
-}
