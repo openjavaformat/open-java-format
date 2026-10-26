@@ -1,0 +1,17 @@
+class T {
+/*
+* asd 
+* fgh
+*/ 
+
+int x;
+}
+----------
+class T {
+    /*
+     * asd
+     * fgh
+     */
+
+    int x;
+}

@@ -1,0 +1,5 @@
+class X { void Y() {} }
+----------
+class X {
+    void Y() {}
+}

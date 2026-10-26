@@ -1,0 +1,11 @@
+# JBang reads its directives from the line comments before the first line of code,
+# and they stay exactly as written.
+# What JBang's syntax allows after the name.
+----------
+//DEPS org.postgresql:postgresql:${env.DB_VERSION:42.6.0}
+
+class Hello {}
+----------
+//DEPS org.postgresql:postgresql:${env.DB_VERSION:42.6.0}
+
+class Hello {}

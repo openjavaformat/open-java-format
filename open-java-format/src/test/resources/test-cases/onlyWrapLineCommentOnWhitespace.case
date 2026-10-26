@@ -1,0 +1,11 @@
+class T {
+  public static void main(String[] args) { // one_long_incredibly_unbroken_sentence_moving_from_topic_to_topic_so_that_no-one_had_a_chance_to_interrupt;
+  }
+}
+----------
+class T {
+    public static void main(
+            String[]
+                    args) { // one_long_incredibly_unbroken_sentence_moving_from_topic_to_topic_so_that_no-one_had_a_chance_to_interrupt;
+    }
+}

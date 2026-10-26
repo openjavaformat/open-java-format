@@ -1,0 +1,10 @@
+# A line comment that only looks like a JBang directive is formatted like any other.
+# Switched off on purpose: JBang's own templates list optional dependencies this way.
+----------
+// DEPS a:b:1
+
+class Hello {}
+----------
+// DEPS a:b:1
+
+class Hello {}

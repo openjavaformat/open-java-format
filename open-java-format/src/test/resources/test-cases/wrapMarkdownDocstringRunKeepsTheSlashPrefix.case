@@ -1,0 +1,15 @@
+# javac returns a run of `///` lines as one comment token from JDK 23 on; before that each line is its
+# own token and the wrapped line is always the first of its token, which is never misread.
+----------
+class T {
+  /// Summary line.
+  /// one long incredibly unbroken sentence moving from topic to topic so that no-one had a chance to interrupt; @Deprecated
+  void m() {}
+}
+----------
+class T {
+    /// Summary line.
+    /// one long incredibly unbroken sentence moving from topic to topic so that no-one had a chance to interrupt;
+    /// @Deprecated
+    void m() {}
+}

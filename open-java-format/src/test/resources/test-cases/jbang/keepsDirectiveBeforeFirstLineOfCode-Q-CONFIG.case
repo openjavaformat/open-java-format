@@ -1,0 +1,11 @@
+# JBang reads its directives from the line comments before the first line of code,
+# and they stay exactly as written.
+# A directive for a build integration: Quarkus reads //Q:CONFIG.
+----------
+//Q:CONFIG quarkus.banner.enabled=false
+
+class Hello {}
+----------
+//Q:CONFIG quarkus.banner.enabled=false
+
+class Hello {}

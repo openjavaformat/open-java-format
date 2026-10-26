@@ -1,0 +1,10 @@
+# A line comment that only looks like a JBang directive is formatted like any other.
+# Directive names are upper case.
+----------
+//deps a:b:1
+
+class Hello {}
+----------
+// deps a:b:1
+
+class Hello {}

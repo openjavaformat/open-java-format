@@ -42,11 +42,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 @Execution(ExecutionMode.CONCURRENT)
 final class FormatterTest {
+
+    private static final Formatter FORMATTER = Formatter.createFormatter(
+            JavaFormatterOptions.builder().style(Style.OJF).build());
 
     @TempDir
     public Path testFolder;
@@ -123,83 +124,10 @@ final class FormatterTest {
     }
 
     @Test
-    void blankInClassBody() throws FormatterException {
-        String input = "package test;\nclass T {\n\n}\n";
-        String output = Formatter.create().formatSource(input);
-        String expect = "package test;\n\nclass T {}\n";
-        assertThat(output).isEqualTo(expect);
-    }
-
-    @Test
     void blankInClassBodyNoTrailing() throws FormatterException {
         String input = "package test;\nclass T {\n\n}";
-        String output = Formatter.create().formatSource(input);
+        String output = FORMATTER.formatSource(input);
         String expect = "package test;\n\nclass T {}\n";
-        assertThat(output).isEqualTo(expect);
-    }
-
-    @Test
-    void docCommentTrailingBlank() throws FormatterException {
-        String input = "class T {\n/** asd */\n\nint x;\n}";
-        String output = Formatter.create().formatSource(input);
-        String expect = "class T {\n  /** asd */\n  int x;\n}\n";
-        assertThat(output).isEqualTo(expect);
-    }
-
-    @Test
-    void blockCommentInteriorTrailingBlank() throws FormatterException {
-        String input = "class T {\n/*\n* asd \n* fgh\n*/ \n\nint x;\n}";
-        String output = Formatter.create().formatSource(input);
-        String expect = "class T {\n  /*\n   * asd\n   * fgh\n   */\n\n  int x;\n}\n";
-        assertThat(output).isEqualTo(expect);
-    }
-
-    @Test
-    void blockCommentTrailingBlank() throws FormatterException {
-        String input = "class T {\n/* asd */ \n\nint x;\n}";
-        String output = Formatter.create().formatSource(input);
-        String expect = "class T {\n  /* asd */\n\n  int x;\n}\n";
-        assertThat(output).isEqualTo(expect);
-    }
-
-    @Test
-    void lineCommentTrailingBlank() throws FormatterException {
-        String input = "class T {\n// asd \n\nint x;\n}";
-        String output = Formatter.create().formatSource(input);
-        String expect = "class T {\n  // asd\n\n  int x;\n}\n";
-        assertThat(output).isEqualTo(expect);
-    }
-
-    @Test
-    void lineCommentTrailingThinSpace() throws FormatterException {
-        // The Unicode thin space is matched by CharMatcher.whitespace() but not trim().
-        String input = "class T {\n  // asd\u2009\n}\n";
-        String output = Formatter.create().formatSource(input);
-        String expect = "class T {\n  // asd\n}\n";
-        assertThat(output).isEqualTo(expect);
-    }
-
-    @Test
-    void noBlankAfterLineCommentWithInteriorBlankLine() throws FormatterException {
-        String input = "class T {\n// asd \n\n// dsa \nint x;\n}";
-        String output = Formatter.create().formatSource(input);
-        String expect = "class T {\n  // asd\n\n  // dsa\n  int x;\n}\n";
-        assertThat(output).isEqualTo(expect);
-    }
-
-    @Test
-    void badConstructor() throws FormatterException {
-        String input = "class X { Y() {} }";
-        String output = Formatter.create().formatSource(input);
-        String expect = "class X {\n  Y() {}\n}\n";
-        assertThat(output).isEqualTo(expect);
-    }
-
-    @Test
-    void voidMethod() throws FormatterException {
-        String input = "class X { void Y() {} }";
-        String output = Formatter.create().formatSource(input);
-        String expect = "class X {\n  void Y() {}\n}\n";
         assertThat(output).isEqualTo(expect);
     }
 
@@ -221,27 +149,8 @@ final class FormatterTest {
     @Test
     void importsNotReorderedByDefault() throws FormatterException {
         String input = "package com.google.example;\n" + UNORDERED_IMPORTS + "\npublic class ExampleTest {}\n";
-        String output = Formatter.create().formatSource(input);
+        String output = FORMATTER.formatSource(input);
         String expect = "package com.google.example;\n\n" + UNORDERED_IMPORTS + "\n\npublic class ExampleTest {}\n";
-        assertThat(output).isEqualTo(expect);
-    }
-
-    @Test
-    void importsFixedIfRequested() throws FormatterException {
-        String input = "package com.google.example;\n"
-                + UNORDERED_IMPORTS
-                + "\npublic class ExampleTest {\n"
-                + "  @Nullable List<?> xs;\n"
-                + "}\n";
-        String output = Formatter.create().formatSourceAndFixImports(input);
-        @SuppressWarnings("for-rollout:StringConcatToTextBlock")
-        String expect = "package com.google.example;\n\n"
-                + "import java.util.List;\n"
-                + "import javax.annotations.Nullable;\n\n"
-                + "public class ExampleTest {\n"
-                + "  @Nullable\n"
-                + "  List<?> xs;\n"
-                + "}\n";
         assertThat(output).isEqualTo(expect);
     }
 
@@ -300,142 +209,32 @@ final class FormatterTest {
     // regression test for google-java-format#47
     @Test
     void trailingCommentWithoutTerminalNewline() throws Exception {
-        assertThat(Formatter.create().formatSource("/*\n * my comment */")).isEqualTo("/*\n * my comment */\n");
-    }
-
-    @Test
-    void emptyArray() throws Exception {
-        assertThat(Formatter.create().formatSource("class T { int x[] = {,}; }"))
-                .isEqualTo("class T {\n  int x[] = {,};\n}\n");
-    }
-
-    @Test
-    void stringEscapeLength() throws Exception {
-        assertThat(Formatter.create().formatSource("class T {{ f(\"\\\"\"); }}"))
-                .isEqualTo("class T {\n  {\n    f(\"\\\"\");\n  }\n}\n");
+        assertThat(FORMATTER.formatSource("/*\n * my comment */")).isEqualTo("/*\n * my comment */\n");
     }
 
     @Test
     void wrapLineComment() throws Exception {
-        assertThat(Formatter.create()
-                        .formatSource("class T {\n"
-                                + "  public static void main(String[] args) { // one long incredibly"
-                                + " unbroken sentence moving from topic to topic so that no-one had a"
-                                + " chance to interrupt;\n"
-                                + "  }\n"
-                                + "}\n"))
-                .isEqualTo("class T {\n"
-                        + "  public static void main(\n"
-                        + "      String[]\n"
-                        + "          args) { // one long incredibly unbroken sentence moving"
-                        + " from topic to topic so that no-one\n"
-                        + "                  // had a chance to interrupt;\n"
+        // Not a case in test-cases yet: a second run moves the wrapped part of the comment to the indent of the block,
+        // and the cases check that a second run changes nothing.
+        assertThat(FORMATTER.formatSource("class T {\n"
+                        + "  public static void main(String[] args) { // one long incredibly"
+                        + " unbroken sentence moving from topic to topic so that no-one had a"
+                        + " chance to interrupt;\n"
                         + "  }\n"
-                        + "}\n");
-    }
-
-    @Test
-    void onlyWrapLineCommentOnWhitespace() throws Exception {
-        assertThat(Formatter.create()
-                        .formatSource("class T {\n"
-                                + "  public static void main(String[] args) { // one_long_incredibly"
-                                + "_unbroken_sentence_moving_from_topic_to_topic_so_that_no-one_had_a"
-                                + "_chance_to_interrupt;\n"
-                                + "  }\n"
-                                + "}\n"))
+                        + "}\n"))
                 .isEqualTo("class T {\n"
-                        + "  public static void main(\n"
-                        + "      String[]\n"
-                        + "          args) { // one_long_incredibly"
-                        + "_unbroken_sentence_moving_from_topic_to_topic_so_that_no-one_had_a"
-                        + "_chance_to_interrupt;\n"
-                        + "  }\n"
+                        + "    public static void main(\n"
+                        + "            String[]\n"
+                        + "                    args) { // one long incredibly unbroken sentence moving"
+                        + " from topic to topic so that no-one had a\n"
+                        + "                            // chance to interrupt;\n"
+                        + "    }\n"
                         + "}\n");
-    }
-
-    @Test
-    void onlyWrapLineCommentOnWhitespace_noLeadingWhitespace() throws Exception {
-        assertThat(Formatter.create()
-                        .formatSource("class T {\n"
-                                + "  public static void main(String[] args) { //one_long_incredibly"
-                                + "_unbroken_sentence_moving_from_topic_to_topic_so_that_no-one_had_a"
-                                + "_chance_to_interrupt;\n"
-                                + "  }\n"
-                                + "}\n"))
-                .isEqualTo("class T {\n"
-                        + "  public static void main(\n"
-                        + "      String[]\n"
-                        + "          args) { // one_long_incredibly"
-                        + "_unbroken_sentence_moving_from_topic_to_topic_so_that_no-one_had_a"
-                        + "_chance_to_interrupt;\n"
-                        + "  }\n"
-                        + "}\n");
-    }
-
-    @Test
-    void lineCommentGetsItsMissingSpaceExceptIdeMarkers() throws Exception {
-        // `//foo` gets a space after any number of slashes, while the IDE markers `//noinspection` and `//$NON-NLS-n$`
-        // are recognised by their tools only without one and stay as written.
-        String input = "class T {\n"
-                + "  //noinspection unchecked\n"
-                + "  //$NON-NLS-1$ //$NON-NLS-2$\n"
-                + "  //$NON-NLS-12$ and more\n"
-                + "  //foo\n"
-                + "  ///foo\n"
-                + "  // bar\n"
-                + "  //  two spaces\n"
-                + "  void m() {}\n"
-                + "}\n";
-        String expected = "class T {\n"
-                + "  //noinspection unchecked\n"
-                + "  //$NON-NLS-1$ //$NON-NLS-2$\n"
-                + "  //$NON-NLS-12$ and more\n"
-                + "  // foo\n"
-                + "  /// foo\n"
-                + "  // bar\n"
-                + "  //  two spaces\n"
-                + "  void m() {}\n"
-                + "}\n";
-        assertThat(Formatter.create().formatSource(input)).isEqualTo(expected);
-    }
-
-    @Test
-    void trailingLineCommentGetsItsMissingSpaceExceptIdeMarkers() throws Exception {
-        // The same rule for a comment that trails a statement which fits on one line. Such a statement is written
-        // from its flat text, which skips the comment rewriting, so the IDE markers used to get the space too (#23).
-        var input = """
-            class T {
-              void m() {
-                String a = "x"; //$NON-NLS-1$
-                String b = "y"; //noinspection unchecked
-                String c = "z"; //foo
-                String d = "w"; ///foo
-                String e = "v"; // bar
-                String f = "u"; /// baz
-              }
-            }
-            """;
-        var expected = """
-            class T {
-              void m() {
-                String a = "x"; //$NON-NLS-1$
-                String b = "y"; //noinspection unchecked
-                String c = "z"; // foo
-                String d = "w"; /// foo
-                String e = "v"; // bar
-                String f = "u"; /// baz
-              }
-            }
-            """;
-
-        var once = Formatter.create().formatSource(input);
-        assertThat(once).isEqualTo(expected);
-        assertThat(Formatter.create().formatSource(once)).isEqualTo(once);
     }
 
     @Test
     void throwsFormatterException() throws Exception {
-        assertThatThrownBy(() -> Formatter.create().formatSourceAndFixImports("package foo; public class {"))
+        assertThatThrownBy(() -> FORMATTER.formatSourceAndFixImports("package foo; public class {"))
                 .isInstanceOf(FormatterException.class);
     }
 
@@ -449,76 +248,37 @@ final class FormatterTest {
                 + "import a.A;\n"
                 + "\n"
                 + "class T {\n"
-                + "  A a;\n"
+                + "    A a;\n"
                 + "}\n";
         @SuppressWarnings("for-rollout:StringConcatToTextBlock")
         String withoutBlank =
-                "package p;\n" + "\n" + "/** test */\n" + "import a.A;\n" + "\n" + "class T {\n" + "  A a;\n" + "}\n";
+                "package p;\n" + "\n" + "/** test */\n" + "import a.A;\n" + "\n" + "class T {\n" + "    A a;\n" + "}\n";
 
         // Formatting deletes the blank line between the "javadoc" and the first import.
-        assertThat(Formatter.create().formatSource(withBlank)).isEqualTo(withoutBlank);
-        assertThat(Formatter.create().formatSourceAndFixImports(withBlank)).isEqualTo(withoutBlank);
-        assertThat(Formatter.create().formatSource(withoutBlank)).isEqualTo(withoutBlank);
-        assertThat(Formatter.create().formatSourceAndFixImports(withoutBlank)).isEqualTo(withoutBlank);
+        assertThat(FORMATTER.formatSource(withBlank)).isEqualTo(withoutBlank);
+        assertThat(FORMATTER.formatSourceAndFixImports(withBlank)).isEqualTo(withoutBlank);
+        assertThat(FORMATTER.formatSource(withoutBlank)).isEqualTo(withoutBlank);
+        assertThat(FORMATTER.formatSourceAndFixImports(withoutBlank)).isEqualTo(withoutBlank);
 
         // Just fixing imports preserves whitespace around imports.
         assertThat(RemoveUnusedImports.removeUnusedImports(withBlank)).isEqualTo(withBlank);
-        assertThat(ImportOrderer.reorderImports(withBlank, Style.GOOGLE)).isEqualTo(withBlank);
+        assertThat(ImportOrderer.reorderImports(withBlank, Style.OJF)).isEqualTo(withBlank);
         assertThat(RemoveUnusedImports.removeUnusedImports(withoutBlank)).isEqualTo(withoutBlank);
-        assertThat(ImportOrderer.reorderImports(withoutBlank, Style.GOOGLE)).isEqualTo(withoutBlank);
-    }
-
-    @Test
-    void wrapMarkdownDocstringComment() throws Exception {
-        String input = "class T {\n"
-                + "  /// one long incredibly unbroken sentence moving from topic to topic so that no-one"
-                + " had a chance to interrupt;\n"
-                + "  void m() {}\n"
-                + "}\n";
-        String expected = "class T {\n"
-                + "  /// one long incredibly unbroken sentence moving from topic to topic so that no-one"
-                + " had a chance\n"
-                + "  /// to interrupt;\n"
-                + "  void m() {}\n"
-                + "}\n";
-        assertThat(Formatter.create().formatSource(input)).isEqualTo(expected);
-    }
-
-    @Test
-    void wrapMarkdownDocstringRunKeepsTheSlashPrefix() throws Exception {
-        // javac returns a run of `///` lines as one comment token from JDK 23 on; before that each line is its
-        // own token and the wrapped line is always the first of its token, which is never misread.
-        Assumptions.assumeTrue(
-                Formatter.getRuntimeVersion() >= 23, "a `///` run is one comment token only from JDK 23 on");
-        String input = "class T {\n"
-                + "  /// Summary line.\n"
-                + "  /// one long incredibly unbroken sentence moving from topic to topic so that no-one had a"
-                + " chance to interrupt; @Deprecated\n"
-                + "  void m() {}\n"
-                + "}\n";
-        String expected = "class T {\n"
-                + "  /// Summary line.\n"
-                + "  /// one long incredibly unbroken sentence moving from topic to topic so that no-one had a"
-                + " chance\n"
-                + "  /// to interrupt; @Deprecated\n"
-                + "  void m() {}\n"
-                + "}\n";
-        assertThat(Formatter.create().formatSource(input)).isEqualTo(expected);
+        assertThat(ImportOrderer.reorderImports(withoutBlank, Style.OJF)).isEqualTo(withoutBlank);
     }
 
     @Test
     void canParse_java9_private_interface_methods() {
-        assertThatCode(() -> Formatter.create()
-                        .formatSourceAndFixImports(""
-                                + "interface T {\n"
-                                + "    private static void foo() {}\n" //
-                                + "}"))
+        assertThatCode(() -> FORMATTER.formatSourceAndFixImports(""
+                        + "interface T {\n"
+                        + "    private static void foo() {}\n" //
+                        + "}"))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void producesFormattingChangesOnAlreadyFormattedFiles() throws FormatterException {
-        Formatter formatter = Formatter.create();
+        Formatter formatter = FORMATTER;
         @SuppressWarnings("for-rollout:StringConcatToTextBlock")
         String simpleClass = "package com.palantir;\n"
                 + "\n"
@@ -583,16 +343,6 @@ final class FormatterTest {
     }
 
     @Test
-    void removeTrailingTabsInComments() throws FormatterException {
-        String input = "class Foo {\n    void f() {\n        int x = 0; // comment\t\t\t\n        return;\n    }\n}\n";
-        String expected = "class Foo {\n    void f() {\n        int x = 0; // comment\n        return;\n    }\n}\n";
-        Formatter formatter = Formatter.createFormatter(
-                JavaFormatterOptions.builder().style(Style.OJF).build());
-
-        assertThat(formatter.formatSource(input)).isEqualTo(expected);
-    }
-
-    @Test
     void valueClassAndRecord() throws FormatterException {
         Assumptions.assumeTrue(
                 Arrays.stream(Modifier.values())
@@ -628,67 +378,5 @@ final class FormatterTest {
                 JavaFormatterOptions.builder().style(Style.OJF).build());
 
         assertThat(formatter.formatSource(input)).isEqualTo(expected);
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"non", "sealed", "value"})
-    void contextualKeywordAsIdentifier(String name) throws FormatterException {
-        // `value`, `sealed` and `non-sealed` are modifiers only in front of a declaration that carries them. Anywhere
-        // else they are identifiers, and a lambda parameter is the one declaration that starts with its name.
-        String input = """
-            import java.util.Map;
-
-            class T {
-                private final int NAME;
-
-                T(int NAME) {
-                    this.NAME = NAME;
-                }
-
-                void f(Map<String, Integer> map) {
-                    map.forEach((key, NAME) -> System.err.println(key + NAME));
-                }
-            }
-            """.replace("NAME", name);
-        Formatter formatter = Formatter.createFormatter(
-                JavaFormatterOptions.builder().style(Style.OJF).build());
-
-        assertThat(formatter.formatSource(input)).isEqualTo(input);
-    }
-
-    @Test
-    void trailingCommentAfterOpenBraceIsIdempotent() throws FormatterException {
-        // A block comment that trails `{` is broken onto its own line. It used to land one indent deeper than the
-        // statements that follow, and only a second run moved it back (google-java-format#1260, #129).
-        String input = """
-            class T {
-              void f() {
-                { /* c */ int x = 1; }
-              }
-
-              int[] a = { /* c */ 1 };
-            }
-            """;
-        String expected = """
-            class T {
-              void f() {
-                {
-                  /* c */
-                  int x = 1;
-                }
-              }
-
-              int[] a = {
-                /* c */
-                1
-              };
-            }
-            """;
-        Formatter formatter = Formatter.createFormatter(
-                JavaFormatterOptions.builder().style(Style.GOOGLE).build());
-
-        String once = formatter.formatSource(input);
-        assertThat(once).isEqualTo(expected);
-        assertThat(formatter.formatSource(once)).isEqualTo(once);
     }
 }

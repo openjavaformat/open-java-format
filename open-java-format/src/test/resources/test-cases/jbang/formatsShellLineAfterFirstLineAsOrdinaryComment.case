@@ -1,0 +1,9 @@
+# The shell runs the first line of the file only.
+----------
+/* License */
+///usr/bin/env jbang "$0" "$@" ; exit $?
+class Hello {}
+----------
+/* License */
+/// usr/bin/env jbang "$0" "$@" ; exit $?
+class Hello {}

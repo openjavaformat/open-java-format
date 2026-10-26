@@ -1,0 +1,24 @@
+# `//foo` gets a space after any number of slashes, while the IDE markers `//noinspection` and `//$NON-NLS-n$`
+# are recognised by their tools only without one and stay as written.
+----------
+class T {
+  //noinspection unchecked
+  //$NON-NLS-1$ //$NON-NLS-2$
+  //$NON-NLS-12$ and more
+  //foo
+  ///foo
+  // bar
+  //  two spaces
+  void m() {}
+}
+----------
+class T {
+    //noinspection unchecked
+    //$NON-NLS-1$ //$NON-NLS-2$
+    //$NON-NLS-12$ and more
+    // foo
+    /// foo
+    // bar
+    //  two spaces
+    void m() {}
+}

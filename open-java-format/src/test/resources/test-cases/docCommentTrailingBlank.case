@@ -1,0 +1,10 @@
+class T {
+/** asd */
+
+int x;
+}
+----------
+class T {
+    /** asd */
+    int x;
+}
