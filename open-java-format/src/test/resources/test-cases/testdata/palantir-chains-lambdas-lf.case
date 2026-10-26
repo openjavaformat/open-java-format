@@ -1,0 +1,34 @@
+----------
+public class Foo {
+    public static void main(String[] args) {
+        foo
+                .bar()
+                .baz(argargargargargargargargargargargargargargargargargargargargarg, param -> doStuff()
+                        .method1()
+                        .method2(arljhfaldjfhalfjhalfjahflahflahfaljfhadlfjhljsahljhfsaljfhlfajhfljh));
+
+        thisIsMyObject
+               .callingMethod1()
+               .callingMethod2(argargargargargargargargargargargargargargargargargargargargarg, param -> doStuff()
+                       .method1()
+                       .method2(arljhfaldjfhalfjhalfjahflahflahfaljfhadlfjhljsahljhfsaljfhlfajhfljh));
+    }
+}----------
+public class Foo {
+    public static void main(String[] args) {
+        foo.bar()
+                .baz(
+                        argargargargargargargargargargargargargargargargargargargargarg,
+                        param -> doStuff()
+                                .method1()
+                                .method2(arljhfaldjfhalfjhalfjahflahflahfaljfhadlfjhljsahljhfsaljfhlfajhfljh));
+
+        thisIsMyObject
+                .callingMethod1()
+                .callingMethod2(
+                        argargargargargargargargargargargargargargargargargargargargarg,
+                        param -> doStuff()
+                                .method1()
+                                .method2(arljhfaldjfhalfjhalfjahflahflahfaljfhadlfjhljsahljhfsaljfhlfajhfljh));
+    }
+}

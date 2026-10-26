@@ -76,6 +76,19 @@ final class CaseFileTest {
     }
 
     @Test
+    void dashesThatEndALineCloseTheBlockBeforeThem() {
+        assertThat(CaseFile.parse("a.case", "------\nclass A{}------\nclass A {}\n"))
+                .isEqualTo(new CaseFile("class A{}", "class A {}\n", 3));
+    }
+
+    @Test
+    void aCodeLineThatEndsInDashesCountsAsASeparator() {
+        assertThatThrownBy(() -> CaseFile.parse("a.case", "------\n// ----------\nclass A{}\n------\nclass A {}\n"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("found 3");
+    }
+
+    @Test
     void carriageReturnsAloneBreakLinesToo() {
         assertThat(CaseFile.parse("a.case", "------\rclass A{}\r------\rclass A {}\r"))
                 .isEqualTo(new CaseFile("class A{}\r", "class A {}\r", 4));

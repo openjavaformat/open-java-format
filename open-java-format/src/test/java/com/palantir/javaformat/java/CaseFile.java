@@ -22,20 +22,23 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * A formatter test case written as a file: an optional header, a line of six or more dashes, the code before
- * formatting, a second such line and the code expected after it. There are no settings yet, so the header holds only
- * blank lines and {@code #} comments, which explain the case; a file without one starts with the first dashes.
+ * A formatter test case written as a file: an optional header, six or more dashes that end a line, the code before
+ * formatting, a second run of such dashes and the code expected after it. There are no settings yet, so the header
+ * holds only blank lines and {@code #} comments, which explain the case; a file without one starts with the first
+ * dashes.
  *
- * <p>The blocks are the text of the file as written. The before block runs from the line after the first dashes to
- * the second, its last line break included, and the after block from the line after the second dashes to the end of
- * the file. Line breaks stay {@code \n}, {@code \r\n} or {@code \r}, whichever the file has. {@code afterLine} is the
- * line of the file the after block starts on, so that a failure can name the line where the output departs from it.
+ * <p>The blocks are the text of the file as written. The before block runs from the line after the first dashes up to
+ * the second ones: on a line of their own they leave it its last line break, and at the end of its last line they
+ * leave it none, for code that does not end in one. The after block runs from the line after the second dashes to the
+ * end of the file. Line breaks stay {@code \n}, {@code \r\n} or {@code \r}, whichever the file has, and a line of code
+ * that ends in six or more dashes cannot be part of a case. {@code afterLine} is the line of the file the after block
+ * starts on, so that a failure can name the line where the output departs from it.
  */
 record CaseFile(String before, String after, int afterLine) {
     static final String EXTENSION = ".case";
 
-    /** Six or more dashes on a line of their own, with the line break that ends them. */
-    private static final Pattern SEPARATOR = Pattern.compile("(?:\\A|(?<=[\\r\\n]))-{6,}(?:\\r\\n|\\r|\\n|\\z)");
+    /** Six or more dashes that end a line, with the line break after them. */
+    private static final Pattern SEPARATOR = Pattern.compile("-{6,}(?:\\r\\n|\\r|\\n|\\z)");
 
     /** Splits the text of the case file at {@code path}, which only names the file in an error. */
     static CaseFile parse(String path, String text) {
