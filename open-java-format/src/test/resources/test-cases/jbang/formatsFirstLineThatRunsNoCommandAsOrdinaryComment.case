@@ -1,0 +1,7 @@
+# The first word is not a path, so the shell would have nothing to run.
+----------
+//Hello from JBang
+class Hello {}
+----------
+// Hello from JBang
+class Hello {}

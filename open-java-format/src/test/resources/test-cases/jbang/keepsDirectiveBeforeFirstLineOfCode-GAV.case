@@ -1,0 +1,11 @@
+# JBang reads its directives from the line comments before the first line of code,
+# and they stay exactly as written.
+# Every name JBang knows.
+----------
+//GAV org.example:hello:1.0
+
+class Hello {}
+----------
+//GAV org.example:hello:1.0
+
+class Hello {}

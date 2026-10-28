@@ -1,0 +1,12 @@
+----------
+class UnaryMinus {
+  {
+    int b = - 1;
+  }
+}
+----------
+class UnaryMinus {
+    {
+        int b = -1;
+    }
+}

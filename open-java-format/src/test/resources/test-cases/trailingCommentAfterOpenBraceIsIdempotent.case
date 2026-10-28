@@ -1,0 +1,24 @@
+# A block comment that trails `{` is broken onto its own line. It used to land one indent deeper than the
+# statements that follow, and only a second run moved it back (google-java-format#1260, #129).
+----------
+class T {
+  void f() {
+    { /* c */ int x = 1; }
+  }
+
+  int[] a = { /* c */ 1 };
+}
+----------
+class T {
+    void f() {
+        {
+            /* c */
+            int x = 1;
+        }
+    }
+
+    int[] a = {
+        /* c */
+        1
+    };
+}

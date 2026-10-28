@@ -1,0 +1,16 @@
+# A chain whose pieces all fit stays as it is, with the spaces at the end of its pieces.
+----------
+class T {
+  String s =
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "
+          + "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb "
+          + "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc "
+          + "dddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+}
+----------
+class T {
+    String s = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa "
+            + "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb "
+            + "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc "
+            + "dddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+}

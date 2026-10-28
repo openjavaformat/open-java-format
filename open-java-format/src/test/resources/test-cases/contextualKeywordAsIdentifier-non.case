@@ -1,0 +1,30 @@
+# `value`, `sealed` and `non-sealed` are modifiers only in front of a declaration that carries them. Anywhere
+# else they are identifiers, and a lambda parameter is the one declaration that starts with its name.
+----------
+import java.util.Map;
+
+class T {
+    private final int non;
+
+    T(int non) {
+        this.non = non;
+    }
+
+    void f(Map<String, Integer> map) {
+        map.forEach((key, non) -> System.err.println(key + non));
+    }
+}
+----------
+import java.util.Map;
+
+class T {
+    private final int non;
+
+    T(int non) {
+        this.non = non;
+    }
+
+    void f(Map<String, Integer> map) {
+        map.forEach((key, non) -> System.err.println(key + non));
+    }
+}

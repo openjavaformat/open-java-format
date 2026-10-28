@@ -1,0 +1,1 @@
+----------enum E {  @A ONE,  TWO,  @B @C THREE;}----------enum E {    @A    ONE,    TWO,    @B    @C    THREE;}

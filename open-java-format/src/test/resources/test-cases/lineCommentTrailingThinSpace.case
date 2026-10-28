@@ -1,0 +1,10 @@
+# The Unicode thin space is matched by CharMatcher.whitespace() but not trim().
+# The comment below ends in one, U+2009.
+----------
+class T {
+  // asd 
+}
+----------
+class T {
+    // asd
+}

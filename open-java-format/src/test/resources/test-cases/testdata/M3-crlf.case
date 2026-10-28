@@ -1,0 +1,13 @@
+----------
+@Deprecated
+module moduletags {
+    requires transitive static moduleA;
+
+    exports testpkgmdltags;
+}----------
+@Deprecated
+module moduletags {
+    requires transitive static moduleA;
+
+    exports testpkgmdltags;
+}

@@ -1,0 +1,6 @@
+----------
+class Test2 { void f(Test2... xs) {} }
+----------
+class Test2 {
+    void f(Test2... xs) {}
+}

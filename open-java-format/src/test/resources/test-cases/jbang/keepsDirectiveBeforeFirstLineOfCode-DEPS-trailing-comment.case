@@ -1,0 +1,11 @@
+# JBang reads its directives from the line comments before the first line of code,
+# and they stay exactly as written.
+# What JBang's syntax allows after the name.
+----------
+//DEPS info.picocli:picocli:4.7.6 // parses the command line
+
+class Hello {}
+----------
+//DEPS info.picocli:picocli:4.7.6 // parses the command line
+
+class Hello {}

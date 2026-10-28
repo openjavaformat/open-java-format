@@ -1,0 +1,15 @@
+# A chain of literals that runs past the limit is joined and split again at word boundaries.
+----------
+class T {
+  String s =
+      "one long incredibly unbroken sentence that went on through breakfast and lunch and dinner and long into the night"
+          + " moving from topic to topic"
+          + " so that no-one sitting anywhere near the long dining table, not even the host or the cook, had a chance to"
+          + " interrupt";
+}
+----------
+class T {
+    String s = "one long incredibly unbroken sentence that went on through breakfast and lunch and dinner and long into"
+            + " the night moving from topic to topic so that no-one sitting anywhere near the long dining"
+            + " table, not even the host or the cook, had a chance to interrupt";
+}

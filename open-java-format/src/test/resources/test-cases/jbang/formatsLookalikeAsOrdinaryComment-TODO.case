@@ -1,0 +1,10 @@
+# A line comment that only looks like a JBang directive is formatted like any other.
+# Not a name JBang knows.
+----------
+//TODO pin the versions
+
+class Hello {}
+----------
+// TODO pin the versions
+
+class Hello {}

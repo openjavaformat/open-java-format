@@ -1,0 +1,1 @@
+----------class TernaryBug {    boolean flag = true;    String a = flag        ? """          yes          """        : """          no          """;}----------class TernaryBug {    boolean flag = true;    String a = flag ? """        yes        """ : """            no            """;}

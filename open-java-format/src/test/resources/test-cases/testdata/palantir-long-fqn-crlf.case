@@ -1,0 +1,16 @@
+----------
+class PalantirLongFqn {
+    public PalantirLongFqn() {
+        org.gradle.api.internal.artifacts.configurations.ConflictResolution conflictResolution =
+            ((org.gradle.api.internal.artifacts.configurations.ResolutionStrategyInternal) conf
+                .getResolutionStrategy()).getConflictResolution();
+    }
+}----------
+class PalantirLongFqn {
+    public PalantirLongFqn() {
+        org.gradle.api.internal.artifacts.configurations.ConflictResolution conflictResolution =
+                ((org.gradle.api.internal.artifacts.configurations.ResolutionStrategyInternal)
+                                conf.getResolutionStrategy())
+                        .getConflictResolution();
+    }
+}

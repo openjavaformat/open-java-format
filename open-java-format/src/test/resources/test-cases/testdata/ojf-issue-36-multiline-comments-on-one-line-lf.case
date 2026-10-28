@@ -1,0 +1,30 @@
+----------
+/*
+class X {
+	*//** javadoc *//*
+	public void foo(Bar bar) {}
+
+	*//** javadoc *//*
+	public void foo(Bar bar) {}
+
+	*//** javadoc *//*
+	public void foo(Bar bar) {}
+
+	*//** javadoc *//*
+	public void foo(Bar bar) {}
+}*/
+----------
+/*
+class X {
+	*//** javadoc *//*
+                 public void foo(Bar bar) {}
+
+                 *//** javadoc *//*
+                                 public void foo(Bar bar) {}
+
+                                 *//** javadoc *//*
+                                                 public void foo(Bar bar) {}
+
+                                                 *//** javadoc *//*
+                                                                 	public void foo(Bar bar) {}
+                                                                 }*/

@@ -1,0 +1,26 @@
+----------
+package com.google.example;
+import com.google.common.base.Preconditions;
+
+import static org.junit.Assert.fail;
+import static com.google.truth.Truth.assertThat;
+
+import org.junit.runners.JUnit4;
+import org.junit.runner.RunWith;
+
+import java.util.List;
+
+import javax.annotations.Nullable;
+public class ExampleTest {
+  @Nullable List<?> xs;
+}
+----------
+package com.google.example;
+
+import java.util.List;
+import javax.annotations.Nullable;
+
+public class ExampleTest {
+    @Nullable
+    List<?> xs;
+}

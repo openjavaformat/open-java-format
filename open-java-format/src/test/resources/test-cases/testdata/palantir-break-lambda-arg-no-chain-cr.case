@@ -1,0 +1,1 @@
+----------class PalantirLambdaBreakChain {    void foo() {        return hello.read(txn -> {                    doSomeWork();                    doSomeMoreWork();                });    }}----------class PalantirLambdaBreakChain {    void foo() {        return hello.read(txn -> {            doSomeWork();            doSomeMoreWork();        });    }}

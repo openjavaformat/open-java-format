@@ -1,0 +1,10 @@
+# A line comment that only looks like a JBang directive is formatted like any other.
+# Three slashes, as in a Markdown doc comment.
+----------
+///DEPS a:b:1
+
+class Hello {}
+----------
+/// DEPS a:b:1
+
+class Hello {}

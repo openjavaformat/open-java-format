@@ -1,0 +1,14 @@
+----------
+class Foo {
+    void f() {
+        int x = 0; // comment			
+        return;
+    }
+}
+----------
+class Foo {
+    void f() {
+        int x = 0; // comment
+        return;
+    }
+}

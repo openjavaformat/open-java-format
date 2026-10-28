@@ -108,6 +108,11 @@ public final class Formatter {
         return new Formatter(options, false);
     }
 
+    /** The options this formatter formats with. */
+    JavaFormatterOptions options() {
+        return options;
+    }
+
     /**
      * Construct a {@code Formatter} given a Java compilation unit. Parses the code; builds a {@link JavaInput} and the
      * corresponding {@link JavaOutput}.

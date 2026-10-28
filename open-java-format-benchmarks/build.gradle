@@ -32,7 +32,7 @@ tasks.named('jmh', JMHTask.class) {
     environment.put('JARS_CLASSPATH', configurations.named('formatterNativeJars').map { conf -> conf.collect { it.absolutePath }.join(":") })
 }
 
-// src/test/resources/PalantirDeeplyNestedCalls.java is a symlink to a formatter test input, which has to
+// src/test/resources/PalantirDeeplyNestedCalls.java is a copy of a formatter test input, which has to
 // keep its unformatted shape: leave src/test/resources out of any formatting step added to this build.
 
 jmhCompileGeneratedClasses {

@@ -1,0 +1,9 @@
+----------
+package test;
+class T {
+
+}
+----------
+package test;
+
+class T {}

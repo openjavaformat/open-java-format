@@ -1,0 +1,10 @@
+# A line comment that only looks like a JBang directive is formatted like any other.
+# No whitespace after the name.
+----------
+//JAVA21+
+
+class Hello {}
+----------
+// JAVA21+
+
+class Hello {}

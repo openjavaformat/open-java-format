@@ -566,8 +566,8 @@ public final class Level extends Doc {
                             // levels that are meant to look good even if partially inlined, e.g. method
                             // chains, which will catch things like builders, but not other kinds of levels like
                             // constant expressions.
-                            // See the palantir-expression-lambdas.input test for an example of what this is
-                            // trying to avoid.
+                            // See the palantir-expression-lambdas cases in test-cases/testdata for an example of
+                            // what this is trying to avoid.
 
                             // For this, need to actually check the last inner level of `lastLevel` (2 levels down).
                             if (innerLevel.docs.isEmpty() || !(getLast(innerLevel.docs) instanceof Level)) {

@@ -1,0 +1,11 @@
+# One literal past the limit is split at word boundaries, into the same pieces as the chain of 0.
+----------
+class T {
+  String s = "one long incredibly unbroken sentence that went on through breakfast and lunch and dinner and long into the night moving from topic to topic so that no-one sitting anywhere near the long dining table, not even the host or the cook, had a chance to interrupt";
+}
+----------
+class T {
+    String s = "one long incredibly unbroken sentence that went on through breakfast and lunch and dinner and long into"
+            + " the night moving from topic to topic so that no-one sitting anywhere near the long dining"
+            + " table, not even the host or the cook, had a chance to interrupt";
+}

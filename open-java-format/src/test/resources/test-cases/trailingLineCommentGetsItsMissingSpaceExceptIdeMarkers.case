@@ -1,0 +1,24 @@
+# The same rule for a comment that trails a statement which fits on one line. Such a statement is written
+# from its flat text, which skips the comment rewriting, so the IDE markers used to get the space too (#23).
+----------
+class T {
+  void m() {
+    String a = "x"; //$NON-NLS-1$
+    String b = "y"; //noinspection unchecked
+    String c = "z"; //foo
+    String d = "w"; ///foo
+    String e = "v"; // bar
+    String f = "u"; /// baz
+  }
+}
+----------
+class T {
+    void m() {
+        String a = "x"; //$NON-NLS-1$
+        String b = "y"; //noinspection unchecked
+        String c = "z"; // foo
+        String d = "w"; /// foo
+        String e = "v"; // bar
+        String f = "u"; /// baz
+    }
+}

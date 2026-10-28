@@ -1,0 +1,27 @@
+# Eclipse numbers a marker by the position of its literal on the line. When a statement is wrapped,
+# each marker moves to the line of its literal and is renumbered for that line; when a literal is
+# reflowed, every piece gets one (#23). A marker whose number has no literal stays where it is.
+----------
+class T {
+  void m() {
+    String s = Messages.format("first argument that is long enough to matter", "second argument that is also rather long", "third one"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    String reflowed = "a single string literal that is far too long to fit into one hundred and twenty columns, so the formatter reflows it"; //$NON-NLS-1$
+    String n = Messages.format("first argument that is long enough to matter", "second argument that is also rather long", "third one"); //$NON-NLS-5$
+  }
+}
+----------
+class T {
+    void m() {
+        String s = Messages.format(
+                "first argument that is long enough to matter", //$NON-NLS-1$
+                "second argument that is also rather long", //$NON-NLS-1$
+                "third one"); //$NON-NLS-1$
+        String reflowed =
+                "a single string literal that is far too long to fit into one hundred and twenty" //$NON-NLS-1$
+                        + " columns, so the formatter reflows it"; //$NON-NLS-1$
+        String n = Messages.format(
+                "first argument that is long enough to matter",
+                "second argument that is also rather long",
+                "third one"); //$NON-NLS-5$
+    }
+}

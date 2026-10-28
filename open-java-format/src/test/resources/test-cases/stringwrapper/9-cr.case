@@ -1,0 +1,1 @@
+# A literal past the limit without a space in it stays whole.----------class T {  String s = "onelongincrediblyunbrokensentencemovingfromtopictotopicsothatnoonehadachancetointerrupt_____________________)_";}----------class T {    String s =            "onelongincrediblyunbrokensentencemovingfromtopictotopicsothatnoonehadachancetointerrupt_____________________)_";}
