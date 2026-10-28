@@ -1,4 +1,0 @@
-class T {
-  String s = "onelongincrediblyunbrokensentencemovingfromtopictotopicsothatnoonehadachanceto"
-      + " interrupt";
-}

@@ -1,0 +1,11 @@
+# A first word of four characters or less stays with the next one, even when that one runs past the limit.
+----------
+class T {
+  String s = "__ onelongincrediblyunbrokensentencethatwentonthroughbreakfastandlunchanddinnerandlongintothenightmovingfromtopictotopicsothatnoonehadachanceto interrupt";
+}
+----------
+class T {
+    String s =
+            "__ onelongincrediblyunbrokensentencethatwentonthroughbreakfastandlunchanddinnerandlongintothenightmovingfromtopictotopicsothatnoonehadachanceto"
+                    + " interrupt";
+}

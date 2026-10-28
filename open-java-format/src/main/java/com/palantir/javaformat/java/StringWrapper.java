@@ -82,7 +82,10 @@ public final class StringWrapper {
             return input;
         }
 
-        TreeRangeMap<Integer, String> replacements = getReflowReplacements(columnLimit, input);
+        // The pieces continue the way the formatter continues a chain of +: four columns times the multiplier of its
+        // style, eight in OJF.
+        var continuationIndent = 4 * formatter.options().indentationMultiplier();
+        TreeRangeMap<Integer, String> replacements = getReflowReplacements(columnLimit, continuationIndent, input);
         String firstPass =
                 formatter.formatSource(input, replacements.asMapOfRanges().keySet());
 
@@ -90,7 +93,7 @@ public final class StringWrapper {
             // If formatting the replacement ranges resulted in a change, recalculate the replacements on
             // the updated input.
             input = firstPass;
-            replacements = getReflowReplacements(columnLimit, input);
+            replacements = getReflowReplacements(columnLimit, continuationIndent, input);
         }
 
         String result = applyReplacements(input, replacements);
@@ -99,7 +102,7 @@ public final class StringWrapper {
         String secondPass = formatter.formatSource(result, rangesAfterAppliedReplacements(replacements));
 
         if (!secondPass.equals(result)) {
-            replacements = getReflowReplacements(columnLimit, secondPass);
+            replacements = getReflowReplacements(columnLimit, continuationIndent, secondPass);
             result = applyReplacements(secondPass, replacements);
         }
 
@@ -141,21 +144,23 @@ public final class StringWrapper {
         return outputRanges.build();
     }
 
-    public static TreeRangeMap<Integer, String> getReflowReplacements(int columnLimit, final String input)
-            throws FormatterException {
-        return new Reflower(columnLimit, input).getReflowReplacements();
+    public static TreeRangeMap<Integer, String> getReflowReplacements(
+            int columnLimit, int continuationIndent, final String input) throws FormatterException {
+        return new Reflower(columnLimit, continuationIndent, input).getReflowReplacements();
     }
 
     private static class Reflower {
 
         private final String input;
         private final int columnLimit;
+        private final int continuationIndent;
         private final String separator;
         private final JCTree.JCCompilationUnit unit;
         private final Position.LineMap lineMap;
 
-        Reflower(int columnLimit, String input) throws FormatterException {
+        Reflower(int columnLimit, int continuationIndent, String input) throws FormatterException {
             this.columnLimit = columnLimit;
+            this.continuationIndent = continuationIndent;
             this.input = input;
             this.separator = Newlines.guessLineSeparator(input);
             this.unit = parse(input, /* allowStringFolding= */ false);
@@ -418,7 +423,16 @@ public final class StringWrapper {
 
                 // Get the original source text of the string literals, excluding `"` and `+`.
                 ImmutableList<String> components = stringComponents(input, unit, flat);
-                var plain = reflow(columnLimit, trailing, components, first.get(), startColumn, fistLineCol, "", "");
+                var plain = reflow(
+                        columnLimit,
+                        continuationIndent,
+                        trailing,
+                        components,
+                        first.get(),
+                        startColumn,
+                        fistLineCol,
+                        "",
+                        "");
                 chains.add(new Chain(
                         flat,
                         first.get(),
@@ -443,6 +457,7 @@ public final class StringWrapper {
                 var components = stringComponents(input, unit, chain.flat());
                 var pieces = reflow(
                         columnLimit,
+                        continuationIndent,
                         markers.tail(2).length(),
                         components,
                         chain.firstInChain(),
@@ -460,7 +475,7 @@ public final class StringWrapper {
             return render(
                     separator,
                     pieces,
-                    chain.firstInChain() ? chain.firstLineColumn() + 4 : chain.startColumn() - 2,
+                    chain.firstInChain() ? chain.firstLineColumn() + continuationIndent : chain.startColumn() - 2,
                     firstLineMarkers,
                     otherLineMarkers);
         }
@@ -680,6 +695,8 @@ public final class StringWrapper {
      * {@link #render}.
      *
      * @param columnLimit the number of columns to wrap at
+     * @param continuationIndent how far the lines after the first are indented from the start of the first, before
+     * their {@code + }, when the text begins its chain
      * @param trailing extra space to leave after the last line
      * @param components the text to reflow
      * @param first0 true if the text includes the beginning of its enclosing concat chain, i.e. a
@@ -692,6 +709,7 @@ public final class StringWrapper {
      */
     private static List<String> reflow(
             int columnLimit,
+            int continuationIndent,
             int trailing,
             ImmutableList<String> components,
             boolean first0,
@@ -727,8 +745,8 @@ public final class StringWrapper {
             // add the split line to the output, and process whatever's left
             lines.add(String.join("", line));
             if (first) {
-                // Subsequent lines have a four-space continuation indent and a `+ `.
-                width -= 6;
+                // Subsequent lines have a continuation indent and a `+ `.
+                width -= continuationIndent + 2;
                 // Also, switch to firstLineStartColumn in order to account for the fact that continuations
                 // should get indented from the beginning of the first line.
                 // This is to handle cases like:
