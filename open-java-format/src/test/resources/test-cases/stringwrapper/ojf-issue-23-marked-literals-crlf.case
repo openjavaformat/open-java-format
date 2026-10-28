@@ -1,0 +1,24 @@
+# Every piece of a reflowed literal keeps its //$NON-NLS-n$ marker, numbered on its own line.
+----------
+class T {
+  void f() {
+    String s = "one long incredibly unbroken sentence that went on through breakfast and lunch and dinner and long into the night moving from topic to topic"; //$NON-NLS-1$
+    foo("x", "a long unbroken sentence that went on through breakfast and lunch and dinner and long into the night", "y"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+    String t = "short" + " and one long sentence that went on through breakfast and lunch and dinner and long into the night"; //$NON-NLS-1$ //$NON-NLS-2$
+  }
+}
+----------
+class T {
+    void f() {
+        String s = "one long incredibly unbroken sentence that went on through breakfast and lunch and" //$NON-NLS-1$
+                + " dinner and long into the night moving from topic to topic"; //$NON-NLS-1$
+        foo(
+                "x", //$NON-NLS-1$
+                "a long unbroken sentence that went on through breakfast and lunch and dinner and long" //$NON-NLS-1$
+                        + " into the night", //$NON-NLS-1$
+                "y"); //$NON-NLS-1$
+        String t = "short" //$NON-NLS-1$
+                + " and one long sentence that went on through breakfast and lunch and dinner and long" //$NON-NLS-1$
+                + " into the night"; //$NON-NLS-1$
+    }
+}
