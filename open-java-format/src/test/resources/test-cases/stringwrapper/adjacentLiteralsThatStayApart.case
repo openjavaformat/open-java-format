@@ -1,0 +1,43 @@
+# Adjacent string literals on one line stay apart where joining them would lose something or change their text: a
+# comment between them, a line comment at the end of their line, which may speak of them as they are written (a table
+# with a comment for each row, a NON-NLS marker that counts the literals of its line), an octal escape of one or two
+# digits that would take in the digit after it, and a Unicode escape, which javac reads before the escapes of the
+# literal, so that it can stand for such a digit or backslash.
+----------
+class T {
+  void comments() {
+    String between = "left "   /* keep me here */+"right";
+    String table = "aa"+ "aar" // Afar
+        + "ab" + "abk"; // Abkhazian
+    log("first " + "half", "second "+"half"); // the call logs two halves
+  }
+
+  void shortOctalEscapes() {
+    String octal = "a" + "\1"+ "2" + "b";
+    String twoDigits = "\12"+"3" + "\0"  + "0";
+  }
+
+  void unicodeEscapes() {
+    String backslash = "\u005c1"+ "2";
+    String digit = "\1" +   "\u0032";
+  }
+}
+----------
+class T {
+    void comments() {
+        String between = "left " /* keep me here */ + "right";
+        String table = "aa" + "aar" // Afar
+                + "ab" + "abk"; // Abkhazian
+        log("first " + "half", "second " + "half"); // the call logs two halves
+    }
+
+    void shortOctalEscapes() {
+        String octal = "a\1" + "2b";
+        String twoDigits = "\12" + "3\0" + "0";
+    }
+
+    void unicodeEscapes() {
+        String backslash = "\u005c1" + "2";
+        String digit = "\1" + "\u0032";
+    }
+}

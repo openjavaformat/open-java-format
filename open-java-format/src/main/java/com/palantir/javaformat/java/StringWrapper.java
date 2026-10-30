@@ -53,7 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
-/** Wraps string literals that exceed the column limit. */
+/** Wraps string literals that exceed the column limit, and joins adjacent ones that share a line. */
 public final class StringWrapper {
 
     public static final String TEXT_BLOCK_DELIMITER = "\"\"\"";
@@ -66,7 +66,10 @@ public final class StringWrapper {
      */
     private static final int MAX_ROUNDS = 5;
 
-    /** Reflows string literals in the given Java source code that extend past the given column limit. */
+    /**
+     * Reflows string literals in the given Java source code that extend past the given column limit, and joins
+     * adjacent string literals that share a line.
+     */
     static String wrap(final int columnLimit, String input, Formatter formatter) throws FormatterException {
         String result = wrapOnce(columnLimit, input, formatter);
         for (int round = 1; round < MAX_ROUNDS && !result.equals(input); round++) {
@@ -86,6 +89,10 @@ public final class StringWrapper {
         // style, eight in OJF.
         var continuationIndent = 4 * formatter.options().indentationMultiplier();
         TreeRangeMap<Integer, String> replacements = getReflowReplacements(columnLimit, continuationIndent, input);
+        if (replacements.asMapOfRanges().isEmpty()) {
+            // needWrapping is an over-approximation, so there may be nothing to do after all.
+            return input;
+        }
         String firstPass =
                 formatter.formatSource(input, replacements.asMapOfRanges().keySet());
 
@@ -179,7 +186,103 @@ public final class StringWrapper {
             TreeRangeMap<Integer, String> replacements = TreeRangeMap.create();
             indentTextBlocks(replacements, textBlocks);
             wrapLongStrings(replacements, longStringLiterals, stringLiterals);
+            // Last: it leaves alone the literals that the passes above rewrite.
+            joinAdjacentLiterals(replacements);
             return replacements;
+        }
+
+        /**
+         * Joins adjacent string literals that share a line, so that {@code "one " + "two"} becomes {@code "one two"}:
+         * there the {@code +} breaks nothing, whether the author wrote it or the formatter brought the literals onto
+         * one line. Literals on different lines are wrapped on purpose and stay as they are.
+         */
+        private void joinAdjacentLiterals(TreeRangeMap<Integer, String> replacements) {
+            new ConcatenationScanner(replacements).scan(new TreePath(unit), null);
+        }
+
+        private class ConcatenationScanner extends TreePathScanner<Void, Void> {
+
+            private final TreeRangeMap<Integer, String> replacements;
+
+            ConcatenationScanner(TreeRangeMap<Integer, String> replacements) {
+                this.replacements = replacements;
+            }
+
+            @Override
+            public Void visitBinary(BinaryTree node, Void unused) {
+                // Only the root of a chain of +, so that `a + b + c` is flattened once.
+                if (node.getKind() == Kind.PLUS
+                        && getCurrentPath().getParentPath().getLeaf().getKind() != Kind.PLUS) {
+                    joinRuns(flattenExpressionTree(node));
+                }
+                return super.visitBinary(node, null);
+            }
+
+            /** Replaces each longest run of adjacent literals that can be joined with the one literal they make. */
+            private void joinRuns(List<Tree> flat) {
+                var start = 0;
+                while (start < flat.size()) {
+                    if (!isJoinableLiteral(flat.get(start))) {
+                        start++;
+                        continue;
+                    }
+                    var end = start + 1;
+                    while (end < flat.size() && canJoinWithPrevious(flat.get(end - 1), flat.get(end))) {
+                        end++;
+                    }
+                    if (end - start > 1) {
+                        putJoinReplacement(flat.subList(start, end));
+                    }
+                    start = end;
+                }
+            }
+
+            private boolean canJoinWithPrevious(Tree previous, Tree next) {
+                return isJoinableLiteral(next)
+                        && lineMap.getLineNumber(getEndPosition(unit, previous))
+                                == lineMap.getLineNumber(getStartPosition(next))
+                        && noComments(input, unit, previous, next)
+                        && !joiningWouldChangeEscapes(literalText(previous), literalText(next))
+                        && !endsInLineComment(getStartPosition(next));
+            }
+
+            private boolean isJoinableLiteral(Tree tree) {
+                return tree.getKind() == Kind.STRING_LITERAL
+                        // indentTextBlocks re-indents a text block, which cannot be spliced into a literal.
+                        && !input.startsWith(TEXT_BLOCK_DELIMITER, getStartPosition(tree));
+            }
+
+            /**
+             * Whether the line of a literal that starts at a position ends in a line comment. The literals of such a
+             * line stay as they are written, because the comment may speak of them that way: a NON-NLS marker counts
+             * the literals of its line, see {@link NonNlsMarkers}, and a table of literals has a comment for each row.
+             */
+            private boolean endsInLineComment(int position) {
+                var lineEnd = position;
+                while (lineEnd < input.length() && Newlines.hasNewlineAt(input, lineEnd) == -1) {
+                    lineEnd++;
+                }
+                return lineCommentStart(input.substring(position, lineEnd)) >= 0;
+            }
+
+            private void putJoinReplacement(List<Tree> run) {
+                var range =
+                        Range.closedOpen(getStartPosition(run.get(0)), getEndPosition(unit, run.get(run.size() - 1)));
+                if (!replacements.subRangeMap(range).asMapOfRanges().isEmpty()) {
+                    // A text block or a reflowed chain overlaps it; that pass wins.
+                    return;
+                }
+                var joined = new StringBuilder("\"");
+                for (var tree : run) {
+                    joined.append(literalText(tree));
+                }
+                replacements.put(range, joined.append('"').toString());
+            }
+
+            /** The source text of a literal between its quotes, with its escapes as they are written. */
+            private String literalText(Tree tree) {
+                return input.substring(getStartPosition(tree) + 1, getEndPosition(unit, tree) - 1);
+            }
         }
 
         private class LongStringsAndTextBlockScanner extends TreePathScanner<Void, Void> {
@@ -831,6 +934,62 @@ public final class StringWrapper {
         return flat;
     }
 
+    /**
+     * Whether appending the source text {@code right} to {@code left} would change what it stands for. That happens
+     * when {@code left} ends in an octal escape short enough to take in another digit: {@code "\1" + "2"} holds
+     * {@code \1} and then {@code 2}, but {@code "\12"} is a single character. An octal escape is at most three digits,
+     * so one of three is safe, as is a run of digits that is not preceded by an odd number of backslashes, which is
+     * text rather than an escape. It also happens when either holds a Unicode escape: javac reads those before the
+     * escapes of a literal, so one can stand for the backslash or the digit of such an escape.
+     */
+    private static boolean joiningWouldChangeEscapes(String left, String right) {
+        if (left.contains("\\u") || right.contains("\\u")) {
+            return true;
+        }
+        if (right.isEmpty() || !isOctalDigit(right.charAt(0))) {
+            return false;
+        }
+        var index = left.length();
+        while (index > 0 && isOctalDigit(left.charAt(index - 1))) {
+            index--;
+        }
+        var digits = left.length() - index;
+        if (digits == 0 || digits > 2) {
+            return false;
+        }
+        var backslashes = 0;
+        while (index - backslashes > 0 && left.charAt(index - backslashes - 1) == '\\') {
+            backslashes++;
+        }
+        return backslashes % 2 == 1;
+    }
+
+    private static boolean isOctalDigit(char character) {
+        return character >= '0' && character <= '7';
+    }
+
+    /**
+     * Whether a line may hold two adjacent string literals to join: a {@code +} with a quote right before and after
+     * it, blanks aside. A cheap over-approximation that keeps the fast paths fast; the {@link Reflower} decides what
+     * is joined.
+     */
+    private static boolean mayHaveJoinableLiterals(String line) {
+        for (var plus = line.indexOf('+'); plus != -1; plus = line.indexOf('+', plus + 1)) {
+            var before = plus - 1;
+            while (before >= 0 && (line.charAt(before) == ' ' || line.charAt(before) == '\t')) {
+                before--;
+            }
+            var after = plus + 1;
+            while (after < line.length() && (line.charAt(after) == ' ' || line.charAt(after) == '\t')) {
+                after++;
+            }
+            if (before >= 0 && line.charAt(before) == '"' && after < line.length() && line.charAt(after) == '"') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean noComments(String input, JCTree.JCCompilationUnit unit, Tree one, Tree two) {
         return STRING_CONCAT_DELIMITER.matchesAllOf(
                 input.subSequence(getEndPosition(unit, one), getStartPosition(two)));
@@ -848,15 +1007,18 @@ public final class StringWrapper {
     }
 
     /**
-     * Returns true if any lines in the given Java source exceed the column limit or contain text blocks.
-     * Keep this method and {@code linesNeedWrapping} in line.
+     * Returns true if any lines in the given Java source exceed the column limit, contain text blocks or may hold
+     * adjacent string literals to join. Keep this method and {@code linesNeedWrapping} in line.
      * */
     private static boolean needWrapping(int columnLimit, String input) {
         // TODO(cushon): consider adding Newlines.lineIterable?
         Iterator<String> it = Newlines.lineIterator(input);
         while (it.hasNext()) {
             String line = it.next();
-            if (line.length() > columnLimit || line.contains(TEXT_BLOCK_DELIMITER)) {
+            if (line.length() > columnLimit
+                    || line.contains(TEXT_BLOCK_DELIMITER)
+                    // Literals joined into a line that fits leave no over-long line to set off the wrapping.
+                    || mayHaveJoinableLiterals(line)) {
                 return true;
             }
         }
@@ -865,8 +1027,8 @@ public final class StringWrapper {
 
     /**
      * Returns true if the lines containing the {@code initialRangesToChange} in the given Java source exceed the
-     * column limit or contain text blocks. Used by the Intellij plugin to check if we need to run StringWrapper.wrap.
-     * Keep this method and {@code needWrapping} in line.
+     * column limit, contain text blocks or may hold adjacent string literals to join. Used by the Intellij plugin to
+     * check if we need to run StringWrapper.wrap. Keep this method and {@code needWrapping} in line.
      * */
     public static boolean linesNeedWrapping(int columnLimit, String input, RangeSet<Integer> initialRangesToChange) {
         // TODO(cushon): consider adding Newlines.lineIterable?
@@ -876,7 +1038,7 @@ public final class StringWrapper {
         boolean insideTextBlock = false;
         while (it.hasNext()) {
             String line = it.next();
-            if (line.length() > columnLimit) {
+            if (line.length() > columnLimit || mayHaveJoinableLiterals(line)) {
                 linesToChange.add(Range.closedOpen(i, i + 1));
             }
             if (!insideTextBlock && line.contains(TEXT_BLOCK_DELIMITER)) {

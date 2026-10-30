@@ -1,0 +1,83 @@
+# Adjacent string literals that share a line become one literal: as an argument, around other operands of the +, in
+# parentheses, after a text block, which stays as it is, and in an annotation and a case label. A chain that the
+# formatter brings onto one line is joined too, and the code is laid out again around the joined literal.
+# Escapes are copied as they are written: an octal escape of three digits cannot take in the digit after it, a digit
+# after an escaped backslash is text, and 8 is not an octal digit.
+----------
+class T {
+  void brokenByTheFormatter() {
+    throw new SafeIllegalArgumentException("Invalid recipient field - contains multiple "
+        + "foreign key properties.", UnsafeArg.of("field", maybeField));
+  }
+
+  void runsAroundOtherOperands(String value) {
+    foo("one "+"two "+ value +"three "  +  "four");
+    int length = ( "left"+"right" ).length() + count;
+    log("a" + 'b' + "c" + 1 + 2 + "d"
+        + "e");
+  }
+
+  String twoLines() {
+    return "a concatenation that the formatter "
+        + "pulls onto one line";
+  }
+
+  void escapes() {
+    String escapes = "tab\there " + "quote\"there " +  "backslash\\" + "1";
+    String maximal = "c" + "\377"+"7" + "d";
+    String digits = "12" + "3"+"\1" + "8";
+  }
+
+  void nextToATextBlock() {
+    String block = """
+        text
+        """+"tail"+ " more";
+  }
+
+  @SuppressWarnings("unchecked"
+      + "")
+  void constants(String key) {
+    switch (key) {
+      case "first " + "case" -> {}
+      default -> {}
+    }
+  }
+}
+----------
+class T {
+    void brokenByTheFormatter() {
+        throw new SafeIllegalArgumentException(
+                "Invalid recipient field - contains multiple foreign key properties.",
+                UnsafeArg.of("field", maybeField));
+    }
+
+    void runsAroundOtherOperands(String value) {
+        foo("one two " + value + "three four");
+        int length = ("leftright").length() + count;
+        log("a" + 'b' + "c" + 1 + 2 + "de");
+    }
+
+    String twoLines() {
+        return "a concatenation that the formatter pulls onto one line";
+    }
+
+    void escapes() {
+        String escapes = "tab\there quote\"there backslash\\1";
+        String maximal = "c\3777d";
+        String digits = "123\18";
+    }
+
+    void nextToATextBlock() {
+        String block = """
+            text
+            """ + "tail more";
+    }
+
+    @SuppressWarnings("unchecked")
+    void constants(String key) {
+        switch (key) {
+            case "first case" -> {}
+            default -> {}
+        }
+    }
+}
