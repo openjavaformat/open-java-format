@@ -460,7 +460,7 @@ public final class JavaInput extends Input {
                 for (String str : strings) {
                     toks.add(new Tok(isNumbered ? kN++ : -1, str, str, charI, columnI, isToken, null));
                     charI += str.length();
-                    columnI = updateColumn(columnI, originalTokText);
+                    columnI = updateColumn(columnI, str);
                 }
             }
             if (extraNewline != null) {
@@ -523,8 +523,7 @@ public final class JavaInput extends Input {
             return false;
         }
 
-        // What comes before the trailing comment on its line is read in the text, since Tok.getColumn() counts an
-        // operator such as == once for each of its characters. Code there makes the comment a trailing one, and its
+        // What comes before the trailing comment on its line: code there makes the comment a trailing one, and its
         // length is the comment's column.
         var position = trailing.getPosition();
         var lineStart = Math.max(text.lastIndexOf('\n', position), text.lastIndexOf('\r', position)) + 1;
