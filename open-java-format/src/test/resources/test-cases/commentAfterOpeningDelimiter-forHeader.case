@@ -1,0 +1,34 @@
+# A comment on its own line right after the `(` of a for loop stays inside the header at the continuation indent,
+# which breaks the header, so the condition and the update get a line each (google-java-format#1501, #171). A block
+# comment that shares its line with the initializer stays with it, on the line of the header when that fits.
+----------
+class T {
+  void f(int n) {
+    for (
+      // comment
+      int i = 0; i < n; i++) {}
+    for (
+    /* comment */
+    int i = 0; i < n; i++) {}
+    for (
+            /* c */ int i = 0;
+        i < n;
+            i++) {}
+  }
+}
+----------
+class T {
+    void f(int n) {
+        for (
+                // comment
+                int i = 0;
+                i < n;
+                i++) {}
+        for (
+                /* comment */
+                int i = 0;
+                i < n;
+                i++) {}
+        for (/* c */ int i = 0; i < n; i++) {}
+    }
+}

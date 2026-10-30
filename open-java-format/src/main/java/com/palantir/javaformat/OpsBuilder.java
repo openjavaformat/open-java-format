@@ -309,6 +309,26 @@ public final class OpsBuilder {
         add(CloseOp.make());
     }
 
+    /**
+     * Keep the comments before the next token inside the level just opened. {@link #build} puts the comments before a
+     * token ahead of the {@link OpenOp}s right before it, so that a comment before a statement or an expression stays
+     * out of their levels. Right after an opening delimiter, such as the {@code (} of a for loop, that takes the
+     * comment, and the line break after it, out of the level that indents what follows the delimiter.
+     */
+    public void fenceComments() {
+        add(CommentFence.FENCE);
+    }
+
+    /** Where {@link #build} stops looking back over {@link OpenOp}s for the place of a token's comments. */
+    private enum CommentFence implements Op {
+        FENCE;
+
+        @Override
+        public void add(DocBuilder builder) {
+            throw new IllegalStateException("build() drops comment fences");
+        }
+    }
+
     /** Return the text of the next {@link Input.Token}, or absent if there is none. */
     public Optional<String> peekToken() {
         return peekToken(0);
@@ -523,7 +543,7 @@ public final class OpsBuilder {
                  * when possible.
                  */
                 Input.Token token = tokenOp.getToken();
-                int j = i; // Where to insert toksBefore before.
+                int j = i; // Where to insert toksBefore before: ahead of the OpenOps before the token, up to a fence.
                 while (0 < j && ops.get(j - 1) instanceof OpenOp) {
                     --j;
                 }
@@ -669,6 +689,9 @@ public final class OpsBuilder {
                 }
             }
             Op op = ops.get(i);
+            if (op == CommentFence.FENCE) {
+                continue;
+            }
             if (afterForcedBreak
                     && (op instanceof NonBreakingSpace
                             || (op instanceof Break b

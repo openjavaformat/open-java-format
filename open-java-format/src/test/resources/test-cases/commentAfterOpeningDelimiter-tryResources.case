@@ -1,0 +1,31 @@
+# A comment on its own line right after the `(` of a try with several resources stays inside the resources at the
+# continuation indent, with the first resource after it (google-java-format#1501, #171).
+----------
+class T {
+  void f(AutoCloseable a, AutoCloseable b) throws Exception {
+    try (
+      // comment
+      AutoCloseable r1 = a; AutoCloseable r2 = b) {}
+    try (
+    /* comment */
+    AutoCloseable r1 = a;
+            AutoCloseable r2 = b) {
+      use(r1, r2);
+    }
+  }
+}
+----------
+class T {
+    void f(AutoCloseable a, AutoCloseable b) throws Exception {
+        try (
+                // comment
+                AutoCloseable r1 = a;
+                AutoCloseable r2 = b) {}
+        try (
+                /* comment */
+                AutoCloseable r1 = a;
+                AutoCloseable r2 = b) {
+            use(r1, r2);
+        }
+    }
+}

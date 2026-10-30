@@ -1,0 +1,41 @@
+# A comment on its own line before the `;` that ends the constants of an enum stays at the indent of the constants,
+# and so does the `;` (google-java-format#1501, #171).
+----------
+enum E1 {
+  A,
+    // comment
+    ;
+}
+
+enum E2 {
+  A, B
+// comment
+;
+  void f() {}
+}
+
+enum E3 { A
+      /* comment */
+  ;
+}
+----------
+enum E1 {
+    A,
+    // comment
+    ;
+}
+
+enum E2 {
+    A,
+    B
+    // comment
+    ;
+
+    void f() {}
+}
+
+enum E3 {
+    A
+    /* comment */
+    ;
+}

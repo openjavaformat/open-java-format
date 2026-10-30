@@ -1,0 +1,41 @@
+# A comment on its own line right after the `<` of explicit type arguments stays inside them at the continuation
+# indent, with the type after it, in a constructor call and in a method reference (google-java-format#1501, #171).
+----------
+class T {
+  <U> T() {}
+
+  static <U> void g() {}
+
+  void f() {
+    new <
+      // comment
+      String>T();
+    Runnable r =
+        T
+            ::<
+              // comment
+              String>g;
+    new <
+    /* comment */
+    String>   T();
+  }
+}
+----------
+class T {
+    <U> T() {}
+
+    static <U> void g() {}
+
+    void f() {
+        new <
+                // comment
+                String>T();
+        Runnable r = T
+                ::<
+                        // comment
+                        String>g;
+        new <
+                /* comment */
+                String>T();
+    }
+}

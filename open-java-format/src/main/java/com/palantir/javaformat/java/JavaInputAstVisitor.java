@@ -605,6 +605,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         token("assert");
         builder.space();
         builder.open(node.getDetail() == null ? ZERO : plusFour);
+        builder.fenceComments();
         scan(node.getCondition(), null);
         if (node.getDetail() != null) {
             builder.breakOp(" ");
@@ -912,6 +913,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
             builder.close();
             if (builder.peekToken().equals(Optional.of(";"))) {
                 builder.open(plusTwo);
+                builder.fenceComments();
                 token(";");
                 builder.forcedBreak();
                 dropEmptyDeclarations();
@@ -1010,6 +1012,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         builder.space();
         token("(");
         builder.open(plusFour);
+        builder.fenceComments();
         builder.open(
                 node.getInitializer().size() > 1 && node.getInitializer().get(0) instanceof ExpressionStatementTree
                         ? plusFour
@@ -1942,6 +1945,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         if (!node.getResources().isEmpty()) {
             token("(");
             builder.open(node.getResources().size() > 1 ? plusFour : ZERO);
+            builder.fenceComments();
             boolean first = true;
             for (Tree resource : node.getResources()) {
                 if (!first) {
@@ -2382,6 +2386,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         builder.space();
         token("(");
         builder.open(plusFour);
+        builder.fenceComments();
         VariableTree ex = node.getParameter();
         if (ex.getType() instanceof UnionTypeTree) {
             builder.open(ZERO);
@@ -3179,6 +3184,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         }
         token("<");
         builder.open(plusIndent);
+        builder.fenceComments();
         boolean first = true;
         for (Tree typeArgument : typeArguments) {
             if (!first) {
