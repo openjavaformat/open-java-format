@@ -35,9 +35,17 @@ public final class Comment extends Doc implements Op {
     /** For a comment of NON-NLS markers, the index of the string literal each marker marks, or -1; else empty. */
     private final List<Integer> nonNlsLiterals;
 
-    private Comment(Input.Tok tok, List<Integer> nonNlsLiterals) {
+    /** Whether the comment trails code on its line. */
+    private final boolean trailing;
+
+    /** Set by {@link #withFirstWordOnly}. */
+    private final boolean firstWordOnly;
+
+    private Comment(Input.Tok tok, List<Integer> nonNlsLiterals, boolean trailing, boolean firstWordOnly) {
         this.tok = tok;
         this.nonNlsLiterals = nonNlsLiterals;
+        this.trailing = trailing;
+        this.firstWordOnly = firstWordOnly;
     }
 
     /**
@@ -47,7 +55,12 @@ public final class Comment extends Doc implements Op {
      * @return the new {@code Tok}
      */
     public static Comment make(Input.Tok tok) {
-        return new Comment(tok, List.of());
+        return new Comment(tok, List.of(), false, false);
+    }
+
+    /** A comment that trails code on its line. */
+    public static Comment makeTrailing(Input.Tok tok) {
+        return new Comment(tok, List.of(), true, false);
     }
 
     /**
@@ -58,7 +71,32 @@ public final class Comment extends Doc implements Op {
      * @param literals for each marker, the index of the string literal it marks, or -1
      */
     public static Comment makeNonNlsMarkers(Input.Tok tok, List<Integer> literals) {
-        return new Comment(tok, List.copyOf(literals));
+        return new Comment(tok, List.copyOf(literals), false, false);
+    }
+
+    /**
+     * This comment, laid out by its slashes and its first word only, as a line comment that spans lines is. The next
+     * run reads a wrapped trailing comment back as one that spans lines, so laying it out that way from the start gives
+     * both runs the same layout, and the code before it is not broken for room that the comment does not get.
+     */
+    public Comment withFirstWordOnly() {
+        return new Comment(tok, nonNlsLiterals, trailing, true);
+    }
+
+    /**
+     * Whether this trailing line comment, counted in full by the layout, came out of {@code state} wrapped: it did not
+     * fit after the code before it, however that was broken.
+     */
+    public boolean wrappedIn(State state) {
+        return trailing
+                && tok.isSlashSlashComment()
+                && !countsFirstWordOnly()
+                && Newlines.containsBreaks(state.getTokText(this));
+    }
+
+    /** Whether the layout counts only the slashes and the first word of this line comment. */
+    boolean countsFirstWordOnly() {
+        return tok.isSlashSlashComment() && (firstWordOnly || Newlines.containsBreaks(tok.getOriginalText()));
     }
 
     @Override
@@ -78,6 +116,11 @@ public final class Comment extends Doc implements Op {
                 }
             }
             return width;
+        }
+        if (countsFirstWordOnly()) {
+            // The rest of the comment goes where the wrap puts it, so the code before it is laid out as if it were not
+            // there; see withFirstWordOnly.
+            return JavaCommentsHelper.firstWordLength(getFlat());
         }
         int idx = Newlines.firstBreak(tok.getOriginalText());
         // only count the first line of multi-line block comments

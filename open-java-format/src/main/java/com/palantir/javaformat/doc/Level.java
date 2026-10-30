@@ -48,6 +48,7 @@ import java.util.Set;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
 
 /** A {@code Level} inside a {@link Doc}. */
 public final class Level extends Doc {
@@ -66,6 +67,10 @@ public final class Level extends Doc {
 
     @SuppressWarnings("Immutable") // Effectively immutable
     private final ImmutableSupplier<Integer> memoizedMaxDepth = Suppliers.memoize(() -> computeMaxDepth(docs))::get;
+
+    /** See {@link #hasCommentByFirstWord()}; computed when first asked for, once the docs are all in. */
+    @Nullable
+    private Boolean hasCommentByFirstWord;
 
     /**
      * Where {@link #tryBreakLastLevel} has already failed. An attempt can lay out all of the last inner level before it
@@ -124,15 +129,38 @@ public final class Level extends Doc {
 
     @Override
     public State computeBreaks(CommentsHelper commentsHelper, int maxWidth, State state, Obs.ExplorationNode observer) {
-        return tryToFitOnOneLine(maxWidth, state, docs)
-                .map(newWidth -> state.withColumn(newWidth).withLevelState(this, new State.LevelState(true)))
-                .orElseGet(() -> {
-                    Obs.LevelNode childLevel = observer.newChildNode(this, state);
-                    State newState =
-                            new BreakImpl(commentsHelper, maxWidth, state, childLevel).apply(getBreakBehaviour());
+        var oneLine = tryToFitOnOneLine(maxWidth, state, docs);
+        if (oneLine.isPresent() && !hasCommentByFirstWord()) {
+            return state.withColumn(oneLine.get()).withLevelState(this, new State.LevelState(true));
+        }
 
-                    return childLevel.finishLevel(state.updateAfterLevel(newState));
-                });
+        var childLevel = observer.newChildNode(this, state);
+        State newState;
+        if (oneLine.isPresent()) {
+            // A level that fits is written from its flat text, which would skip wrapping a comment that counted
+            // only its first word. So it is laid out with none of its breaks taken, and the comment is wrapped
+            // where it needs to.
+            newState = childLevel
+                    .explore(
+                            "one line, comments laid out",
+                            state,
+                            explorationNode -> tryToLayOutLevelOnOneLine(
+                                    commentsHelper, maxWidth, state, memoizedSplitsBreaks.get(), explorationNode))
+                    .markAccepted();
+        } else {
+            newState = new BreakImpl(commentsHelper, maxWidth, state, childLevel).apply(getBreakBehaviour());
+        }
+        return childLevel.finishLevel(state.updateAfterLevel(newState));
+    }
+
+    /** Whether this level or a level in it holds a comment that the layout counts by its first word only. */
+    private boolean hasCommentByFirstWord() {
+        if (hasCommentByFirstWord == null) {
+            hasCommentByFirstWord = docs.stream()
+                    .anyMatch(doc -> (doc instanceof Comment comment && comment.countsFirstWordOnly())
+                            || (doc instanceof Level level && level.hasCommentByFirstWord()));
+        }
+        return hasCommentByFirstWord;
     }
 
     /**

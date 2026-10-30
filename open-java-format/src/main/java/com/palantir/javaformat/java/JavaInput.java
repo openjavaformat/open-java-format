@@ -445,7 +445,10 @@ public final class JavaInput extends Input {
                 }
             }
             if (strings.size() == 1) {
-                toks.add(new Tok(isNumbered ? kN++ : -1, originalTokText, tokText, charI, columnI, isToken, t.kind()));
+                if (!tokText.startsWith("//") || !continueTrailingComment(toks, originalTokText, text)) {
+                    toks.add(new Tok(
+                            isNumbered ? kN++ : -1, originalTokText, tokText, charI, columnI, isToken, t.kind()));
+                }
                 charI += originalTokText.length();
                 columnI = updateColumn(columnI, originalTokText);
 
@@ -495,6 +498,56 @@ public final class JavaInput extends Input {
         } catch (NoSuchMethodException e) {
             throw new LinkageError(e.getMessage(), e);
         }
+    }
+
+    /**
+     * Adds {@code comment}, a line comment that starts a line of its own, to the line comment that trails code on the
+     * line above when it starts in that comment's column, the way the formatter writes a trailing comment it wraps. The
+     * two become one tok, with the line break and the indentation between them, as a run of {@code ///} lines from JDK
+     * 23 on is. Read as a comment of its own, the continuation went to the indentation of the code on the next run.
+     *
+     * @param toks the toks so far, which end with the trailing comment, a newline and the indentation of
+     *     {@code comment} when it continues one
+     * @return whether {@code comment} continues the trailing comment and is now part of it
+     */
+    private static boolean continueTrailingComment(List<Tok> toks, String comment, String text) {
+        var n = toks.size();
+        if (n < 3) {
+            return false;
+        }
+
+        var trailing = toks.get(n - 3);
+        var newline = toks.get(n - 2);
+        var indentation = toks.get(n - 1);
+        if (!trailing.isSlashSlashComment() || !newline.isNewline() || !isSpaces(indentation)) {
+            return false;
+        }
+
+        // What comes before the trailing comment on its line is read in the text, since Tok.getColumn() counts an
+        // operator such as == once for each of its characters. Code there makes the comment a trailing one, and its
+        // length is the comment's column.
+        var position = trailing.getPosition();
+        var lineStart = Math.max(text.lastIndexOf('\n', position), text.lastIndexOf('\r', position)) + 1;
+        var beforeComment = text.substring(lineStart, position);
+        if (beforeComment.isBlank()
+                || beforeComment.length() != indentation.length()
+                || !JavaCommentsHelper.lineCommentPrefix(trailing.getOriginalText())
+                        .equals(JavaCommentsHelper.lineCommentPrefix(comment))
+                || NonNlsMarkers.isMarkersOnly(trailing.getOriginalText())
+                || NonNlsMarkers.isMarkersOnly(comment)) {
+            return false;
+        }
+
+        var continued =
+                trailing.getOriginalText() + newline.getOriginalText() + indentation.getOriginalText() + comment;
+        toks.subList(n - 3, n).clear();
+        toks.add(new Tok(
+                trailing.getIndex(), continued, continued, position, trailing.getColumn(), false, trailing.kind()));
+        return true;
+    }
+
+    private static boolean isSpaces(Tok tok) {
+        return !tok.isToken() && !tok.isNewline() && !tok.isComment();
     }
 
     @SuppressWarnings("for-rollout:NullAway")

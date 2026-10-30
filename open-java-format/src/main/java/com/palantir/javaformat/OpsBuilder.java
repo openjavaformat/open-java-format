@@ -551,7 +551,7 @@ public final class OpsBuilder {
                                             tokBefore.isSlashSlashComment() ? FillMode.FORCED : FillMode.UNIFIED,
                                             "",
                                             tokenOp.getPlusIndentCommentsBefore()));
-                            tokOps.putAll(j, makeComment(tokBefore));
+                            tokOps.putAll(j, makeComment(tokBefore, false));
                             space = tokBefore.isSlashStarComment();
                             newlines = 0;
                             lastWasComment = true;
@@ -621,7 +621,7 @@ public final class OpsBuilder {
                                 tokOps.put(tokAfterPos, Comment.makeNonNlsMarkers(tokAfter, literals));
                                 tokOps.put(tokAfterPos, Break.makeForced());
                             } else {
-                                tokOps.putAll(tokAfterPos, makeComment(tokAfter));
+                                tokOps.putAll(tokAfterPos, makeComment(tokAfter, true));
                             }
                             if (breakAfter) {
                                 tokOps.put(tokAfterPos, Break.make(FillMode.FORCED, "", ZERO));
@@ -731,10 +731,9 @@ public final class OpsBuilder {
         return op instanceof Break b && b.isForced();
     }
 
-    private static List<Op> makeComment(Input.Tok comment) {
-        return comment.isSlashStarComment()
-                ? ImmutableList.of(Comment.make(comment))
-                : ImmutableList.of(Comment.make(comment), Break.makeForced());
+    private static List<Op> makeComment(Input.Tok comment, boolean trailing) {
+        var doc = trailing ? Comment.makeTrailing(comment) : Comment.make(comment);
+        return comment.isSlashStarComment() ? List.of(doc) : List.of(doc, Break.makeForced());
     }
 
     @Override

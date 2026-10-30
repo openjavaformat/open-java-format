@@ -1,0 +1,16 @@
+# A trailing line comment that fits once the code before it breaks makes the code break, and stays on one line.
+----------
+class T {
+  int f(int fromIndex, int toIndex, int length) {
+    Objects.checkFromToIndex(fromIndex, toIndex, length, Preconditions.OUT_OF_BOUNDS_FORMATTER); // keeps the old message as it was
+    return 0;
+  }
+}
+----------
+class T {
+    int f(int fromIndex, int toIndex, int length) {
+        Objects.checkFromToIndex(
+                fromIndex, toIndex, length, Preconditions.OUT_OF_BOUNDS_FORMATTER); // keeps the old message as it was
+        return 0;
+    }
+}

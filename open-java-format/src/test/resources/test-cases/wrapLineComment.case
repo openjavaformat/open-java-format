@@ -1,0 +1,13 @@
+# A trailing line comment that does not fit even once the code before it breaks leaves the code as it is and
+# is wrapped in its own column. A second run reads the wrapped part as part of the comment and leaves it there.
+----------
+class T {
+  public static void main(String[] args) { // one long incredibly unbroken sentence moving from topic to topic so that no-one had a chance to interrupt;
+  }
+}
+----------
+class T {
+    public static void main(String[] args) { // one long incredibly unbroken sentence moving from topic to topic so that
+                                             // no-one had a chance to interrupt;
+    }
+}
