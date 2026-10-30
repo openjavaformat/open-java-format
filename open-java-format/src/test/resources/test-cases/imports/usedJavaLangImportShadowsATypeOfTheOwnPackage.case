@@ -1,0 +1,16 @@
+# A used single-type import from java.lang stays: it shadows a Byte that the file's own package may declare
+# (palantir-java-format#1778, #149).
+----------
+package com.company.project.bar;
+import java.lang.Byte;
+public class Test { Byte foo() { return null; } }
+----------
+package com.company.project.bar;
+
+import java.lang.Byte;
+
+public class Test {
+    Byte foo() {
+        return null;
+    }
+}

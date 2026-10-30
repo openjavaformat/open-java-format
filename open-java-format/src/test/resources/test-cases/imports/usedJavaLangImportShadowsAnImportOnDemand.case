@@ -1,0 +1,18 @@
+# A used single-type import from java.lang stays: it shadows the Byte that an import on demand brings in, and without it
+# the name is ambiguous (palantir-java-format#1778, #149).
+----------
+package com.company.project.bar;
+import com.company.project.foo.*;
+import java.lang.Byte;
+public class Test { Byte foo() { return null; } }
+----------
+package com.company.project.bar;
+
+import com.company.project.foo.*;
+import java.lang.Byte;
+
+public class Test {
+    Byte foo() {
+        return null;
+    }
+}

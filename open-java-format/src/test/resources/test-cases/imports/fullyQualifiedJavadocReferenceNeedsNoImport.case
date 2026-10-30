@@ -1,0 +1,11 @@
+# A Javadoc reference written with its full name needs no import, while the type of its parameter keeps its own.
+----------
+import java.util.List;
+import java.util.Collection;
+/** {@link java.util.List#containsAll(Collection)} */
+public class Test {}
+----------
+import java.util.Collection;
+
+/** {@link java.util.List#containsAll(Collection)} */
+public class Test {}

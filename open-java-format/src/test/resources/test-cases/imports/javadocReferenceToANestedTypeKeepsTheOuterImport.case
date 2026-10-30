@@ -1,0 +1,10 @@
+# A Javadoc reference to a member of a nested type keeps the import of the type around it.
+----------
+import java.util.Map;
+/** {@link Map.Entry#containsKey(Object)} } */
+class Test {}
+----------
+import java.util.Map;
+
+/** {@link Map.Entry#containsKey(Object)} } */
+class Test {}

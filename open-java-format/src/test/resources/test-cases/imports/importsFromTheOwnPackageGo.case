@@ -1,0 +1,25 @@
+# Imports from the file's own package go, an import on demand of it too, while a static import from it and an import
+# from another package stay.
+----------
+package com.foo;
+import static com.foo.Outer.A;
+import com.foo.*;
+import com.foo.B;
+import com.bar.C;
+class Test {
+  A a;
+  B b;
+  C c;
+}
+----------
+package com.foo;
+
+import static com.foo.Outer.A;
+
+import com.bar.C;
+
+class Test {
+    A a;
+    B b;
+    C c;
+}

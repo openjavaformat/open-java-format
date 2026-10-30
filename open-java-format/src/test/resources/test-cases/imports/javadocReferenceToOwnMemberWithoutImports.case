@@ -1,0 +1,8 @@
+# A Javadoc reference to a member of the class itself needs no import, and a file without imports keeps its Javadoc as
+# it is.
+----------
+/** {@link #containsKey(Object)} } */   class Test {
+}
+----------
+/** {@link #containsKey(Object)} } */
+class Test {}

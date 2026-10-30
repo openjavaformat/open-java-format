@@ -15,357 +15,96 @@
 package com.palantir.javaformat.java;
 
 import static com.google.common.truth.Truth.assertThat;
+import static com.palantir.javaformat.java.RemoveUnusedImports.removeUnusedImports;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
-import com.google.common.truth.Truth;
-import com.palantir.javaformat.jupiter.ParameterizedClass;
-import java.util.List;
 import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
-/** {@link RemoveUnusedImports}Test */
+/**
+ * {@link RemoveUnusedImports} on its own, where a case under {@code test-cases/imports} cannot show it. A case fixes the
+ * imports before it formats, and formatting takes a doubled blank line away by itself, while the command line formats
+ * first. And the cases run on JDK 21, where a module import does not parse.
+ */
 @Execution(ExecutionMode.CONCURRENT)
-@ExtendWith(ParameterizedClass.class)
-public class RemoveUnusedImportsTest {
+final class RemoveUnusedImportsTest {
+    // An unused import between blank lines takes one of them with it (#37, from google/google-java-format#1436 and
+    // google/google-java-format#1437).
+    @Test
+    void unusedImportBetweenBlankLinesTakesOneOfThem() throws FormatterException {
+        var input = """
+            package com.example;
 
-    @ParameterizedClass.Parameters(name = "{index}: {0}")
-    public static List<Object[]> parameters() {
-        String[][][] inputsOutputs = {
-            {
-                {
-                    "import java.util.List;",
-                    "import java.util.ArrayList;",
-                    "",
-                    "class Test {",
-                    "  /** could be an {@link ArrayList} */",
-                    "  List<String> xs;",
-                    "}",
-                },
-                {
-                    "import java.util.List;",
-                    "import java.util.ArrayList;",
-                    "",
-                    "class Test {",
-                    "  /** could be an {@link ArrayList} */",
-                    "  List<String> xs;",
-                    "}",
-                },
-            },
-            {
-                {
-                    "import java.util.ArrayList;", //
-                    "import java.util.Collection;",
-                    "/** {@link ArrayList#add} {@link Collection#remove(Object)} */",
-                    "class Test {}",
-                },
-                {
-                    "import java.util.ArrayList;", //
-                    "import java.util.Collection;",
-                    "/** {@link ArrayList#add} {@link Collection#remove(Object)} */",
-                    "class Test {}",
-                },
-            },
-            {
-                {
-                    "import a.A;",
-                    "import a.B;",
-                    "import a.C;",
-                    "class Test {",
-                    "  /** a",
-                    "   * {@link A} */",
-                    "  void f() {}",
-                    "}",
-                },
-                {
-                    "import a.A;", //
-                    "class Test {",
-                    "  /** a",
-                    "   * {@link A} */",
-                    "  void f() {}",
-                    "}",
-                },
-            },
-            {
-                {
-                    "import a.A;import a.B;", //
-                    "import a.C; // hello",
-                    "class Test {",
-                    "  B b;",
-                    "}",
-                },
-                {
-                    "import a.B;", //
-                    "// hello",
-                    "class Test {",
-                    "  B b;",
-                    "}",
-                },
-            },
-            {
-                {
-                    "import a.A;",
-                    "import b.B;",
-                    "import c.C;",
-                    "import d.D;",
-                    "import e.E;",
-                    "import f.F;",
-                    "import g.G;",
-                    "import h.H;",
-                    "/**",
-                    " * {@link A} {@linkplain B} {@value D#FOO}",
-                    " *",
-                    " * @exception E",
-                    " * @throws F",
-                    " * @see C",
-                    " * @see H#foo",
-                    " * @see <a href=\"whatever\">",
-                    " */",
-                    "class Test {",
-                    "}",
-                },
-                {
-                    "import a.A;",
-                    "import b.B;",
-                    "import c.C;",
-                    "import d.D;",
-                    "import e.E;",
-                    "import f.F;",
-                    "import h.H;",
-                    "/**",
-                    " * {@link A} {@linkplain B} {@value D#FOO}",
-                    " *",
-                    " * @exception E",
-                    " * @throws F",
-                    " * @see C",
-                    " * @see H#foo",
-                    " * @see <a href=\"whatever\">",
-                    " */",
-                    "class Test {",
-                    "}",
-                },
-            },
-            {
-                {
-                    "import java.util.Map;", "/** {@link Map.Entry#containsKey(Object)} } */", "class Test {}",
-                },
-                {
-                    "import java.util.Map;", "/** {@link Map.Entry#containsKey(Object)} } */", "class Test {}",
-                },
-            },
-            {
-                {
-                    "/** {@link #containsKey(Object)} } */", //
-                    "class Test {}",
-                },
-                {
-                    "/** {@link #containsKey(Object)} } */", //
-                    "class Test {}",
-                },
-            },
-            {
-                {
-                    "import java.util.*;", //
-                    "class Test {",
-                    "  List<String> xs;",
-                    "}",
-                },
-                {
-                    "import java.util.*;", //
-                    "class Test {",
-                    "  List<String> xs;",
-                    "}",
-                },
-            },
-            {
-                {
-                    "package com.foo;",
-                    "import static com.foo.Outer.A;",
-                    "import com.foo.*;",
-                    "import com.foo.B;",
-                    "import com.bar.C;",
-                    "class Test {",
-                    "  A a;",
-                    "  B b;",
-                    "  C c;",
-                    "}",
-                },
-                {
-                    "package com.foo;",
-                    "import static com.foo.Outer.A;",
-                    "import com.bar.C;",
-                    "class Test {",
-                    "  A a;",
-                    "  B b;",
-                    "  C c;",
-                    "}",
-                }
-            },
-            {
-                {
-                    "import java.util.Map;", //
-                    "import java.util.Map.Entry;",
-                    "/** {@link #foo(Map.Entry[])} */",
-                    "public class Test {}",
-                },
-                {
-                    "import java.util.Map;", //
-                    "/** {@link #foo(Map.Entry[])} */",
-                    "public class Test {}",
-                },
-            },
-            {
-                {
-                    "import java.util.List;",
-                    "import java.util.Collection;",
-                    "/** {@link java.util.List#containsAll(Collection)} */",
-                    "public class Test {}",
-                },
-                {
-                    "import java.util.Collection;",
-                    "/** {@link java.util.List#containsAll(Collection)} */",
-                    "public class Test {}",
-                },
-            },
-            {
-                {
-                    "package p;",
-                    "import java.lang.Foo;",
-                    "import java.lang.Foo.Bar;",
-                    "import p.Baz;",
-                    "import p.Baz.Bork;",
-                    "public class Test implements Foo, Bar, Baz, Bork {}",
-                },
-                {
-                    "package p;",
-                    "import java.lang.Foo.Bar;",
-                    "import p.Baz.Bork;",
-                    "public class Test implements Foo, Bar, Baz, Bork {}",
-                },
-            },
-            {
-                {
-                    "import java.lang.Foo;", //
-                    "interface Test { private static void foo() {} }",
-                },
-                {
-                    "interface Test { private static void foo() {} }",
-                },
-            },
-            {
-                // Module imports (JEP 511, `import module foo.bar;`) parse to JCModuleImport, a
-                // sibling of JCImport rather than a subtype. They must never be reported as unused
-                // (see isUnused), and must not crash buildReplacements when mixed with ordinary
-                // imports, some used and some not.
-                {
-                    "import module java.base;",
-                    "import java.util.List;",
-                    "import java.util.Map;",
-                    "class T { List<String> xs; }",
-                },
-                {
-                    "import module java.base;", "import java.util.List;", "class T { List<String> xs; }",
-                },
-            },
-            // An unused import between blank lines takes one of them with it (#37, from
-            // google/google-java-format#1436 and google/google-java-format#1437).
-            {
-                {
-                    "package com.example;",
-                    "",
-                    "import static io.grpc.MethodDescriptor.generateFullMethodName;",
-                    "",
-                    "/**",
-                    " * Javadoc for class.",
-                    " */",
-                    "public class TestBug {}",
-                },
-                {
-                    "package com.example;", //
-                    "",
-                    "/**",
-                    " * Javadoc for class.",
-                    " */",
-                    "public class TestBug {}",
-                },
-            },
-            {
-                {
-                    "package com.example;",
-                    "",
-                    "import com.foo.Unused1;",
-                    "import com.foo.Unused2;",
-                    "",
-                    "public class TestBug {}",
-                },
-                {
-                    "package com.example;", //
-                    "",
-                    "public class TestBug {}",
-                },
-            },
-            {
-                {
-                    "import com.foo.Unused;", //
-                    "",
-                    "public class TestBug {}",
-                },
-                {
-                    "public class TestBug {}",
-                },
-            },
-            {
-                {
-                    "package com.example;",
-                    "",
-                    "import java.util.List;",
-                    "import com.foo.Unused;",
-                    "",
-                    "public class TestBug {",
-                    "    List<String> xs;",
-                    "}",
-                },
-                {
-                    "package com.example;",
-                    "",
-                    "import java.util.List;",
-                    "",
-                    "public class TestBug {",
-                    "    List<String> xs;",
-                    "}",
-                },
-            },
-        };
-        ImmutableList.Builder<Object[]> builder = ImmutableList.builder();
-        for (String[][] inputAndOutput : inputsOutputs) {
-            assertThat(inputAndOutput.length).isEqualTo(2);
-            String[] input = inputAndOutput[0];
-            String[] output = inputAndOutput[1];
-            String[] parameters = {
-                Joiner.on('\n').join(input) + '\n', Joiner.on('\n').join(output) + '\n',
-            };
-            builder.add(parameters);
-        }
-        return builder.build();
+            import static io.grpc.MethodDescriptor.generateFullMethodName;
+
+            /**
+             * Javadoc for class.
+             */
+            public class TestBug {}
+            """;
+
+        assertThat(removeUnusedImports(input)).isEqualTo("""
+            package com.example;
+
+            /**
+             * Javadoc for class.
+             */
+            public class TestBug {}
+            """);
     }
 
-    private final String input;
-    private final String expected;
+    @Test
+    void unusedImportsBetweenBlankLinesTakeOneOfThem() throws FormatterException {
+        var input = """
+            package com.example;
 
-    public RemoveUnusedImportsTest(String input, String expected) {
-        this.input = input;
-        this.expected = expected;
+            import com.foo.Unused1;
+            import com.foo.Unused2;
+
+            public class TestBug {}
+            """;
+
+        assertThat(removeUnusedImports(input)).isEqualTo("""
+            package com.example;
+
+            public class TestBug {}
+            """);
     }
 
-    @TestTemplate
-    public void removeUnused() throws FormatterException {
-        // Module imports (JEP 511) parse from JDK 23 on, as preview there; the formatter enables preview.
+    @Test
+    void unusedImportAtTheStartTakesTheBlankLineAfterIt() throws FormatterException {
+        var input = """
+            import com.foo.Unused;
+
+            public class TestBug {}
+            """;
+
+        assertThat(removeUnusedImports(input)).isEqualTo("""
+            public class TestBug {}
+            """);
+    }
+
+    // Module imports (JEP 511, `import module foo.bar;`) parse to JCModuleImport, a sibling of JCImport rather than a
+    // subtype. They must never be reported as unused (see isUnused), and must not crash buildReplacements when mixed
+    // with ordinary imports, some used and some not.
+    @Test
+    void moduleImportStaysAmongOrdinaryImports() throws FormatterException {
+        // Module imports parse from JDK 23 on, as preview there; the formatter enables preview.
         Assumptions.assumeTrue(
-                !input.contains("import module") || Formatter.getRuntimeVersion() >= 23,
-                "import module requires running on JDK 23 or later");
-        Truth.assertThat(RemoveUnusedImports.removeUnusedImports(input)).isEqualTo(expected);
+                Formatter.getRuntimeVersion() >= 23, "import module requires running on JDK 23 or later");
+
+        var input = """
+            import module java.base;
+            import java.util.List;
+            import java.util.Map;
+            class T { List<String> xs; }
+            """;
+
+        assertThat(removeUnusedImports(input)).isEqualTo("""
+            import module java.base;
+            import java.util.List;
+            class T { List<String> xs; }
+            """);
     }
 }

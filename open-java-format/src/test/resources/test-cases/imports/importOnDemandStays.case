@@ -1,0 +1,12 @@
+# An import on demand stays: nothing tells which of its types the file uses.
+----------
+import java.util.*;
+class Test {
+  List<String> xs;
+}
+----------
+import java.util.*;
+
+class Test {
+    List<String> xs;
+}

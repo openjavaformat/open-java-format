@@ -1,0 +1,17 @@
+# An import that only a {@link} in a Javadoc comment uses stays.
+----------
+import java.util.List;
+import java.util.ArrayList;
+
+class Test {
+  /** could be an {@link ArrayList} */
+  List<String> xs;
+}
+----------
+import java.util.ArrayList;
+import java.util.List;
+
+class Test {
+    /** could be an {@link ArrayList} */
+    List<String> xs;
+}
