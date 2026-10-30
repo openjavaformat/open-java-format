@@ -1,0 +1,21 @@
+# A line comment that starts on the next line in the column of a trailing line comment continues it: it moves
+# with the comment, and the code is laid out as if only the first word of the comment were there. A line
+# comment in any other column is a comment of its own.
+----------
+class T {
+  int f(int lowerBound, int upperBound) {
+    int larger = Math.max(lowerBound, upperBound); // the larger of the two bounds, which the caller
+                                                   // checks again before it uses the value for anything
+    // a comment of its own, about the line below it
+    return larger;
+  }
+}
+----------
+class T {
+    int f(int lowerBound, int upperBound) {
+        int larger = Math.max(lowerBound, upperBound); // the larger of the two bounds, which the caller
+                                                       // checks again before it uses the value for anything
+        // a comment of its own, about the line below it
+        return larger;
+    }
+}

@@ -30,6 +30,7 @@ import com.palantir.javaformat.Op;
 import com.palantir.javaformat.OpsBuilder;
 import com.palantir.javaformat.OpsBuilder.OpsOutput;
 import com.palantir.javaformat.Utils;
+import com.palantir.javaformat.doc.Comment;
 import com.palantir.javaformat.doc.Doc;
 import com.palantir.javaformat.doc.DocBuilder;
 import com.palantir.javaformat.doc.Level;
@@ -48,6 +49,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.DiagnosticListener;
@@ -150,14 +154,27 @@ public final class Formatter {
         opsBuilder.drain();
         OpsOutput opsOutput = opsBuilder.build();
 
-        Level doc = new DocBuilder().withOps(opsOutput.ops()).build();
+        // A trailing line comment that came out wrapped did not fit however the code before it was broken. Laid
+        // out again by its first word only, as the next run lays out the wrapped comment it reads, it leaves that
+        // code as it would be without the comment, and the next run gives the same layout.
+        List<Op> ops = opsOutput.ops();
+        Level doc;
+        Sink sink;
+        State finalState;
+        while (true) {
+            doc = new DocBuilder().withOps(ops).build();
 
-        // Don't even allocate all those JSON nodes if we're not going to write it out
-        Sink sink = debugMode ? new JsonSink() : new NoopSink();
+            // Don't even allocate all those JSON nodes if we're not going to write it out
+            sink = debugMode ? new JsonSink() : new NoopSink();
+            finalState = doc.computeBreaks(
+                    commentsHelper, options.maxLineLength(), State.startingState(), Obs.createRoot(sink));
 
-        Obs.ExplorationNode observationNode = Obs.createRoot(sink);
-        State finalState =
-                doc.computeBreaks(commentsHelper, options.maxLineLength(), State.startingState(), observationNode);
+            var wrapped = wrappedComments(ops, finalState);
+            if (wrapped.isEmpty()) {
+                break;
+            }
+            ops = withFirstWordOnly(ops, wrapped);
+        }
 
         JavaOutput javaOutput = new JavaOutput(javaInput, opsOutput.inputMetadata());
         doc.write(finalState, javaOutput);
@@ -167,6 +184,25 @@ public final class Formatter {
             DebugRenderer.render(javaInput, opsOutput, doc, finalState, javaOutput, sink.getOutput());
         }
         return javaOutput;
+    }
+
+    /** The comments of {@code ops} that came out of {@code state} wrapped, see {@link Comment#wrappedIn}. */
+    private static Set<Comment> wrappedComments(List<Op> ops, State state) {
+        var wrapped = new HashSet<Comment>();
+        for (var op : ops) {
+            if (op instanceof Comment comment && comment.wrappedIn(state)) {
+                wrapped.add(comment);
+            }
+        }
+        return wrapped;
+    }
+
+    /** {@code ops} with each of the {@code wrapped} comments laid out by its first word only. */
+    private static List<Op> withFirstWordOnly(List<Op> ops, Set<Comment> wrapped) {
+        return ops.stream()
+                .map(op ->
+                        op instanceof Comment comment && wrapped.contains(comment) ? comment.withFirstWordOnly() : op)
+                .toList();
     }
 
     static JCCompilationUnit parseJcCompilationUnit(Context context, String sourceText) throws FormatterException {

@@ -1,0 +1,18 @@
+# A line comment continues a trailing line comment that follows a block comment on the line of the code, as it
+# continues any other trailing line comment.
+----------
+class T {
+  int f(int lowerBound, int upperBound) {
+    int larger = Math.max(lowerBound, upperBound); /* inclusive */ // the larger of the two bounds, which the caller
+                                                                   // checks again before it uses the value
+    return larger;
+  }
+}
+----------
+class T {
+    int f(int lowerBound, int upperBound) {
+        int larger = Math.max(lowerBound, upperBound); /* inclusive */ // the larger of the two bounds, which the caller
+                                                                       // checks again before it uses the value
+        return larger;
+    }
+}

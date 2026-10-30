@@ -1,0 +1,17 @@
+# The trailing line comment of an array element that runs past the limit is wrapped in its own column, and a
+# second run leaves it there.
+----------
+class T {
+  static final int[] FLAGS = {
+    0x0001, // the first flag, whose comment goes on long enough to run past the limit of one hundred and twenty columns
+    0x0002, // the second flag
+  };
+}
+----------
+class T {
+    static final int[] FLAGS = {
+        0x0001, // the first flag, whose comment goes on long enough to run past the limit of one hundred and twenty
+                // columns
+        0x0002, // the second flag
+    };
+}

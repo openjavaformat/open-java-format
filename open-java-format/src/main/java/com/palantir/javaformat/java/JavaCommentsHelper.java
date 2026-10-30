@@ -189,12 +189,26 @@ public final class JavaCommentsHelper implements CommentsHelper {
         return line;
     }
 
-    private static String lineCommentPrefix(String line) {
+    static String lineCommentPrefix(String line) {
         int prefixLength = 0;
         while (prefixLength < line.length() && line.charAt(prefixLength) == '/') {
             prefixLength++;
         }
         return "/".repeat(prefixLength);
+    }
+
+    /**
+     * The length of the slashes and the first word of a line comment, which stay on its line however it is wrapped:
+     * {@link #wrapLineComments} breaks a line only at whitespace after them.
+     */
+    public static int firstWordLength(String line) {
+        var prefixLength = lineCommentPrefix(line).length();
+        for (var i = prefixLength + 1; i < line.length(); i++) {
+            if (CharMatcher.breakingWhitespace().matches(line.charAt(i))) {
+                return i;
+            }
+        }
+        return line.length();
     }
 
     private List<String> wrapLineComments(List<String> lines, int column0) {

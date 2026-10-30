@@ -1,0 +1,16 @@
+# A line comment continues the trailing line comment above it when it starts in that comment's column,
+# whatever operators come before the comment on its line.
+----------
+class T {
+  boolean f(int depth, int index) {
+    return depth == 0 && index >= 0; // the top frame, or one
+                                     // the caller asked for
+  }
+}
+----------
+class T {
+    boolean f(int depth, int index) {
+        return depth == 0 && index >= 0; // the top frame, or one
+                                         // the caller asked for
+    }
+}

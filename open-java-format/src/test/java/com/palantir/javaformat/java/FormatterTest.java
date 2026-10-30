@@ -213,26 +213,6 @@ final class FormatterTest {
     }
 
     @Test
-    void wrapLineComment() throws Exception {
-        // Not a case in test-cases yet: a second run moves the wrapped part of the comment to the indent of the block,
-        // and the cases check that a second run changes nothing.
-        assertThat(FORMATTER.formatSource("class T {\n"
-                        + "  public static void main(String[] args) { // one long incredibly"
-                        + " unbroken sentence moving from topic to topic so that no-one had a"
-                        + " chance to interrupt;\n"
-                        + "  }\n"
-                        + "}\n"))
-                .isEqualTo("class T {\n"
-                        + "    public static void main(\n"
-                        + "            String[]\n"
-                        + "                    args) { // one long incredibly unbroken sentence moving"
-                        + " from topic to topic so that no-one had a\n"
-                        + "                            // chance to interrupt;\n"
-                        + "    }\n"
-                        + "}\n");
-    }
-
-    @Test
     void throwsFormatterException() throws Exception {
         assertThatThrownBy(() -> FORMATTER.formatSourceAndFixImports("package foo; public class {"))
                 .isInstanceOf(FormatterException.class);
