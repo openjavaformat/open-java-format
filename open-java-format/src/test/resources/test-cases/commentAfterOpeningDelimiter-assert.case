@@ -1,0 +1,35 @@
+# A comment on its own line right after `assert` stays inside the condition at the continuation indent, together
+# with the code after it, when the assertion has a detail message (google-java-format#1501, #171).
+----------
+class T {
+  void f(int x, int y) {
+    assert
+      // comment
+      x > 0 : "positive";
+    assert
+    // comment
+    x > 0 : "positive";
+    assert
+        /* why */
+      x    <
+         y :
+      "x below " + "y";
+  }
+}
+----------
+class T {
+    void f(int x, int y) {
+        assert
+                // comment
+                x > 0
+                : "positive";
+        assert
+                // comment
+                x > 0
+                : "positive";
+        assert
+                /* why */
+                x < y
+                : "x below " + "y";
+    }
+}

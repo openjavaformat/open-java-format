@@ -1,0 +1,35 @@
+# A comment on its own line right after the `(` of a multi-catch clause stays inside the clause at the continuation
+# indent, with the caught types after it (google-java-format#1501, #171).
+----------
+class T {
+  void f() {
+    try {
+      g();
+    } catch (
+      // comment
+      IllegalArgumentException | IllegalStateException e) {
+    }
+    try { g(); } catch (
+    /* comment */
+    IllegalArgumentException
+        | IllegalStateException e) { h(e); }
+  }
+}
+----------
+class T {
+    void f() {
+        try {
+            g();
+        } catch (
+                // comment
+                IllegalArgumentException | IllegalStateException e) {
+        }
+        try {
+            g();
+        } catch (
+                /* comment */
+                IllegalArgumentException | IllegalStateException e) {
+            h(e);
+        }
+    }
+}
