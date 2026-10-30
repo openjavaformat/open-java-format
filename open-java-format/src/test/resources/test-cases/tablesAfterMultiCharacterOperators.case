@@ -1,0 +1,31 @@
+# Pairs of arguments and array elements laid out as a table keep their rows when an operator of more than one
+# character, such as -> or ==, comes before the table on its line, as they do after any other code.
+----------
+class T {
+  Supplier<Map<String, Integer>> pairs() {
+    return () -> Map.of("one", 1,
+                        "two", 2);
+  }
+
+  int[] grid(int mode) {
+    return mode == 0 ? new int[] {1, 2, 3,
+                                  4, 5, 6} : null;
+  }
+}
+----------
+class T {
+    Supplier<Map<String, Integer>> pairs() {
+        return () -> Map.of(
+                "one", 1,
+                "two", 2);
+    }
+
+    int[] grid(int mode) {
+        return mode == 0
+                ? new int[] {
+                    1, 2, 3,
+                    4, 5, 6
+                }
+                : null;
+    }
+}
