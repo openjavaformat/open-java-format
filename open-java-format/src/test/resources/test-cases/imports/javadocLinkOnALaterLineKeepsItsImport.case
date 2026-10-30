@@ -1,0 +1,18 @@
+# A {@link} on a later line of a Javadoc comment keeps its import, and the imports nothing uses go.
+----------
+import a.A;
+import a.B;
+import a.C;
+class Test {
+  /** a
+   * {@link A} */
+  void f() {}
+}
+----------
+import a.A;
+
+class Test {
+    /** a
+     * {@link A} */
+    void f() {}
+}

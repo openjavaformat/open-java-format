@@ -1,0 +1,18 @@
+# An unused import goes, and the used import before it stays.
+----------
+package com.example;
+
+import java.util.List;
+import com.foo.Unused;
+
+public class TestBug {
+    List<String> xs;
+}
+----------
+package com.example;
+
+import java.util.List;
+
+public class TestBug {
+    List<String> xs;
+}

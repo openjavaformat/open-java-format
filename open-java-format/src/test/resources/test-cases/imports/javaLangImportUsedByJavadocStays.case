@@ -1,0 +1,13 @@
+# A single-type import from java.lang that only a Javadoc comment uses stays (palantir-java-format#1778, #149).
+----------
+package p;
+import java.lang.Byte;
+/** {@link Byte} */
+public class Test {}
+----------
+package p;
+
+import java.lang.Byte;
+
+/** {@link Byte} */
+public class Test {}

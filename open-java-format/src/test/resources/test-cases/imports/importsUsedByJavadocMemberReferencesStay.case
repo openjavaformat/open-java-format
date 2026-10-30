@@ -1,0 +1,12 @@
+# Imports that only Javadoc references to members use stay, with or without a parameter list.
+----------
+import java.util.ArrayList;
+import java.util.Collection;
+/** {@link ArrayList#add} {@link Collection#remove(Object)} */
+class Test {}
+----------
+import java.util.ArrayList;
+import java.util.Collection;
+
+/** {@link ArrayList#add} {@link Collection#remove(Object)} */
+class Test {}

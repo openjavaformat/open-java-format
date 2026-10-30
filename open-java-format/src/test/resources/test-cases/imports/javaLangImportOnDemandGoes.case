@@ -1,0 +1,13 @@
+# An import on demand of java.lang goes, since java.lang is imported on demand anyway (palantir-java-format#1778, #149).
+----------
+package p;
+import java.lang.*;
+public class Test { Byte foo() { return null; } }
+----------
+package p;
+
+public class Test {
+    Byte foo() {
+        return null;
+    }
+}

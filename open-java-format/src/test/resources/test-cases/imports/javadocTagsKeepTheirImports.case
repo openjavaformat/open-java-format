@@ -1,0 +1,41 @@
+# {@link}, {@linkplain}, {@value}, @exception, @throws and @see keep the imports of the types they name, and the import
+# that nothing names goes.
+----------
+import a.A;
+import b.B;
+import c.C;
+import d.D;
+import e.E;
+import f.F;
+import g.G;
+import h.H;
+/**
+ * {@link A} {@linkplain B} {@value D#FOO}
+ *
+ * @exception E
+ * @throws F
+ * @see C
+ * @see H#foo
+ * @see <a href="whatever">
+ */
+class Test {
+}
+----------
+import a.A;
+import b.B;
+import c.C;
+import d.D;
+import e.E;
+import f.F;
+import h.H;
+
+/**
+ * {@link A} {@linkplain B} {@value D#FOO}
+ *
+ * @exception E
+ * @throws F
+ * @see C
+ * @see H#foo
+ * @see <a href="whatever">
+ */
+class Test {}

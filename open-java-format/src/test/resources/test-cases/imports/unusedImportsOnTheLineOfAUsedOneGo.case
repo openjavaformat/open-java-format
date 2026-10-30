@@ -1,0 +1,14 @@
+# Unused imports go even where they share a line with a used one, and the comment after the last one stays.
+----------
+import a.A;import a.B;
+import a.C; // hello
+class Test {
+  B b;
+}
+----------
+import a.B;
+// hello
+
+class Test {
+    B b;
+}

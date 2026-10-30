@@ -1,0 +1,8 @@
+# An unused import from java.lang goes.
+----------
+import java.lang.Foo;
+interface Test { private static void foo() {} }
+----------
+interface Test {
+    private static void foo() {}
+}

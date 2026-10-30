@@ -1,0 +1,18 @@
+# A used single-type import from java.lang stays, since it shadows a type of the same name in the package
+# (palantir-java-format#1778, #149). The import of a type of the package itself goes, the import of a type nested in one
+# stays.
+----------
+package p;
+import java.lang.Foo;
+import java.lang.Foo.Bar;
+import p.Baz;
+import p.Baz.Bork;
+public class Test implements Foo, Bar, Baz, Bork {}
+----------
+package p;
+
+import java.lang.Foo;
+import java.lang.Foo.Bar;
+import p.Baz.Bork;
+
+public class Test implements Foo, Bar, Baz, Bork {}
