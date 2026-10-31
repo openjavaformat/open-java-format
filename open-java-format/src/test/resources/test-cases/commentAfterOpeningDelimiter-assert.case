@@ -30,6 +30,6 @@ class T {
         assert
                 /* why */
                 x < y
-                : "x below " + "y";
+                : "x below y";
     }
 }
