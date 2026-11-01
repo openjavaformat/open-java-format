@@ -88,6 +88,9 @@ jreleaser {
             skipTag = true
             tagName = '{{projectVersion}}'
             releaseName = '{{projectVersion}}'
+            // The current release line; it moves when the next line starts. JReleaser assumes main otherwise,
+            // and when GitHub has no such branch it tries to push one, which fails from the tag's checkout.
+            branch = '21.X.X'
             // Published by hand after a look.
             draft = true
             changelog {
