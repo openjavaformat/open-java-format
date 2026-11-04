@@ -23,9 +23,9 @@ caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.3.1
 compileTesting = { module = "com.google.testing.compile:compile-testing", version = "0.24.0" }
 # Error Prone, the checks it runs: open-java-format.error-prone-conventions. error-prone-contrib is
 # Picnic's error-prone-support, built against one Error Prone release; keep the two in step.
-errorprone-core = { module = "com.google.errorprone:error_prone_core", version = "2.50.0" }
+errorprone-core = { module = "com.google.errorprone:error_prone_core", version = "2.51.0" }
 errorProneSupport-contrib = { module = "tech.picnic.error-prone-support:error-prone-contrib", version = "0.30.0" }
-nullaway = { module = "com.uber.nullaway:nullaway", version = "0.14.2" }
+nullaway = { module = "com.uber.nullaway:nullaway", version = "0.14.3" }
 functionaljava = { module = "org.functionaljava:functionaljava", version = "5.0" }
 guava = { module = "com.google.guava:guava", version = "33.7.2-jre" }
 guava-testlib = { module = "com.google.guava:guava-testlib", version = "33.7.2-jre" }
@@ -33,9 +33,9 @@ immutables-value = { module = "org.immutables:value", version = "2.12.3" }
 jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version = "2.22" }
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version = "2.22.4" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version = "2.22.4" }
-jackson-dataformat-xml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-xml", version = "2.22.3" }
-jackson-datatype-guava = { module = "com.fasterxml.jackson.datatype:jackson-datatype-guava", version = "2.22.3" }
-jackson-datatype-jdk8 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jdk8", version = "2.22.3" }
+jackson-dataformat-xml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-xml", version = "2.22.4" }
+jackson-datatype-guava = { module = "com.fasterxml.jackson.datatype:jackson-datatype-guava", version = "2.22.4" }
+jackson-datatype-jdk8 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jdk8", version = "2.22.4" }
 jackson-module-parameterNames = { module = "com.fasterxml.jackson.module:jackson-module-parameter-names", version = "2.22.4" }
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version = "1.37" }
 jmh-generator-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version = "1.37" }
