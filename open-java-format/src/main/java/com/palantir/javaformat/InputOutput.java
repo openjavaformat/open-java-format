@@ -52,7 +52,10 @@ public abstract class InputOutput {
         return lines.get(lineI);
     }
 
-    /** The {@link Range}s of the tokens or comments lying on each line, in any part. */
+    /**
+     * The {@link Range}s of the tokens or comments lying on each line, in any part: a {@code /*} comment can lie on
+     * several. With the same for the formatted output, they give the correspondence between input and output lines.
+     */
     protected final List<Range<Integer>> ranges = new ArrayList<>();
 
     private static void addToRanges(List<Range<Integer>> ranges, int i, int k) {

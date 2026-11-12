@@ -260,14 +260,6 @@ public final class JavaInput extends Input {
     private final Supplier<String> lineSeparator = Suppliers.memoize(() -> Newlines.guessLineSeparator(getText()));
     private int kN; // The number of numbered toks (tokens or comments), excluding the EOF.
 
-    /*
-     * The following lists record the sequential indices of the {@code Tok}s on each input line. (Only
-     * tokens and comments have sequential indices.) Tokens and {@code //} comments lie on just one
-     * line; {@code /*} comments can lie on multiple lines. These data structures (along with
-     * equivalent ones for the formatted output) let us compute correspondences between the input and
-     * output.
-     */
-
     private final Map<Integer, Integer> positionToColumnMap; // Map Tok position to column.
 
     private final List<Token> tokens; // The Tokens for this input.
