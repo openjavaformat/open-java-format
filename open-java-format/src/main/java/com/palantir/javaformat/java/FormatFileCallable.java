@@ -24,7 +24,6 @@ import com.google.common.collect.TreeRangeSet;
 import com.palantir.javaformat.Utils;
 import java.io.UncheckedIOException;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.Callable;
 
 /** Encapsulates information about a file to be formatted, including which parts of the file to format. */
@@ -51,23 +50,10 @@ class FormatFileCallable implements Callable<String> {
         Formatter formatter = Formatter.createFormatter(options);
         if (parameters.outputReplacements()) {
             RangeSet<Integer> characterRanges = characterRanges(input);
-            Set<Range<Integer>> rangesToChange = characterRanges.asRanges();
-            List<Replacement> replacements = formatter.getFormatReplacements(input, rangesToChange);
-            if (parameters.reflowLongStrings()) {
-                String formattedText = Utils.applyReplacements(input, replacements);
-                // avoid trying to wrap the input unless the lines needing wrapping are part of the "characterRanges"
-                if (!StringWrapper.linesNeedWrapping(options.maxLineLength(), formattedText, characterRanges)) {
-                    return writeFormatReplacements(replacements);
-                }
-                String wrappedFormattedText = StringWrapper.wrap(options.maxLineLength(), formattedText, formatter);
-                // if no wrapping change happened, return the initial replacements
-                if (wrappedFormattedText.equals(formattedText)) {
-                    return writeFormatReplacements(replacements);
-                }
-                return writeFormatReplacements(List.of(Replacement.create(0, input.length(), wrappedFormattedText)));
-            } else {
-                return writeFormatReplacements(replacements);
-            }
+            return writeFormatReplacements(
+                    parameters.reflowLongStrings()
+                            ? formatter.getFormatAndReflowReplacements(input, characterRanges)
+                            : formatter.getFormatReplacements(input, characterRanges.asRanges()));
         }
         return formatFile(formatter);
     }

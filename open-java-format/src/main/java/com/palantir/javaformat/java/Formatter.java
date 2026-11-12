@@ -366,4 +366,27 @@ public final class Formatter {
         RangeSet<Integer> tokenRangeSet = javaInput.characterRangesToTokenRanges(characterRanges);
         return javaOutput.getFormatReplacements(tokenRangeSet);
     }
+
+    /**
+     * Emit the {@link Replacement}s that format the given character ranges and reflow the long strings in the code
+     * that formatting them rewrites; the imports, and the strings elsewhere, stay as they are. The command line prints
+     * these for {@code --output-replacements}, and {@link FormatterServiceImpl#getFormatReplacements} returns them,
+     * so that {@code formatDiff} and IntelliJ IDEA format the same on the JVM and with the native binary.
+     */
+    List<Replacement> getFormatAndReflowReplacements(String input, RangeSet<Integer> characterRanges)
+            throws FormatterException {
+        List<Replacement> replacements = getFormatReplacements(input, characterRanges.asRanges());
+        String formatted = Utils.applyReplacements(input, replacements);
+        RangeSet<Integer> formattedRanges = StringWrapper.moveRanges(characterRanges, replacements);
+        // avoid trying to wrap the input unless the lines needing wrapping are part of the ranges
+        if (!StringWrapper.linesNeedWrapping(options.maxLineLength(), formatted, formattedRanges)) {
+            return replacements;
+        }
+        String wrapped = StringWrapper.wrap(options.maxLineLength(), formatted, formattedRanges, this);
+        // if no wrapping change happened, return the initial replacements
+        if (wrapped.equals(formatted)) {
+            return replacements;
+        }
+        return List.of(Replacement.create(0, input.length(), wrapped));
+    }
 }
