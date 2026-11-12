@@ -43,7 +43,6 @@ import com.sun.tools.javac.tree.TreeInfo;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import javax.lang.model.element.Name;
 import org.jspecify.annotations.Nullable;
 
@@ -225,9 +224,9 @@ public class Java14InputAstVisitor extends JavaInputAstVisitor {
         if (node.getMembers() == null) {
             token(";");
         } else {
-            List<Tree> members = node.getMembers().stream()
+            var members = node.getMembers().stream()
                     .filter(t -> (TreeInfo.flags((JCTree) t) & Flags.GENERATED_MEMBER) == 0)
-                    .collect(Collectors.toUnmodifiableList());
+                    .toList();
             addBodyDeclarations(members, BracesOrNot.YES, FirstDeclarationsOrNot.YES);
         }
         dropEmptyDeclarations();
