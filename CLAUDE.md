@@ -6,8 +6,10 @@ Building and testing: the README's "Building and testing locally" section. Gradl
 ## Conventions for new code
 
 - **Collections.** Plain `java.util` types. `List.of`, `List.copyOf`, `Map.of` and `Stream.toList()` give
-  unmodifiable collections, so new code does not need Guava's `ImmutableList` or `ImmutableMap`; use them only
-  where an existing API already hands one over.
+  unmodifiable collections; unlike Guava's, `Set.of` and `Map.of` do not keep insertion order, and `contains(null)`
+  on them throws. Guava's `ImmutableList`, `ImmutableMap` and `ImmutableSet` are banned by forbidden-apis
+  (`config/forbidden-apis`), which fails the build, in every module but the SPI: `FormatterService` keeps returning
+  `ImmutableList` for compatibility, and the methods that implement it carry their module's `@SuppressForbidden`.
 - **Nullability.** One annotation, JSpecify's `org.jspecify.annotations.Nullable`; do not add another `Nullable`,
   nor a `NotNull` or `NonNull`: what is not `@Nullable` is non-null, and NullAway checks it. It is a type-use
   annotation, so on a nested type it goes before the simple name (`Input.@Nullable Token`), and on an array before

@@ -43,6 +43,7 @@ public class NativeImageFormatterService implements FormatterService {
     }
 
     @Override
+    @SuppressForbidden(reason = "FormatterService, kept in the SPI for compatibility, returns ImmutableList")
     public ImmutableList<Replacement> getFormatReplacements(String input, Collection<Range<Integer>> ranges) {
         Optional<String> output = Optional.empty();
         try {

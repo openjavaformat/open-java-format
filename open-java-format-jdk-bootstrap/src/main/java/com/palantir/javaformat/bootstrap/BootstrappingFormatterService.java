@@ -52,6 +52,7 @@ public final class BootstrappingFormatterService implements FormatterService {
     }
 
     @Override
+    @SuppressForbidden(reason = "FormatterService, kept in the SPI for compatibility, returns ImmutableList")
     public ImmutableList<Replacement> getFormatReplacements(String input, Collection<Range<Integer>> ranges) {
         try {
             return getFormatReplacementsInternal(input, ranges);
@@ -78,6 +79,7 @@ public final class BootstrappingFormatterService implements FormatterService {
         }
     }
 
+    @SuppressForbidden(reason = "FormatterService, kept in the SPI for compatibility, returns ImmutableList")
     private ImmutableList<Replacement> getFormatReplacementsInternal(String input, Collection<Range<Integer>> ranges)
             throws IOException {
         FormatterCliArgs command = new FormatterCliArgs(

@@ -83,6 +83,11 @@ subprojects {
     // Java toolchains, javac and test settings; Error Prone. Both in buildSrc/src/main/groovy.
     apply plugin: 'open-java-format.java-conventions'
     apply plugin: 'open-java-format.error-prone-conventions'
+    // Bans Guava's immutable collections, but not in the SPI: FormatterService.getFormatReplacements keeps
+    // returning ImmutableList, so that code compiled against an older SPI still links.
+    if (path != ':open-java-format-spi') {
+        apply plugin: 'open-java-format.forbidden-apis-conventions'
+    }
 
     dependencies {
         // Gives a version to the JUnit artifacts that useJUnitJupiter() adds without one.
