@@ -277,6 +277,27 @@ final class FormatterTest {
     }
 
     @Test
+    void commentUnderARemovedImportStaysOnTheClass() throws FormatterException {
+        String input = """
+            package p;
+
+            import java.io.File;
+            // comment about the class
+            class C {}
+            """;
+        String output = """
+            package p;
+
+            // comment about the class
+            class C {}
+            """;
+
+        // The imports are fixed after formatting, as the command line fixes them. Ordering them first left a blank
+        // line after the import, which stayed between the comment and the class once the import was gone.
+        assertThat(FORMATTER.formatSourceAndFixImports(input)).isEqualTo(output);
+    }
+
+    @Test
     void canParse_java9_private_interface_methods() {
         assertThatCode(() -> FORMATTER.formatSourceAndFixImports(""
                         + "interface T {\n"
