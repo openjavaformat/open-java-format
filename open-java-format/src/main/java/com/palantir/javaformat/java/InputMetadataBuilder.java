@@ -15,7 +15,6 @@
  */
 package com.palantir.javaformat.java;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
@@ -58,6 +57,6 @@ public final class InputMetadataBuilder {
     }
 
     public InputMetadata build() {
-        return new InputMetadata(ImmutableMap.copyOf(blankLines), ImmutableRangeSet.copyOf(partialFormatRanges));
+        return new InputMetadata(Map.copyOf(blankLines), ImmutableRangeSet.copyOf(partialFormatRanges));
     }
 }

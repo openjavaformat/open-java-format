@@ -134,7 +134,7 @@ fixes made the output differ from upstream, that numbering lost its meaning.
 
 ```bash
 mise trust && mise install
-./gradlew test      # what the CI build job runs
+./gradlew check     # what the CI build job runs: the tests, Checkstyle and forbidden-apis
 ```
 
 `-PjavaRuntime=25` runs the same tests on JDK 25, as CI's `jdk` jobs do for 25, 26 and 27, and for

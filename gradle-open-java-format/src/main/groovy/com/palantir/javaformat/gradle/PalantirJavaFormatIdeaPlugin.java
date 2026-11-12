@@ -17,7 +17,6 @@
 package com.palantir.javaformat.gradle;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 import java.util.stream.Stream;
 import org.gradle.StartParameter;
 import org.gradle.api.Plugin;
@@ -80,9 +79,8 @@ public abstract class PalantirJavaFormatIdeaPlugin implements Plugin<Project> {
     // Adds the tasks to the Gradle start parameters, so they run with whatever the build was asked to do.
     private static void runWithEveryBuild(Project rootProject, TaskProvider<?>... tasks) {
         StartParameter startParameter = rootProject.getGradle().getStartParameter();
-        startParameter.setTaskNames(ImmutableList.<String>builder()
-                .addAll(startParameter.getTaskNames())
-                .addAll(Stream.of(tasks).map(task -> ":" + task.getName()).toList())
-                .build());
+        startParameter.setTaskNames(Stream.concat(
+                        startParameter.getTaskNames().stream(), Stream.of(tasks).map(task -> ":" + task.getName()))
+                .toList());
     }
 }

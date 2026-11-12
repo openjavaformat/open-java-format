@@ -19,8 +19,6 @@ import static java.util.stream.Collectors.joining;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Verify;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeMap;
@@ -43,12 +41,15 @@ import com.sun.tools.javac.util.Position;
 import com.sun.tools.javac.util.Position.LineMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
@@ -130,9 +131,8 @@ public final class StringWrapper {
         return result;
     }
 
-    private static ImmutableSet<Range<Integer>> rangesAfterAppliedReplacements(
-            TreeRangeMap<Integer, String> replacements) {
-        ImmutableSet.Builder<Range<Integer>> outputRanges = ImmutableSet.builder();
+    private static Set<Range<Integer>> rangesAfterAppliedReplacements(TreeRangeMap<Integer, String> replacements) {
+        var outputRanges = new LinkedHashSet<Range<Integer>>();
         int offset = 0;
         for (Map.Entry<Range<Integer>, String> entry :
                 replacements.asMapOfRanges().entrySet()) {
@@ -147,7 +147,7 @@ public final class StringWrapper {
             int newLength = upper - lower;
             offset += newLength - originalLength;
         }
-        return outputRanges.build();
+        return Collections.unmodifiableSet(outputRanges);
     }
 
     public static TreeRangeMap<Integer, String> getReflowReplacements(
@@ -343,12 +343,12 @@ public final class StringWrapper {
                 // Find the source code of the text block with incidental whitespace removed.
                 // The first line of the text block is always """, and it does not affect incidental
                 // whitespace.
-                ImmutableList<String> initialLines = text.lines().collect(ImmutableList.toImmutableList());
+                List<String> initialLines = text.lines().toList();
                 String stripped = initialLines.stream()
                         .skip(1)
                         .collect(joining(separator))
                         .stripIndent();
-                ImmutableList<String> lines = stripped.lines().collect(ImmutableList.toImmutableList());
+                List<String> lines = stripped.lines().toList();
 
                 // pjf specific: try to indent the text block, unless the text block will be indented more than the
                 // starting quotes
@@ -521,7 +521,7 @@ public final class StringWrapper {
                 int trailing = lineEnd - end;
 
                 // Get the original source text of the string literals, excluding `"` and `+`.
-                ImmutableList<String> components = stringComponents(input, unit, flat);
+                List<String> components = stringComponents(input, unit, flat);
                 var plain = reflow(
                         columnLimit,
                         continuationIndent,
@@ -719,9 +719,8 @@ public final class StringWrapper {
      * Returns the source text of the given string literal trees, excluding the leading and trailing double-quotes and
      * the `+` operator.
      */
-    private static ImmutableList<String> stringComponents(
-            String input, JCTree.JCCompilationUnit unit, List<Tree> flat) {
-        ImmutableList.Builder<String> result = ImmutableList.builder();
+    private static List<String> stringComponents(String input, JCTree.JCCompilationUnit unit, List<Tree> flat) {
+        var result = new ArrayList<String>();
         StringBuilder piece = new StringBuilder();
         for (Tree tree : flat) {
             // adjust for leading and trailing double quotes
@@ -756,7 +755,7 @@ public final class StringWrapper {
         if (piece.length() > 0) {
             result.add(piece.toString());
         }
-        return result.build();
+        return List.copyOf(result);
     }
 
     static int hasEscapedWhitespaceAt(String input, int idx) {
@@ -810,7 +809,7 @@ public final class StringWrapper {
             int columnLimit,
             int continuationIndent,
             int trailing,
-            ImmutableList<String> components,
+            List<String> components,
             boolean first0,
             int textStartColumn,
             int firstLineStartColumn,
@@ -904,7 +903,7 @@ public final class StringWrapper {
         }
 
         firstInChain.set(startIdx == 0);
-        return ImmutableList.copyOf(flat.subList(startIdx, endIdx));
+        return List.copyOf(flat.subList(startIdx, endIdx));
     }
 
     /**

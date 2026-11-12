@@ -21,7 +21,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableList;
 import com.palantir.javaformat.bootstrap.BootstrappingFormatterService;
 import com.palantir.javaformat.bootstrap.NativeImageFormatterService;
 import com.palantir.javaformat.java.FormatterService;
@@ -80,10 +79,10 @@ final class FormatDiffTest {
         Files.createDirectories(subdir);
 
         Path reformatMe = subdir.resolve("ReformatMe.java");
-        Files.write(reformatMe, ImmutableList.of("                                 class ReformatMe {}"), UTF_8);
+        Files.write(reformatMe, List.of("                                 class ReformatMe {}"), UTF_8);
 
         Path dontTouchMe = repo.resolve("DontTouchMe.java");
-        Files.write(dontTouchMe, ImmutableList.of("                                 class DontTouchMe {}"), UTF_8);
+        Files.write(dontTouchMe, List.of("                                 class DontTouchMe {}"), UTF_8);
 
         runCommandInRepo("git", "add", "-N", ".");
 

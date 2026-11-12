@@ -22,7 +22,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.common.collect.ImmutableList;
 import com.google.common.hash.Hashing;
 import com.palantir.javaformat.CloseOp;
 import com.palantir.javaformat.Input;
@@ -42,6 +41,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class DebugRenderer {
@@ -96,7 +96,7 @@ public class DebugRenderer {
     private static String opsJson(OpsOutput opsOutput) {
         ArrayNode arrayNode = OBJECT_MAPPER.createArrayNode();
 
-        ImmutableList<Op> ops = opsOutput.ops();
+        List<Op> ops = opsOutput.ops();
         for (Op op : ops) {
             if (op instanceof Token token) {
                 Input.Token inputToken = token.getToken();

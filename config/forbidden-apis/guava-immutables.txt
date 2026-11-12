@@ -1,0 +1,4 @@
+@defaultMessage Use java.util collections: List.of, List.copyOf, Map.of, Stream.toList()
+com.google.common.collect.ImmutableList
+com.google.common.collect.ImmutableMap
+com.google.common.collect.ImmutableSet

@@ -22,7 +22,6 @@ import static java.util.Comparator.comparing;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
@@ -110,7 +109,7 @@ final class FormatDiff {
 
         try {
             System.err.println("Formatting " + diff.path);
-            ImmutableList<Replacement> replacements = formatter.getFormatReplacements(input, charRanges.asRanges());
+            List<Replacement> replacements = formatter.getFormatReplacements(input, charRanges.asRanges());
             String output = applyReplacements(input, replacements);
             Files.write(diff.path, output.getBytes(UTF_8));
         } catch (IOException | FormatterException e) {
@@ -136,8 +135,8 @@ final class FormatDiff {
         Preconditions.checkState(process.waitFor(30, TimeUnit.SECONDS), "git diff took too long to terminate");
         if (process.exitValue() != 0) {
             throw new RuntimeException("Expected return code of 0 but got " + process.exitValue()
-                    + "\n stdout: " + new String(process.getInputStream().readAllBytes())
-                    + "\n stderr: " + new String(process.getErrorStream().readAllBytes()));
+                    + "\n stdout: " + new String(process.getInputStream().readAllBytes(), UTF_8)
+                    + "\n stderr: " + new String(process.getErrorStream().readAllBytes(), UTF_8));
         }
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         process.getInputStream().transferTo(baos);

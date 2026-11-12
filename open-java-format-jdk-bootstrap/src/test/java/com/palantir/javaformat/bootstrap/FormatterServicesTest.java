@@ -20,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.palantir.javaformat.Utils;
 import com.palantir.javaformat.java.FormatterException;
@@ -44,7 +43,7 @@ final class FormatterServicesTest {
         String input = getTestResourceContent("format.input");
         String expectedOutput = getTestResourceContent("format.output");
 
-        ImmutableList<Replacement> replacements =
+        List<Replacement> replacements =
                 formatterService.getFormatReplacements(input, List.of(Range.open(0, input.length())));
 
         assertThat(replacements).hasSize(1);
@@ -73,7 +72,7 @@ final class FormatterServicesTest {
                 + "  }\n"
                 + "}\n";
 
-        ImmutableList<Replacement> replacements =
+        List<Replacement> replacements =
                 formatterService.getFormatReplacements(input, List.of(Range.open(0, input.length())));
 
         assertThat(replacements).singleElement().satisfies(replacement -> {

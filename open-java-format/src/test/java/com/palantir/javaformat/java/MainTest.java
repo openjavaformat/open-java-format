@@ -19,7 +19,6 @@ import static com.google.common.truth.Truth.assertWithMessage;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteStreams;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
@@ -33,7 +32,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -45,7 +46,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 @Execution(ExecutionMode.CONCURRENT)
 final class MainTest {
 
-    private static final ImmutableList<String> ADD_EXPORTS = ImmutableList.of(
+    private static final List<String> ADD_EXPORTS = List.of(
             "--add-exports", "jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
             "--add-exports", "jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
             "--add-exports", "jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED",
@@ -675,7 +676,7 @@ final class MainTest {
         String[] expected = {
             "// why we need A", "import a.A;", "import b.B;", "", "class T {", "    A a;", "    B b;", "}", "",
         };
-        for (String[] source : ImmutableList.of(input, expected)) {
+        for (String[] source : List.of(input, expected)) {
             StringWriter out = new StringWriter();
             Main main = new Main(
                     new PrintWriter(out, true),
@@ -687,18 +688,15 @@ final class MainTest {
     }
 
     private static ProcessBuilder formatterMain(String... args) {
-        return new ProcessBuilder(ImmutableList.<String>builder()
-                        .add(Paths.get(System.getProperty("java.home"))
-                                .resolve("bin/java")
-                                .toString())
-                        .addAll(ADD_EXPORTS)
-                        .add("-cp", System.getProperty("java.class.path"))
-                        .add(Main.class.getName())
-                        .add("-n")
-                        .add("--set-exit-if-changed")
-                        .add(args)
-                        .build())
-                .redirectError(Redirect.PIPE)
-                .redirectOutput(Redirect.PIPE);
+        var command = new ArrayList<String>();
+        command.add(
+                Paths.get(System.getProperty("java.home")).resolve("bin/java").toString());
+        command.addAll(ADD_EXPORTS);
+        command.addAll(List.of("-cp", System.getProperty("java.class.path")));
+        command.add(Main.class.getName());
+        command.add("-n");
+        command.add("--set-exit-if-changed");
+        command.addAll(List.of(args));
+        return new ProcessBuilder(command).redirectError(Redirect.PIPE).redirectOutput(Redirect.PIPE);
     }
 }

@@ -63,7 +63,9 @@ final class CommandLineOptionsParser {
         while (it.hasNext()) {
             String option = it.next();
             if (!option.startsWith("-")) {
-                optionsBuilder.filesBuilder().add(option).addAll(it);
+                var files = optionsBuilder.files();
+                files.add(option);
+                it.forEachRemaining(files::add);
                 break;
             }
             String flag;

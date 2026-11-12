@@ -1,0 +1,13 @@
+// Bans Guava's immutable collections in favour of java.util ones; the list is config/forbidden-apis.
+plugins {
+    id 'java'
+    id 'de.thetaphi.forbiddenapis'
+}
+
+forbiddenApis {
+    signaturesFiles = files(rootProject.file('config/forbidden-apis/guava-immutables.txt'))
+    // A module without Guava on its classpath cannot use the classes anyway.
+    ignoreSignaturesOfMissingClasses = true
+    // A module's own package-private SuppressForbidden, so the code does not depend on forbidden-apis.
+    suppressAnnotations = ['**.SuppressForbidden']
+}

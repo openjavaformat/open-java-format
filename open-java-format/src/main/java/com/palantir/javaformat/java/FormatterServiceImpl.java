@@ -33,9 +33,10 @@ public final class FormatterServiceImpl implements FormatterService {
     }
 
     @Override
+    @SuppressForbidden(reason = "FormatterService, kept in the SPI for compatibility, returns ImmutableList")
     public ImmutableList<Replacement> getFormatReplacements(String text, Collection<Range<Integer>> toRanges)
             throws FormatterException {
-        return formatter.getFormatReplacements(text, toRanges);
+        return ImmutableList.copyOf(formatter.getFormatReplacements(text, toRanges));
     }
 
     @Override

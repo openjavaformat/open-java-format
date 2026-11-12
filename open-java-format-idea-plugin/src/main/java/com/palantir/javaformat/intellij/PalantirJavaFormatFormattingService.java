@@ -16,7 +16,9 @@
 
 package com.palantir.javaformat.intellij;
 
-import com.google.common.collect.ImmutableList;
+import static java.util.Comparator.comparing;
+import static java.util.Optional.ofNullable;
+
 import com.google.common.collect.Range;
 import com.intellij.formatting.service.AsyncDocumentFormattingService;
 import com.intellij.formatting.service.AsyncFormattingRequest;
@@ -33,16 +35,12 @@ import com.intellij.psi.PsiFile;
 import com.palantir.javaformat.java.FormatterException;
 import com.palantir.javaformat.java.FormatterService;
 import com.palantir.javaformat.java.Replacement;
-import org.jspecify.annotations.Nullable;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-
-import static java.util.Comparator.comparing;
-import static java.util.Optional.ofNullable;
+import org.jspecify.annotations.Nullable;
 
 class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService implements PluginAware {
     private static final Logger logger = Logger.getInstance(PalantirJavaFormatFormattingService.class);
@@ -191,12 +189,11 @@ class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService
             if (isWholeFile(request)) {
                 // The IDE sometimes passes invalid ranges when the file is unsaved before invoking the
                 // formatter. So this is a workaround for that issue.
-                return ImmutableList.of(
-                        Range.closedOpen(0, request.getDocumentText().length()));
+                return List.of(Range.closedOpen(0, request.getDocumentText().length()));
             }
             return request.getFormattingRanges().stream()
                     .map(textRange -> Range.closedOpen(textRange.getStartOffset(), textRange.getEndOffset()))
-                    .collect(ImmutableList.toImmutableList());
+                    .toList();
         }
 
         private static boolean isWholeFile(AsyncFormattingRequest request) {

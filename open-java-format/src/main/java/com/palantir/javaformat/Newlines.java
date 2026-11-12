@@ -15,9 +15,9 @@
 package com.palantir.javaformat;
 
 import com.google.common.base.CharMatcher;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import org.jspecify.annotations.Nullable;
 
@@ -36,7 +36,8 @@ public class Newlines {
         return it.hasNext() ? it.next() : -1;
     }
 
-    private static final ImmutableSet<String> BREAKS = ImmutableSet.of("\r\n", "\n", "\r");
+    // Ordered: "\r\n" has to be tried before "\r" and "\n".
+    private static final List<String> BREAKS = List.of("\r\n", "\n", "\r");
 
     /** Returns true if the entire input string is a recognized line break. */
     public static boolean isNewline(String input) {

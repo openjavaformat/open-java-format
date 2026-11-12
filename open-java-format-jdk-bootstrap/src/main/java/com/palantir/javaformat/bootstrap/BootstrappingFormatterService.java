@@ -29,6 +29,7 @@ import com.palantir.javaformat.java.Replacement;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -51,6 +52,7 @@ public final class BootstrappingFormatterService implements FormatterService {
     }
 
     @Override
+    @SuppressForbidden(reason = "FormatterService, kept in the SPI for compatibility, returns ImmutableList")
     public ImmutableList<Replacement> getFormatReplacements(String input, Collection<Range<Integer>> ranges) {
         try {
             return getFormatReplacementsInternal(input, ranges);
@@ -77,6 +79,7 @@ public final class BootstrappingFormatterService implements FormatterService {
         }
     }
 
+    @SuppressForbidden(reason = "FormatterService, kept in the SPI for compatibility, returns ImmutableList")
     private ImmutableList<Replacement> getFormatReplacementsInternal(String input, Collection<Range<Integer>> ranges)
             throws IOException {
         FormatterCliArgs command = new FormatterCliArgs(
@@ -125,27 +128,26 @@ public final class BootstrappingFormatterService implements FormatterService {
             List<String> characterRanges) {
 
         List<String> toArgs() {
-            ImmutableList.Builder<String> args = ImmutableList.<String>builder()
-                    .add(jdkPath.toAbsolutePath().toString())
-                    .addAll(jvmArgs)
-                    .add(
-                            "-cp",
-                            implementationClasspath.stream()
-                                    .map(path -> path.toAbsolutePath().toString())
-                                    .collect(Collectors.joining(System.getProperty("path.separator"))))
-                    .add(FORMATTER_MAIN_CLASS);
+            var args = new ArrayList<String>();
+            args.add(jdkPath.toAbsolutePath().toString());
+            args.addAll(jvmArgs);
+            args.add("-cp");
+            args.add(implementationClasspath.stream()
+                    .map(path -> path.toAbsolutePath().toString())
+                    .collect(Collectors.joining(System.getProperty("path.separator"))));
+            args.add(FORMATTER_MAIN_CLASS);
 
             if (!characterRanges.isEmpty()) {
-                args.add("--character-ranges", Joiner.on(',').join(characterRanges));
+                args.add("--character-ranges");
+                args.add(Joiner.on(',').join(characterRanges));
             }
             if (outputReplacements) {
                 args.add("--output-replacements");
             }
 
-            return args
-                    // Trailing "-" enables formatting stdin -> stdout
-                    .add("-")
-                    .build();
+            // Trailing "-" enables formatting stdin -> stdout
+            args.add("-");
+            return List.copyOf(args);
         }
     }
 }

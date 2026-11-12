@@ -21,7 +21,6 @@ import static com.google.common.collect.Iterables.getLast;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Suppliers;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.palantir.javaformat.BreakBehaviour;
 import com.palantir.javaformat.BreakBehaviour.BreakOnlyIfInnerLevelsThenFitOnOneLine;
@@ -661,20 +660,20 @@ public final class Level extends Doc {
     }
 
     private static SplitsBreaks splitByBreaks(List<Doc> docs) {
-        ImmutableList.Builder<ImmutableList<Doc>> splits = ImmutableList.builder();
-        ImmutableList.Builder<Break> breaks = ImmutableList.builder();
-        ImmutableList.Builder<Doc> currentSplit = ImmutableList.builder();
+        var splits = new ArrayList<List<Doc>>();
+        var breaks = new ArrayList<Break>();
+        var currentSplit = new ArrayList<Doc>();
         for (Doc doc : docs) {
             if (doc instanceof Break b) {
-                splits.add(currentSplit.build());
-                currentSplit = ImmutableList.builder();
+                splits.add(List.copyOf(currentSplit));
+                currentSplit = new ArrayList<>();
                 breaks.add(b);
             } else {
                 currentSplit.add(doc);
             }
         }
-        splits.add(currentSplit.build());
-        return new SplitsBreaks(splits.build(), breaks.build());
+        splits.add(List.copyOf(currentSplit));
+        return new SplitsBreaks(List.copyOf(splits), List.copyOf(breaks));
     }
 
     /** Compute breaks for a {@link Level} that spans multiple lines. */
@@ -686,7 +685,7 @@ public final class Level extends Doc {
             state = state.withBrokenLevel();
         }
 
-        ImmutableList<Doc> splitDocs = splitsBreaks.splits().get(0);
+        List<Doc> splitDocs = splitsBreaks.splits().get(0);
         state = computeBreakAndSplit(
                 commentsHelper, maxWidth, state, /* optBreakDoc= */ Optional.empty(), splitDocs, explorationNode);
 
@@ -874,5 +873,5 @@ public final class Level extends Doc {
      * @param splits groups of {@link Doc}s that are children of the current level, separated by breaks
      * @param breaks the breaks between those groups
      */
-    record SplitsBreaks(ImmutableList<ImmutableList<Doc>> splits, ImmutableList<Break> breaks) {}
+    record SplitsBreaks(List<List<Doc>> splits, List<Break> breaks) {}
 }

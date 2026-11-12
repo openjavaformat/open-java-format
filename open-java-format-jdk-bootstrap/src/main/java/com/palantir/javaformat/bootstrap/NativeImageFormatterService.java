@@ -28,6 +28,7 @@ import com.palantir.javaformat.java.Replacement;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -42,6 +43,7 @@ public class NativeImageFormatterService implements FormatterService {
     }
 
     @Override
+    @SuppressForbidden(reason = "FormatterService, kept in the SPI for compatibility, returns ImmutableList")
     public ImmutableList<Replacement> getFormatReplacements(String input, Collection<Range<Integer>> ranges) {
         Optional<String> output = Optional.empty();
         try {
@@ -91,20 +93,20 @@ public class NativeImageFormatterService implements FormatterService {
     record FormatterNativeImageArgs(Path nativeImagePath, boolean outputReplacements, List<String> characterRanges) {
 
         List<String> toArgs() {
-            ImmutableList.Builder<String> args = ImmutableList.<String>builder()
-                    .add(nativeImagePath.toAbsolutePath().toString());
+            var args = new ArrayList<String>();
+            args.add(nativeImagePath.toAbsolutePath().toString());
 
             if (!characterRanges.isEmpty()) {
-                args.add("--character-ranges", Joiner.on(',').join(characterRanges));
+                args.add("--character-ranges");
+                args.add(Joiner.on(',').join(characterRanges));
             }
             if (outputReplacements) {
                 args.add("--output-replacements");
             }
 
-            return args
-                    // Trailing "-" enables formatting stdin -> stdout
-                    .add("-")
-                    .build();
+            // Trailing "-" enables formatting stdin -> stdout
+            args.add("-");
+            return List.copyOf(args);
         }
     }
 }

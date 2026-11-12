@@ -19,8 +19,8 @@ package com.palantir.javaformat.java;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 
-import com.google.common.collect.ImmutableList;
 import com.palantir.javaformat.jupiter.ParameterizedClass;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.TestTemplate;
@@ -351,9 +351,9 @@ public class AospImportStyleTest {
                 },
             },
         };
-        ImmutableList.Builder<Object[]> builder = ImmutableList.builder();
+        var builder = new ArrayList<Object[]>();
         Arrays.stream(inputsOutputs).forEach(input -> builder.add(ImportOrdererUtils.createRow(input)));
-        return builder.build();
+        return List.copyOf(builder);
     }
 
     @TestTemplate

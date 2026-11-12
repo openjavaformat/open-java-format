@@ -18,7 +18,7 @@ package com.palantir.javaformat;
 
 import static org.assertj.core.api.Assertions.fail;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Streams;
 import com.google.common.truth.Truth;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -27,37 +27,41 @@ import org.junit.jupiter.api.Test;
 final class NewlinesTest {
     @Test
     void offsets() {
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineOffsetIterator("foo\nbar\n")))
+        Truth.assertThat(Streams.stream(Newlines.lineOffsetIterator("foo\nbar\n"))
+                        .toList())
                 .containsExactly(0, 4, 8);
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineOffsetIterator("foo\nbar")))
+        Truth.assertThat(Streams.stream(Newlines.lineOffsetIterator("foo\nbar")).toList())
                 .containsExactly(0, 4);
 
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineOffsetIterator("foo\rbar\r")))
+        Truth.assertThat(Streams.stream(Newlines.lineOffsetIterator("foo\rbar\r"))
+                        .toList())
                 .containsExactly(0, 4, 8);
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineOffsetIterator("foo\rbar")))
+        Truth.assertThat(Streams.stream(Newlines.lineOffsetIterator("foo\rbar")).toList())
                 .containsExactly(0, 4);
 
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineOffsetIterator("foo\r\nbar\r\n")))
+        Truth.assertThat(Streams.stream(Newlines.lineOffsetIterator("foo\r\nbar\r\n"))
+                        .toList())
                 .containsExactly(0, 5, 10);
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineOffsetIterator("foo\r\nbar")))
+        Truth.assertThat(Streams.stream(Newlines.lineOffsetIterator("foo\r\nbar"))
+                        .toList())
                 .containsExactly(0, 5);
     }
 
     @Test
     void lines() {
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineIterator("foo\nbar\n")))
+        Truth.assertThat(Streams.stream(Newlines.lineIterator("foo\nbar\n")).toList())
                 .containsExactly("foo\n", "bar\n");
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineIterator("foo\nbar")))
+        Truth.assertThat(Streams.stream(Newlines.lineIterator("foo\nbar")).toList())
                 .containsExactly("foo\n", "bar");
 
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineIterator("foo\rbar\r")))
+        Truth.assertThat(Streams.stream(Newlines.lineIterator("foo\rbar\r")).toList())
                 .containsExactly("foo\r", "bar\r");
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineIterator("foo\rbar")))
+        Truth.assertThat(Streams.stream(Newlines.lineIterator("foo\rbar")).toList())
                 .containsExactly("foo\r", "bar");
 
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineIterator("foo\r\nbar\r\n")))
+        Truth.assertThat(Streams.stream(Newlines.lineIterator("foo\r\nbar\r\n")).toList())
                 .containsExactly("foo\r\n", "bar\r\n");
-        Truth.assertThat(ImmutableList.copyOf(Newlines.lineIterator("foo\r\nbar")))
+        Truth.assertThat(Streams.stream(Newlines.lineIterator("foo\r\nbar")).toList())
                 .containsExactly("foo\r\n", "bar");
     }
 

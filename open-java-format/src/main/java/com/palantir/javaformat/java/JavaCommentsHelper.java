@@ -15,7 +15,6 @@
 package com.palantir.javaformat.java;
 
 import com.google.common.base.CharMatcher;
-import com.google.common.collect.ImmutableSet;
 import com.palantir.javaformat.CommentsHelper;
 import com.palantir.javaformat.Input.Tok;
 import com.palantir.javaformat.Newlines;
@@ -23,6 +22,7 @@ import com.palantir.javaformat.java.javadoc.JavadocFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
@@ -131,7 +131,7 @@ public final class JavaCommentsHelper implements CommentsHelper {
     }
 
     // The directive names JBang knows, from dev.jbang.source.parser.Directives.Names.
-    private static final ImmutableSet<String> JBANG_DIRECTIVE_NAMES = ImmutableSet.of(
+    private static final Set<String> JBANG_DIRECTIVE_NAMES = Set.of(
             "CDS",
             "COMPILE_OPTIONS",
             "DEPS",
