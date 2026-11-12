@@ -1,7 +1,7 @@
 # Working in this repository
 
 Building and testing: the README's "Building and testing locally" section. Gradle runs on the Temurin 21 that
-`mise install` provides, `./gradlew test` is what CI runs, and `./gradlew formatDiff` formats the files you changed.
+`mise install` provides, `./gradlew check` is what CI runs, and `./gradlew formatDiff` formats the files you changed.
 
 ## Conventions for new code
 
