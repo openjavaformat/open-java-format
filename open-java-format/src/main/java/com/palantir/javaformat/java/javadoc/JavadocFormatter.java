@@ -21,7 +21,6 @@ import static com.palantir.javaformat.java.javadoc.Token.Type.PARAGRAPH_OPEN_TAG
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static java.util.regex.Pattern.compile;
 
-import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,7 +45,7 @@ public final class JavadocFormatter {
      * the same characters.
      */
     public String formatJavadoc(String input, int blockIndent) {
-        ImmutableList<Token> tokens;
+        List<Token> tokens;
         try {
             tokens = lex(input);
         } catch (LexException e) {

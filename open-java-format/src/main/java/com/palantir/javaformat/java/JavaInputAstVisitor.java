@@ -40,15 +40,13 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
 import com.google.common.base.Verify;
 import com.google.common.collect.HashMultiset;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableRangeMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.PeekingIterator;
+import com.google.common.collect.RangeMap;
 import com.google.common.collect.Streams;
 import com.palantir.javaformat.BreakBehaviour;
 import com.palantir.javaformat.CloseOp;
@@ -287,20 +285,19 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     protected final Indent.Const plusTwo;
     protected final Indent.Const plusFour;
 
-    private static ImmutableList<Op> breakList(Optional<BreakTag> breakTag) {
-        return ImmutableList.of(Break.make(FillMode.UNIFIED, " ", ZERO, breakTag));
+    private static List<Op> breakList(Optional<BreakTag> breakTag) {
+        return List.of(Break.make(FillMode.UNIFIED, " ", ZERO, breakTag));
     }
 
-    private static ImmutableList<Op> breakFillList(Optional<BreakTag> breakTag) {
-        return ImmutableList.of(
-                OpenOp.make(ZERO), Break.make(FillMode.INDEPENDENT, " ", ZERO, breakTag), CloseOp.make());
+    private static List<Op> breakFillList(Optional<BreakTag> breakTag) {
+        return List.of(OpenOp.make(ZERO), Break.make(FillMode.INDEPENDENT, " ", ZERO, breakTag), CloseOp.make());
     }
 
-    private static ImmutableList<Op> forceBreakList(Optional<BreakTag> breakTag) {
-        return ImmutableList.of(Break.make(FillMode.FORCED, "", Indent.Const.ZERO, breakTag));
+    private static List<Op> forceBreakList(Optional<BreakTag> breakTag) {
+        return List.of(Break.make(FillMode.FORCED, "", Indent.Const.ZERO, breakTag));
     }
 
-    private static final ImmutableList<Op> EMPTY_LIST = ImmutableList.of();
+    private static final List<Op> EMPTY_LIST = List.of();
 
     /**
      * Allow multi-line filling (of array initializers, argument lists, and boolean expressions) for items with length
@@ -323,7 +320,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     }
 
     /** A record of whether we have visited into an expression. */
-    private final Deque<Boolean> inExpression = new ArrayDeque<>(ImmutableList.of(false));
+    private final Deque<Boolean> inExpression = new ArrayDeque<>(List.of(false));
 
     private boolean inExpression() {
         return inExpression.peekLast();
@@ -465,7 +462,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
             Deque<ExpressionTree> dimExpressions = new ArrayDeque<>(node.getDimensions());
 
             Deque<List<? extends AnnotationTree>> annotations = new ArrayDeque<>();
-            annotations.add(ImmutableList.copyOf(node.getAnnotations()));
+            annotations.add(List.copyOf(node.getAnnotations()));
             annotations.addAll(node.getDimAnnotations());
             annotations.addAll(extractedDims.dims);
 
@@ -966,7 +963,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     @Override
     public Void visitVariable(VariableTree node, Void unused) {
         sync(node);
-        visitVariables(ImmutableList.of(node), DeclarationKind.NONE, inlineAnnotationDirection(node.getModifiers()));
+        visitVariables(List.of(node), DeclarationKind.NONE, inlineAnnotationDirection(node.getModifiers()));
         return null;
     }
 
@@ -1252,7 +1249,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
             // A lambda parameter is a parameter: its annotations stay on its line, as a method parameter's do. The
             // vertical direction, a forced break after an annotation with arguments, is for local variable
             // declarations.
-            visitVariables(ImmutableList.of(parameter), DeclarationKind.NONE, Direction.HORIZONTAL);
+            visitVariables(List.of(parameter), DeclarationKind.NONE, Direction.HORIZONTAL);
             first = false;
         }
         if (parens) {
@@ -1406,7 +1403,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
     public Void visitMethod(MethodTree node, Void unused) {
         sync(node);
         List<? extends AnnotationTree> annotations = node.getModifiers().getAnnotations();
-        List<? extends AnnotationTree> returnTypeAnnotations = ImmutableList.of();
+        List<? extends AnnotationTree> returnTypeAnnotations = List.of();
 
         boolean isRecordConstructor =
                 (((JCTree.JCMethodDecl) node).mods.flags & COMPACT_RECORD_CONSTRUCTOR) == COMPACT_RECORD_CONSTRUCTOR;
@@ -1611,11 +1608,11 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
             return false;
         }
         parts.addFirst(curr);
-        visitDotWithPrefix(ImmutableList.copyOf(parts), false, ImmutableList.of(parts.size() - 1), INDEPENDENT);
+        visitDotWithPrefix(List.copyOf(parts), false, List.of(parts.size() - 1), INDEPENDENT);
         return true;
     }
 
-    static final ImmutableSet<String> LOG_METHODS = ImmutableSet.of(
+    static final Set<String> LOG_METHODS = Set.of(
             "at",
             "atConfig",
             "atDebug",
@@ -2285,8 +2282,8 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
         builder.close();
 
         // pjf specific: record params should take into consideration the columnLimit
-        ImmutableList<Op> trailingBreak = isRecordParameter
-                ? ImmutableList.of(Break.builder()
+        List<Op> trailingBreak = isRecordParameter
+                ? List.of(Break.builder()
                         .fillMode(FillMode.UNIFIED)
                         .flat(" ")
                         .plusIndent(ZERO)
@@ -3050,7 +3047,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
     /** Returns the simple names of expressions in a "." chain. */
     private List<String> simpleNames(Deque<ExpressionTree> stack) {
-        ImmutableList.Builder<String> simpleNames = ImmutableList.builder();
+        var simpleNames = new ArrayList<String>();
         OUTER:
         for (ExpressionTree expression : stack) {
             boolean isArray = expression instanceof ArrayAccessTree;
@@ -3074,7 +3071,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
                 break OUTER;
             }
         }
-        return simpleNames.build();
+        return List.copyOf(simpleNames);
     }
 
     private void dotExpressionUpToArgs(ExpressionTree expression, Optional<BreakTag> tyargTag) {
@@ -3436,7 +3433,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
     /** How many lines does this node take up in the input. Returns at least 1. */
     int lineSpan(Tree node) {
-        ImmutableRangeMap<Integer, ? extends Input.Token> positionTokenMap =
+        RangeMap<Integer, ? extends Input.Token> positionTokenMap =
                 builder.getInput().getPositionTokenMap();
 
         int startPosition = getStartPosition(node);
@@ -3845,7 +3842,7 @@ public class JavaInputAstVisitor extends TreePathScanner<Void, Void> {
 
     /** Gets the permits clause for the given node. This is only available in Java 15 and later. */
     protected List<? extends Tree> getPermitsClause(ClassTree node) {
-        return ImmutableList.of();
+        return List.of();
     }
 
     private void classDeclarationTypeList(String token, List<? extends Tree> types) {

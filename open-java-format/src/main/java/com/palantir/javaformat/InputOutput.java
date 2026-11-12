@@ -15,7 +15,6 @@
 package com.palantir.javaformat;
 
 import com.google.common.collect.DiscreteDomain;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,13 +23,13 @@ import java.util.Map;
 
 /** This interface defines methods common to an {@link Input} or an {@link Output}. */
 public abstract class InputOutput {
-    private ImmutableList<String> lines = ImmutableList.of();
+    private List<String> lines = List.of();
 
     protected static final Range<Integer> EMPTY_RANGE = Range.closedOpen(-1, -1);
     private static final DiscreteDomain<Integer> INTEGERS = DiscreteDomain.integers();
 
     /** Set the lines. */
-    protected final void setLines(ImmutableList<String> lines) {
+    protected final void setLines(List<String> lines) {
         this.lines = lines;
     }
 

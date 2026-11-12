@@ -22,7 +22,6 @@ import static java.util.Comparator.comparing;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
@@ -110,7 +109,7 @@ final class FormatDiff {
 
         try {
             System.err.println("Formatting " + diff.path);
-            ImmutableList<Replacement> replacements = formatter.getFormatReplacements(input, charRanges.asRanges());
+            List<Replacement> replacements = formatter.getFormatReplacements(input, charRanges.asRanges());
             String output = applyReplacements(input, replacements);
             Files.write(diff.path, output.getBytes(UTF_8));
         } catch (IOException | FormatterException e) {

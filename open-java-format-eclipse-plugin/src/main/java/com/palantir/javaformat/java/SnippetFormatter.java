@@ -14,12 +14,9 @@
 
 package com.palantir.javaformat.java;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
-
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.DiscreteDomain;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeSet;
@@ -93,7 +90,7 @@ public class SnippetFormatter {
      * Runs the Google Java formatter on the given source, with only the given
      * ranges specified.
      */
-    public ImmutableList<Replacement> format(
+    public List<Replacement> format(
             SnippetKind kind, String source, List<Range<Integer>> ranges, int initialIndent, boolean includeComments)
             throws FormatterException {
         RangeSet<Integer> rangeSet = TreeRangeSet.create();
@@ -115,7 +112,7 @@ public class SnippetFormatter {
 
         return toReplacements(source, replacement).stream()
                 .filter(r -> rangeSet.encloses(r.getReplaceRange()))
-                .collect(toImmutableList());
+                .toList();
     }
 
     /**

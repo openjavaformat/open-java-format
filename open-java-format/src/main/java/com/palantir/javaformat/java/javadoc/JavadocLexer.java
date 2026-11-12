@@ -54,7 +54,6 @@ import static java.util.regex.Pattern.compile;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.PeekingIterator;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -66,7 +65,7 @@ import java.util.regex.Pattern;
 /** Lexer for the Javadoc formatter. */
 final class JavadocLexer {
     /** Takes a Javadoc comment, including ∕✱✱ and ✱∕, and returns tokens, including ∕✱✱ and ✱∕. */
-    static ImmutableList<Token> lex(String input) throws LexException {
+    static List<Token> lex(String input) throws LexException {
         /*
          * TODO(cpovirk): In theory, we should interpret Unicode escapes (yet output them in their
          * original form). This would mean mean everything from an encoded ∕✱✱ to an encoded <pre> tag,
@@ -154,8 +153,8 @@ final class JavadocLexer {
         this.input = checkNotNull(input);
     }
 
-    private ImmutableList<Token> generateTokens() throws LexException {
-        ImmutableList.Builder<Token> tokens = ImmutableList.builder();
+    private List<Token> generateTokens() throws LexException {
+        var tokens = new ArrayList<Token>();
 
         Token token = new Token(BEGIN_JAVADOC, "/**");
         tokens.add(token);
@@ -170,7 +169,7 @@ final class JavadocLexer {
         token = new Token(END_JAVADOC, "*/");
         tokens.add(token);
 
-        ImmutableList<Token> result = tokens.build();
+        List<Token> result = List.copyOf(tokens);
         result = joinAdjacentLiteralsAndAdjacentWhitespace(result);
         result = inferParagraphTags(result);
         result = optionalizeSpacesAfterLinks(result);
@@ -319,7 +318,7 @@ final class JavadocLexer {
      *
      * <p>Note that we do <i>not</i> merge a literal token and a whitespace token together.
      */
-    private static ImmutableList<Token> joinAdjacentLiteralsAndAdjacentWhitespace(List<Token> input) {
+    private static List<Token> joinAdjacentLiteralsAndAdjacentWhitespace(List<Token> input) {
         /*
          * Note: Our final token is always END_JAVADOC. This saves us some trouble:
          *
@@ -327,7 +326,7 @@ final class JavadocLexer {
          *
          * - We don't need to check for leftover accumulated literals after we exit the loop.
          */
-        ImmutableList.Builder<Token> output = ImmutableList.builder();
+        var output = new ArrayList<Token>();
         StringBuilder accumulated = new StringBuilder();
         NestingCounter inlineTagDepth = new NestingCounter();
         boolean lastTagWasInlineTagStart = false;
@@ -400,7 +399,7 @@ final class JavadocLexer {
             // We have another token coming, possibly of type OTHER. Leave it for the next iteration.
         }
 
-        return output.build();
+        return List.copyOf(output);
     }
 
     private static boolean isHyphenatedWordEnd(CharSequence cs) {
@@ -426,8 +425,8 @@ final class JavadocLexer {
      * <p>This method must be called after {@link #joinAdjacentLiteralsAndAdjacentWhitespace}, as it assumes that
      * adjacent whitespace tokens have already been joined.
      */
-    private static ImmutableList<Token> inferParagraphTags(List<Token> input) {
-        ImmutableList.Builder<Token> output = ImmutableList.builder();
+    private static List<Token> inferParagraphTags(List<Token> input) {
+        var output = new ArrayList<Token>();
 
         for (PeekingIterator<Token> tokens = peekingIterator(input.iterator()); tokens.hasNext(); ) {
             if (tokens.peek().getType() == LITERAL) {
@@ -447,7 +446,7 @@ final class JavadocLexer {
             }
         }
 
-        return output.build();
+        return List.copyOf(output);
 
         /*
          * Note: We do not want to insert <p> tags inside <pre>. Fortunately, the formatter gets that
@@ -464,8 +463,8 @@ final class JavadocLexer {
      * <p>This method must be called after {@link #joinAdjacentLiteralsAndAdjacentWhitespace}, as it assumes that
      * adjacent whitespace tokens have already been joined.
      */
-    private static ImmutableList<Token> optionalizeSpacesAfterLinks(List<Token> input) {
-        ImmutableList.Builder<Token> output = ImmutableList.builder();
+    private static List<Token> optionalizeSpacesAfterLinks(List<Token> input) {
+        var output = new ArrayList<Token>();
 
         for (PeekingIterator<Token> tokens = peekingIterator(input.iterator()); tokens.hasNext(); ) {
             if (tokens.peek().getType() == LITERAL && tokens.peek().getValue().matches("^href=[^>]*>")) {
@@ -479,7 +478,7 @@ final class JavadocLexer {
             }
         }
 
-        return output.build();
+        return List.copyOf(output);
 
         /*
          * Note: We do not want to insert <p> tags inside <pre>. Fortunately, the formatter gets that
@@ -493,8 +492,8 @@ final class JavadocLexer {
      *
      * <p>Also trim leading and trailing blank lines, and move the trailing `}` to its own line.
      */
-    private static ImmutableList<Token> deindentPreCodeBlocks(List<Token> input) {
-        ImmutableList.Builder<Token> output = ImmutableList.builder();
+    private static List<Token> deindentPreCodeBlocks(List<Token> input) {
+        var output = new ArrayList<Token>();
         for (PeekingIterator<Token> tokens = peekingIterator(input.iterator()); tokens.hasNext(); ) {
             if (tokens.peek().getType() != PRE_OPEN_TAG) {
                 output.add(tokens.next());
@@ -514,10 +513,10 @@ final class JavadocLexer {
 
             deindentPreCodeBlock(output, tokens);
         }
-        return output.build();
+        return List.copyOf(output);
     }
 
-    private static void deindentPreCodeBlock(ImmutableList.Builder<Token> output, PeekingIterator<Token> tokens) {
+    private static void deindentPreCodeBlock(List<Token> output, PeekingIterator<Token> tokens) {
         Deque<Token> saved = new ArrayDeque<>();
         output.add(new Token(LITERAL, tokens.next().getValue().trim()));
         while (tokens.hasNext() && tokens.peek().getType() != PRE_CLOSE_TAG) {

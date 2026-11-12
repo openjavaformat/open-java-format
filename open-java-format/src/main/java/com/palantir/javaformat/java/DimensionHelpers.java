@@ -14,7 +14,6 @@
 
 package com.palantir.javaformat.java;
 
-import com.google.common.collect.ImmutableList;
 import com.sun.source.tree.AnnotatedTypeTree;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayTypeTree;
@@ -22,6 +21,7 @@ import com.sun.source.tree.Tree;
 import com.sun.tools.javac.tree.JCTree;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
@@ -42,9 +42,9 @@ class DimensionHelpers {
         @Nullable
         final Tree node;
 
-        final ImmutableList<List<AnnotationTree>> dims;
+        final List<List<AnnotationTree>> dims;
 
-        public TypeWithDims(@Nullable Tree node, ImmutableList<List<AnnotationTree>> dims) {
+        public TypeWithDims(@Nullable Tree node, List<List<AnnotationTree>> dims) {
             this.node = node;
             this.dims = dims;
         }
@@ -59,13 +59,13 @@ class DimensionHelpers {
     static TypeWithDims extractDims(Tree node, SortedDims sorted) {
         Deque<List<AnnotationTree>> builder = new ArrayDeque<>();
         node = extractDims(builder, node);
-        Iterable<List<AnnotationTree>> dims;
+        Collection<List<AnnotationTree>> dims;
         if (sorted == SortedDims.YES) {
             dims = reorderBySourcePosition(builder);
         } else {
             dims = builder;
         }
-        return new TypeWithDims(node, ImmutableList.copyOf(dims));
+        return new TypeWithDims(node, List.copyOf(dims));
     }
 
     /**
@@ -79,7 +79,7 @@ class DimensionHelpers {
      * <p>This doesn't handle cases with un-annotated dimension specifiers, so the formatting logic checks the token
      * stream to figure out which side of the method name they appear on.
      */
-    private static Iterable<List<AnnotationTree>> reorderBySourcePosition(Deque<List<AnnotationTree>> dims) {
+    private static Collection<List<AnnotationTree>> reorderBySourcePosition(Deque<List<AnnotationTree>> dims) {
         int lastAnnotation = -1;
         int lastPos = -1;
         int idx = 0;
@@ -113,7 +113,7 @@ class DimensionHelpers {
                     yield node;
                 }
                 node = extractDims(dims, annotatedTypeTree.getUnderlyingType());
-                dims.addFirst(ImmutableList.copyOf(annotatedTypeTree.getAnnotations()));
+                dims.addFirst(List.copyOf(annotatedTypeTree.getAnnotations()));
                 yield node;
             }
             default -> node;

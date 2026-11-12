@@ -16,7 +16,6 @@ package com.palantir.javaformat.java;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.sun.tools.javac.parser.JavaTokenizer;
 import com.sun.tools.javac.parser.Scanner;
@@ -27,6 +26,8 @@ import com.sun.tools.javac.parser.Tokens.Token;
 import com.sun.tools.javac.parser.Tokens.TokenKind;
 import com.sun.tools.javac.parser.UnicodeReader;
 import com.sun.tools.javac.util.Context;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
@@ -79,14 +80,14 @@ class JavacTokens {
     }
 
     /** Lex the input and return a list of {@link RawTok}s. */
-    public static ImmutableList<RawTok> getTokens(String source, Context context, Set<TokenKind> stopTokens) {
+    public static List<RawTok> getTokens(String source, Context context, Set<TokenKind> stopTokens) {
         if (source == null) {
-            return ImmutableList.of();
+            return List.of();
         }
         ScannerFactory fac = ScannerFactory.instance(context);
         char[] buffer = (source + EOF_COMMENT).toCharArray();
         Scanner scanner = new AccessibleScanner(fac, new CommentSavingTokenizer(fac, buffer, buffer.length));
-        ImmutableList.Builder<RawTok> tokens = ImmutableList.builder();
+        var tokens = new ArrayList<RawTok>();
         int end = source.length();
         int last = 0;
         do {
@@ -121,7 +122,7 @@ class JavacTokens {
         if (last < end) {
             tokens.add(new RawTok(null, null, last, end));
         }
-        return tokens.build();
+        return List.copyOf(tokens);
     }
 
     /** A {@link JavaTokenizer} that saves comments. */

@@ -15,24 +15,26 @@
 package com.palantir.javaformat;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableList;
 import com.palantir.javaformat.java.FormatterDiagnostic;
+import java.util.List;
+import java.util.stream.StreamSupport;
 
 /** An unchecked formatting error. */
 public class FormattingError extends RuntimeException {
 
-    private final ImmutableList<FormatterDiagnostic> diagnostics;
+    private final List<FormatterDiagnostic> diagnostics;
 
     public FormattingError(FormatterDiagnostic diagnostic) {
-        this(ImmutableList.of(diagnostic));
+        this(List.of(diagnostic));
     }
 
     public FormattingError(Iterable<FormatterDiagnostic> diagnostics) {
         super(Joiner.on("\n").join(diagnostics) + "\n");
-        this.diagnostics = ImmutableList.copyOf(diagnostics);
+        this.diagnostics =
+                StreamSupport.stream(diagnostics.spliterator(), false).toList();
     }
 
-    public ImmutableList<FormatterDiagnostic> diagnostics() {
+    public List<FormatterDiagnostic> diagnostics() {
         return diagnostics;
     }
 }

@@ -21,7 +21,6 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Iterables.getLast;
 
 import com.google.common.base.Enums;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
@@ -42,7 +41,7 @@ final class ModifierOrderer {
 
     /** Reorders all modifiers in the given text to be in JLS order. */
     static JavaInput reorderModifiers(String text) throws FormatterException {
-        return reorderModifiers(new JavaInput(text), ImmutableList.of(Range.closedOpen(0, text.length())));
+        return reorderModifiers(new JavaInput(text), List.of(Range.closedOpen(0, text.length())));
     }
 
     /**
@@ -50,20 +49,20 @@ final class ModifierOrderer {
      * contains a {@code -} (e.g. {@code non-sealed}) is lexed as three tokens.
      */
     static final class ModifierTokens implements Comparable<ModifierTokens> {
-        private final ImmutableList<Token> tokens;
+        private final List<Token> tokens;
 
         @Nullable
         private final Modifier modifier;
 
-        static ModifierTokens create(ImmutableList<Token> tokens) {
+        static ModifierTokens create(List<Token> tokens) {
             return new ModifierTokens(tokens, asModifier(tokens));
         }
 
         static ModifierTokens empty() {
-            return new ModifierTokens(ImmutableList.of(), null);
+            return new ModifierTokens(List.of(), null);
         }
 
-        private ModifierTokens(ImmutableList<Token> tokens, @Nullable Modifier modifier) {
+        private ModifierTokens(List<Token> tokens, @Nullable Modifier modifier) {
             this.tokens = tokens;
             this.modifier = modifier;
         }
@@ -77,7 +76,7 @@ final class ModifierOrderer {
             return modifier;
         }
 
-        ImmutableList<Token> tokens() {
+        List<Token> tokens() {
             return tokens;
         }
 
@@ -97,11 +96,11 @@ final class ModifierOrderer {
             return last().getTok().getPosition() + last().getTok().length();
         }
 
-        ImmutableList<? extends Tok> getToksBefore() {
+        List<? extends Tok> getToksBefore() {
             return first().getToksBefore();
         }
 
-        ImmutableList<? extends Tok> getToksAfter() {
+        List<? extends Tok> getToksAfter() {
             return last().getToksAfter();
         }
 
@@ -164,7 +163,7 @@ final class ModifierOrderer {
         return applyReplacements(javaInput, replacements);
     }
 
-    private static void addTrivia(StringBuilder replacement, ImmutableList<? extends Tok> toks) {
+    private static void addTrivia(StringBuilder replacement, List<? extends Tok> toks) {
         for (Tok tok : toks) {
             replacement.append(tok.getText());
         }
@@ -176,10 +175,10 @@ final class ModifierOrderer {
      */
     private static ModifierTokens getModifierTokens(Iterator<? extends Token> it) {
         Token token = it.next();
-        ImmutableList.Builder<Token> result = ImmutableList.builder();
+        var result = new ArrayList<Token>();
         result.add(token);
         if (!token.getTok().getText().equals("non")) {
-            return ModifierTokens.create(result.build());
+            return ModifierTokens.create(List.copyOf(result));
         }
         if (!it.hasNext()) {
             return ModifierTokens.empty();
@@ -190,11 +189,11 @@ final class ModifierOrderer {
             return ModifierTokens.empty();
         }
         result.add(it.next());
-        return ModifierTokens.create(result.build());
+        return ModifierTokens.create(List.copyOf(result));
     }
 
     @Nullable
-    private static Modifier asModifier(ImmutableList<Token> tokens) {
+    private static Modifier asModifier(List<Token> tokens) {
         if (tokens.size() == 1) {
             return asModifier(tokens.get(0));
         }

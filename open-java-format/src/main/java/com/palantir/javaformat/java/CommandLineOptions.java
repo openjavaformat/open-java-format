@@ -14,10 +14,11 @@
 
 package com.palantir.javaformat.java;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -27,13 +28,13 @@ import java.util.Optional;
  */
 final class CommandLineOptions {
 
-    private final ImmutableList<String> files;
+    private final List<String> files;
     private final boolean inPlace;
     private final ImmutableRangeSet<Integer> lines;
     private final ImmutableRangeSet<Integer> characterRanges;
-    private final ImmutableList<Integer> offsets;
-    private final ImmutableList<Integer> lengths;
-    private final ImmutableList<String> unsupportedFlags;
+    private final List<Integer> offsets;
+    private final List<Integer> lengths;
+    private final List<String> unsupportedFlags;
     private final boolean version;
     private final boolean help;
     private final boolean stdin;
@@ -47,13 +48,13 @@ final class CommandLineOptions {
     private final boolean outputReplacements;
 
     CommandLineOptions(
-            ImmutableList<String> files,
+            List<String> files,
             boolean inPlace,
             ImmutableRangeSet<Integer> lines,
             ImmutableRangeSet<Integer> characterRanges,
-            ImmutableList<Integer> offsets,
-            ImmutableList<Integer> lengths,
-            ImmutableList<String> unsupportedFlags,
+            List<Integer> offsets,
+            List<Integer> lengths,
+            List<String> unsupportedFlags,
             boolean version,
             boolean help,
             boolean stdin,
@@ -86,7 +87,7 @@ final class CommandLineOptions {
     }
 
     /** The files to format. */
-    ImmutableList<String> files() {
+    List<String> files() {
         return files;
     }
 
@@ -106,17 +107,17 @@ final class CommandLineOptions {
     }
 
     /** Character offsets for partial formatting, paired with {@code lengths}. */
-    ImmutableList<Integer> offsets() {
+    List<Integer> offsets() {
         return offsets;
     }
 
     /** Partial formatting region lengths, paired with {@code offsets}. */
-    ImmutableList<Integer> lengths() {
+    List<Integer> lengths() {
         return lengths;
     }
 
     /** Flags that are accepted and ignored, in the order they were given: the style flags of earlier versions. */
-    ImmutableList<String> unsupportedFlags() {
+    List<String> unsupportedFlags() {
         return unsupportedFlags;
     }
 
@@ -184,14 +185,14 @@ final class CommandLineOptions {
 
     static final class Builder {
 
-        private final ImmutableList.Builder<String> files = ImmutableList.builder();
+        private final List<String> files = new ArrayList<>();
         // A TreeRangeSet merges ranges that touch or overlap, which ImmutableRangeSet.Builder rejects
         private final RangeSet<Integer> lines = TreeRangeSet.create();
         private final ImmutableRangeSet.Builder<Integer> characterRanges = ImmutableRangeSet.builder();
-        private final ImmutableList.Builder<Integer> offsets = ImmutableList.builder();
-        private final ImmutableList.Builder<Integer> lengths = ImmutableList.builder();
+        private final List<Integer> offsets = new ArrayList<>();
+        private final List<Integer> lengths = new ArrayList<>();
         private boolean inPlace = false;
-        private final ImmutableList.Builder<String> unsupportedFlags = ImmutableList.builder();
+        private final List<String> unsupportedFlags = new ArrayList<>();
         private boolean version = false;
         private boolean help = false;
         private boolean stdin = false;
@@ -206,7 +207,7 @@ final class CommandLineOptions {
 
         private Builder() {}
 
-        ImmutableList.Builder<String> filesBuilder() {
+        List<String> files() {
             return files;
         }
 
@@ -295,13 +296,13 @@ final class CommandLineOptions {
 
         CommandLineOptions build() {
             return new CommandLineOptions(
-                    files.build(),
+                    List.copyOf(files),
                     inPlace,
                     ImmutableRangeSet.copyOf(lines),
                     characterRanges.build(),
-                    offsets.build(),
-                    lengths.build(),
-                    unsupportedFlags.build(),
+                    List.copyOf(offsets),
+                    List.copyOf(lengths),
+                    List.copyOf(unsupportedFlags),
                     version,
                     help,
                     stdin,

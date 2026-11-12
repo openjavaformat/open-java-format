@@ -15,11 +15,11 @@
 package com.palantir.javaformat;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableRangeMap;
+import com.google.common.collect.RangeMap;
 import com.google.errorprone.annotations.Immutable;
 import com.palantir.javaformat.java.FormatterDiagnostic;
+import java.util.List;
+import java.util.Map;
 
 /** An input to the formatter. */
 public abstract class Input extends InputOutput {
@@ -77,7 +77,6 @@ public abstract class Input extends InputOutput {
     }
 
     /** A {@code Token} is a language-level token. */
-    @Immutable
     public interface Token {
         /**
          * Get the token's {@link Tok}.
@@ -91,14 +90,14 @@ public abstract class Input extends InputOutput {
          *
          * @return the earlier {@link Tok}s assigned to this {@code Token}
          */
-        ImmutableList<? extends Tok> getToksBefore();
+        List<? extends Tok> getToksBefore();
 
         /**
          * Get the later {@link Tok}s assigned to this {@code Token}.
          *
          * @return the later {@link Tok}s assigned to this {@code Token}
          */
-        ImmutableList<? extends Tok> getToksAfter();
+        List<? extends Tok> getToksAfter();
     }
 
     /**
@@ -106,12 +105,12 @@ public abstract class Input extends InputOutput {
      *
      * @return the input tokens
      */
-    public abstract ImmutableList<? extends Token> getTokens();
+    public abstract List<? extends Token> getTokens();
 
     /** A map from [start, end] position ranges to {@link Token}s. */
-    public abstract ImmutableRangeMap<Integer, ? extends Token> getPositionTokenMap();
+    public abstract RangeMap<Integer, ? extends Token> getPositionTokenMap();
 
-    public abstract ImmutableMap<Integer, Integer> getPositionToColumnMap();
+    public abstract Map<Integer, Integer> getPositionToColumnMap();
 
     public abstract String getText();
 

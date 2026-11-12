@@ -16,7 +16,7 @@
 package com.palantir.javaformat.gradle;
 
 import com.diffplug.gradle.spotless.SpotlessExtension;
-import com.google.common.collect.ImmutableList;
+import java.util.List;
 import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -25,8 +25,8 @@ import org.gradle.api.plugins.JavaPluginExtension;
 
 public abstract class PalantirJavaFormatSpotlessPlugin implements Plugin<Project> {
     // The spotless gradle plugin got renamed to 'com.diffplug.spotless' at version 5.0.0
-    private static final ImmutableList<String> SPOTLESS_PLUGINS =
-            ImmutableList.of("com.diffplug.gradle.spotless", "com.diffplug.spotless");
+    private static final List<String> SPOTLESS_PLUGINS =
+            List.of("com.diffplug.gradle.spotless", "com.diffplug.spotless");
 
     @Override
     public void apply(Project project) {

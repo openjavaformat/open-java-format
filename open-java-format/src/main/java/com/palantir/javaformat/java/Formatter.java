@@ -17,7 +17,6 @@ package com.palantir.javaformat.java;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
@@ -212,7 +211,7 @@ public final class Formatter {
         JCCompilationUnit unit;
         JavacFileManager fileManager = new JavacFileManager(context, true, UTF_8);
         try {
-            fileManager.setLocation(StandardLocation.PLATFORM_CLASS_PATH, ImmutableList.of());
+            fileManager.setLocation(StandardLocation.PLATFORM_CLASS_PATH, List.of());
         } catch (IOException e) {
             // impossible
             throw new UncheckedIOException(e);
@@ -291,7 +290,7 @@ public final class Formatter {
      * @throws FormatterException if the input string cannot be parsed
      */
     public String formatSource(String input) throws FormatterException {
-        return formatSource(input, ImmutableList.of(Range.closedOpen(0, input.length())));
+        return formatSource(input, List.of(Range.closedOpen(0, input.length())));
     }
 
     /**
@@ -346,7 +345,7 @@ public final class Formatter {
      * @return a list of {@link Replacement}s, sorted from low index to high index, without overlaps
      * @throws FormatterException if the input string cannot be parsed
      */
-    public ImmutableList<Replacement> getFormatReplacements(String input, Collection<Range<Integer>> characterRanges)
+    public List<Replacement> getFormatReplacements(String input, Collection<Range<Integer>> characterRanges)
             throws FormatterException {
         JavaInput javaInput = new JavaInput(input);
 

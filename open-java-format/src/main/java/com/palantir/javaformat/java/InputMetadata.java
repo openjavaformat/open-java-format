@@ -15,10 +15,9 @@
  */
 package com.palantir.javaformat.java;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableRangeSet;
-import com.google.errorprone.annotations.Immutable;
 import com.palantir.javaformat.OpsBuilder.BlankLineWanted;
+import java.util.Map;
 
 /**
  * Records metadata about the input, namely existing blank lines that we might want to preserve, as well as what ranges
@@ -29,6 +28,4 @@ import com.palantir.javaformat.OpsBuilder.BlankLineWanted;
  * @param partialFormatRanges marks regions that can be partially formatted, used to determine the actual ranges that
  *     will be formatted when ranges are requested
  */
-@Immutable
-public record InputMetadata(
-        ImmutableMap<Integer, BlankLineWanted> blankLines, ImmutableRangeSet<Integer> partialFormatRanges) {}
+public record InputMetadata(Map<Integer, BlankLineWanted> blankLines, ImmutableRangeSet<Integer> partialFormatRanges) {}

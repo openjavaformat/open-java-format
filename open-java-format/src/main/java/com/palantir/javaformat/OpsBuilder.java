@@ -19,10 +19,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
-import com.google.errorprone.annotations.Immutable;
 import com.palantir.javaformat.Indent.Const;
 import com.palantir.javaformat.Input.Tok;
 import com.palantir.javaformat.doc.Break;
@@ -45,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.StreamSupport;
 
 /** An {@code OpsBuilder} creates a list of {@link Op}s, which is turned into a {@link Doc} by {@link DocBuilder}. */
 public final class OpsBuilder {
@@ -85,7 +84,6 @@ public final class OpsBuilder {
     }
 
     /** A request to add or remove a blank line in the output. */
-    @Immutable
     public abstract static class BlankLineWanted {
 
         /** Always emit a blank line. */
@@ -108,7 +106,7 @@ public final class OpsBuilder {
 
         /** Emit a blank line if the given break is taken. */
         public static BlankLineWanted conditional(BreakTag breakTag) {
-            return new ConditionalBlankLine(ImmutableList.of(breakTag));
+            return new ConditionalBlankLine(List.of(breakTag));
         }
 
         private static final class SimpleBlankLine extends BlankLineWanted {
@@ -131,10 +129,10 @@ public final class OpsBuilder {
 
         private static final class ConditionalBlankLine extends BlankLineWanted {
 
-            private final ImmutableList<BreakTag> tags;
+            private final List<BreakTag> tags;
 
             ConditionalBlankLine(Iterable<BreakTag> tags) {
-                this.tags = ImmutableList.copyOf(tags);
+                this.tags = StreamSupport.stream(tags.spliterator(), false).toList();
             }
 
             @Override
@@ -233,7 +231,7 @@ public final class OpsBuilder {
      */
     public void sync(int inputPosition) {
         if (inputPosition > this.inputPosition) {
-            ImmutableList<? extends Input.Token> tokens = input.getTokens();
+            List<? extends Input.Token> tokens = input.getTokens();
             int tokensN = tokens.size();
             this.inputPosition = inputPosition;
             if (tokenI < tokensN && inputPosition > tokens.get(tokenI).getTok().getPosition()) {
@@ -249,7 +247,7 @@ public final class OpsBuilder {
     public void drain() {
         int inputPosition = input.getText().length() + 1;
         if (inputPosition > this.inputPosition) {
-            ImmutableList<? extends Input.Token> tokens = input.getTokens();
+            List<? extends Input.Token> tokens = input.getTokens();
             int tokensN = tokens.size();
             while (tokenI < tokensN
                     && inputPosition > tokens.get(tokenI).getTok().getPosition()) {
@@ -341,7 +339,7 @@ public final class OpsBuilder {
 
     /** Return the text of an upcoming {@link Input.Token}, or absent if there is none. */
     public Optional<String> peekToken(int skip) {
-        ImmutableList<? extends Input.Token> tokens = input.getTokens();
+        List<? extends Input.Token> tokens = input.getTokens();
         int idx = tokenI + skip;
         return idx < tokens.size() ? Optional.of(tokens.get(idx).getTok().getOriginalText()) : Optional.empty();
     }
@@ -361,7 +359,7 @@ public final class OpsBuilder {
             Token.RealOrImaginary realOrImaginary,
             Indent plusIndentCommentsBefore,
             Optional<Indent> breakAndIndentTrailingComment) {
-        ImmutableList<? extends Input.Token> tokens = input.getTokens();
+        List<? extends Input.Token> tokens = input.getTokens();
         if (token.equals(peekToken().orElse(null))) { // Found the input token. Output it.
             add(Token.make(
                     tokens.get(tokenI++),
@@ -521,7 +519,7 @@ public final class OpsBuilder {
 
     private static final NonBreakingSpace SPACE = NonBreakingSpace.make();
 
-    public record OpsOutput(ImmutableList<Op> ops, InputMetadata inputMetadata) {}
+    public record OpsOutput(List<Op> ops, InputMetadata inputMetadata) {}
 
     /** Build a list of {@link Op}s from the {@code OpsBuilder}. */
     public OpsOutput build() {
@@ -677,7 +675,7 @@ public final class OpsBuilder {
          * Construct new list of ops, splicing in the comments. If a comment is inserted immediately
          * before a space, suppress the space.
          */
-        ImmutableList.Builder<Op> newOps = ImmutableList.builder();
+        var newOps = new ArrayList<Op>();
         boolean afterForcedBreak = false; // Was the last Op a forced break? If so, suppress spaces.
         for (int i = 0; i < opsN; i++) {
             newOps.addAll(reservations.get(i));
@@ -709,7 +707,7 @@ public final class OpsBuilder {
                 afterForcedBreak = isForcedBreak(op);
             }
         }
-        return new OpsOutput(newOps.build(), inputMetadataBuilder.build());
+        return new OpsOutput(List.copyOf(newOps), inputMetadataBuilder.build());
     }
 
     private static boolean isNonNlsComment(Input.Tok tokAfter) {

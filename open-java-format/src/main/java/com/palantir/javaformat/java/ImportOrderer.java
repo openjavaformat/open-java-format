@@ -21,16 +21,17 @@ import static com.palantir.javaformat.java.JavaInput.buildToks;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableSortedSet;
 import com.palantir.javaformat.Newlines;
 import com.palantir.javaformat.java.JavaInput.Tok;
 import com.sun.tools.javac.parser.Tokens.TokenKind;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
@@ -46,7 +47,7 @@ public final class ImportOrderer {
      * @throws FormatterException if the input could not be parsed.
      */
     public static String reorderImports(String text, Style style) throws FormatterException {
-        ImmutableList<Tok> toks = buildToks(text, CLASS_START);
+        List<Tok> toks = buildToks(text, CLASS_START);
         return new ImportOrderer(text, toks, style).reorderImports();
     }
 
@@ -108,16 +109,14 @@ public final class ImportOrderer {
      * {@link TokenKind}s that indicate the start of a type definition. We use this to avoid scanning the whole file,
      * since we know that imports must precede any type definition.
      */
-    private static final ImmutableSet<TokenKind> CLASS_START =
-            ImmutableSet.of(TokenKind.CLASS, TokenKind.INTERFACE, TokenKind.ENUM);
+    private static final Set<TokenKind> CLASS_START = Set.of(TokenKind.CLASS, TokenKind.INTERFACE, TokenKind.ENUM);
 
     /**
      * We use this set to find the first import, and again to check that there are no imports after the place we stopped
      * gathering them. An annotation definition ({@code @interface}) is two tokens, the second which is
      * {@code interface}, so we don't need a separate entry for that.
      */
-    private static final ImmutableSet<String> IMPORT_OR_CLASS_START =
-            ImmutableSet.of("import", "class", "interface", "enum");
+    private static final Set<String> IMPORT_OR_CLASS_START = Set.of("import", "class", "interface", "enum");
 
     /**
      * A {@link Comparator} that orders {@link Import}s by Google Style, defined at
@@ -176,13 +175,13 @@ public final class ImportOrderer {
     }
 
     private final String text;
-    private final ImmutableList<Tok> toks;
+    private final List<Tok> toks;
     private final String lineSeparator;
     private final Comparator<Import> importComparator;
     private final BiFunction<Import, Import, Boolean> shouldInsertBlankLineFn;
 
     @SuppressWarnings("deprecation")
-    private ImportOrderer(String text, ImmutableList<Tok> toks, Style style) {
+    private ImportOrderer(String text, List<Tok> toks, Style style) {
         this.text = text;
         this.toks = toks;
         this.lineSeparator = Newlines.guessLineSeparator(text);
@@ -347,10 +346,10 @@ public final class ImportOrderer {
     }
 
     private static class ImportsAndIndex {
-        final ImmutableSortedSet<Import> imports;
+        final SortedSet<Import> imports;
         final int index;
 
-        ImportsAndIndex(ImmutableSortedSet<Import> imports, int index) {
+        ImportsAndIndex(SortedSet<Import> imports, int index) {
             this.imports = imports;
             this.index = index;
         }
@@ -376,7 +375,7 @@ public final class ImportOrderer {
      */
     private ImportsAndIndex scanImports(int i) throws FormatterException {
         int afterLastImport = i;
-        ImmutableSortedSet.Builder<Import> imports = ImmutableSortedSet.orderedBy(importComparator);
+        var imports = new TreeSet<Import>(importComparator);
         String leading = "";
         // JavaInput.buildToks appends a zero-width EOF token after all tokens. It won't match any
         // of our tests here and protects us from running off the end of the toks list. Since it is
@@ -457,11 +456,11 @@ public final class ImportOrderer {
                 i = next;
             }
         }
-        return new ImportsAndIndex(imports.build(), afterLastImport);
+        return new ImportsAndIndex(Collections.unmodifiableSortedSet(imports), afterLastImport);
     }
 
     // Produces the sorted output based on the imports we have scanned.
-    private String reorderedImportsString(ImmutableSortedSet<Import> imports) {
+    private String reorderedImportsString(SortedSet<Import> imports) {
         Preconditions.checkArgument(!imports.isEmpty(), "imports");
 
         // Pretend that the first import was preceded by another import of the same kind, so we don't
@@ -538,7 +537,7 @@ public final class ImportOrderer {
      * @param start the index to start looking at
      * @param identifiers the identifiers to look for
      */
-    private Optional<Integer> findIdentifier(int start, ImmutableSet<String> identifiers) {
+    private Optional<Integer> findIdentifier(int start, Set<String> identifiers) {
         for (int i = start; i < toks.size(); i++) {
             if (isIdentifierToken(i)) {
                 String id = tokenAt(i);

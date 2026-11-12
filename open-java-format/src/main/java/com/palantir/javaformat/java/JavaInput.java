@@ -22,13 +22,10 @@ import com.google.common.base.MoreObjects;
 import com.google.common.base.Suppliers;
 import com.google.common.base.Verify;
 import com.google.common.collect.DiscreteDomain;
-import com.google.common.collect.ImmutableCollection;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableRangeMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Range;
+import com.google.common.collect.RangeMap;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeSet;
 import com.google.errorprone.annotations.Immutable;
@@ -48,9 +45,13 @@ import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.DiagnosticListener;
@@ -197,11 +198,10 @@ public final class JavaInput extends Input {
      * {@link Tok}s, each preceded by the texts of its {@code toksBefore} and followed by the texts of its
      * {@code toksAfter}, equals the input.
      */
-    @Immutable
     static final class Token implements Input.Token {
         private final Tok tok;
-        private final ImmutableList<Tok> toksBefore;
-        private final ImmutableList<Tok> toksAfter;
+        private final List<Tok> toksBefore;
+        private final List<Tok> toksAfter;
 
         /**
          * Token constructor.
@@ -211,9 +211,9 @@ public final class JavaInput extends Input {
          * @param toksAfter the later non-token {link Tok}s assigned to this {@code Token}
          */
         Token(List<Tok> toksBefore, Tok tok, List<Tok> toksAfter) {
-            this.toksBefore = ImmutableList.copyOf(toksBefore);
+            this.toksBefore = List.copyOf(toksBefore);
             this.tok = tok;
-            this.toksAfter = ImmutableList.copyOf(toksAfter);
+            this.toksAfter = List.copyOf(toksAfter);
         }
 
         /**
@@ -232,7 +232,7 @@ public final class JavaInput extends Input {
          * @return the earlier {@link Tok}s assigned to this {@code Token}
          */
         @Override
-        public ImmutableList<? extends Input.Tok> getToksBefore() {
+        public List<? extends Input.Tok> getToksBefore() {
             return toksBefore;
         }
 
@@ -242,7 +242,7 @@ public final class JavaInput extends Input {
          * @return the later {@link Tok}s assigned to this {@code Token}
          */
         @Override
-        public ImmutableList<? extends Input.Tok> getToksAfter() {
+        public List<? extends Input.Tok> getToksAfter() {
             return toksAfter;
         }
 
@@ -268,9 +268,9 @@ public final class JavaInput extends Input {
      * output.
      */
 
-    private final ImmutableMap<Integer, Integer> positionToColumnMap; // Map Tok position to column.
+    private final Map<Integer, Integer> positionToColumnMap; // Map Tok position to column.
 
-    private final ImmutableList<Token> tokens; // The Tokens for this input.
+    private final List<Token> tokens; // The Tokens for this input.
     private final ImmutableRangeMap<Integer, Token> positionTokenMap; // Map position to Token.
 
     /** Map from Tok index to the associated Token. */
@@ -284,8 +284,10 @@ public final class JavaInput extends Input {
      */
     public JavaInput(String text) throws FormatterException {
         this.text = checkNotNull(text);
-        setLines(ImmutableList.copyOf(Newlines.lineIterator(text)));
-        ImmutableList<Tok> toks = buildToks(text);
+        var lines = new ArrayList<String>();
+        Newlines.lineIterator(text).forEachRemaining(lines::add);
+        setLines(List.copyOf(lines));
+        List<Tok> toks = buildToks(text);
         positionToColumnMap = makePositionToColumnMap(toks);
         tokens = buildTokens(toks);
         ImmutableRangeMap.Builder<Integer, Token> tokenLocations = ImmutableRangeMap.builder();
@@ -318,12 +320,8 @@ public final class JavaInput extends Input {
         }
     }
 
-    private static ImmutableMap<Integer, Integer> makePositionToColumnMap(List<Tok> toks) {
-        ImmutableMap.Builder<Integer, Integer> builder = ImmutableMap.builder();
-        for (Tok tok : toks) {
-            builder.put(tok.getPosition(), tok.getColumn());
-        }
-        return builder.buildOrThrow();
+    private static Map<Integer, Integer> makePositionToColumnMap(List<Tok> toks) {
+        return toks.stream().collect(Collectors.toUnmodifiableMap(Tok::getPosition, Tok::getColumn));
     }
 
     /**
@@ -337,7 +335,7 @@ public final class JavaInput extends Input {
     }
 
     @Override
-    public ImmutableMap<Integer, Integer> getPositionToColumnMap() {
+    public Map<Integer, Integer> getPositionToColumnMap() {
         return positionToColumnMap;
     }
 
@@ -346,8 +344,8 @@ public final class JavaInput extends Input {
     }
 
     /** Lex the input and build the list of toks. */
-    private ImmutableList<Tok> buildToks(String text) throws FormatterException {
-        ImmutableList<Tok> toks = buildToks(text, ImmutableSet.of());
+    private List<Tok> buildToks(String text) throws FormatterException {
+        List<Tok> toks = buildToks(text, Set.of());
         kN = getLast(toks).getIndex();
         computeRanges(toks);
         return toks;
@@ -360,11 +358,9 @@ public final class JavaInput extends Input {
      * @param stopTokens a set of tokens which should cause lexing to stop. If one of these is found, the returned list
      *     will include tokens up to but not including that token.
      */
-    static ImmutableList<Tok> buildToks(String text, ImmutableSet<TokenKind> stopTokens) throws FormatterException {
-        stopTokens = ImmutableSet.<TokenKind>builder()
-                .addAll(stopTokens)
-                .add(TokenKind.EOF)
-                .build();
+    static List<Tok> buildToks(String text, Set<TokenKind> stopTokens) throws FormatterException {
+        var stopAt = new HashSet<>(stopTokens);
+        stopAt.add(TokenKind.EOF);
         Context context = new Context();
         Options.instance(context).put("--enable-preview", "true");
         new JavacFileManager(context, true, UTF_8);
@@ -378,16 +374,16 @@ public final class JavaInput extends Input {
             }
         });
         DeferredDiagnosticHandler diagnostics = new DeferredDiagnosticHandler(log);
-        ImmutableList<RawTok> rawToks = JavacTokens.getTokens(text, context, stopTokens);
+        List<RawTok> rawToks = JavacTokens.getTokens(text, context, stopAt);
         if (getDiagnostics(diagnostics).stream().anyMatch(d -> d.getKind() == Diagnostic.Kind.ERROR)) {
-            return ImmutableList.of(new Tok(0, "", "", 0, 0, true, null)); // EOF
+            return List.of(new Tok(0, "", "", 0, 0, true, null)); // EOF
         }
         int kN = 0;
         List<Tok> toks = new ArrayList<>();
         int charI = 0;
         int columnI = 0;
         for (RawTok t : rawToks) {
-            if (stopTokens.contains(t.kind())) {
+            if (stopAt.contains(t.kind())) {
                 break;
             }
             int charI0 = t.pos();
@@ -476,7 +472,7 @@ public final class JavaInput extends Input {
             }
         }
         toks.add(new Tok(kN, "", "", charI, columnI, true, null)); // EOF tok.
-        return ImmutableList.copyOf(toks);
+        return List.copyOf(toks);
     }
 
     /**
@@ -564,13 +560,13 @@ public final class JavaInput extends Input {
         return columnI;
     }
 
-    private static ImmutableList<Token> buildTokens(List<Tok> toks) {
-        ImmutableList.Builder<Token> tokens = ImmutableList.builder();
+    private static List<Token> buildTokens(List<Tok> toks) {
+        var tokens = new ArrayList<Token>();
         int k = 0;
         int kN = toks.size();
 
         // Remaining non-tokens before the token go here.
-        ImmutableList.Builder<Tok> toksBefore = ImmutableList.builder();
+        var toksBefore = new ArrayList<Tok>();
 
         OUTERMOST:
         while (k < kN) {
@@ -587,7 +583,7 @@ public final class JavaInput extends Input {
             Tok tok = toks.get(k++);
 
             // Non-tokens starting on the same line go here too.
-            ImmutableList.Builder<Tok> toksAfter = ImmutableList.builder();
+            var toksAfter = new ArrayList<Tok>();
             OUTER:
             while (k < kN && !toks.get(k).isToken()) {
                 // Don't attach inline comments to certain leading tokens, e.g. for `f(/*flag1=*/true).
@@ -614,8 +610,9 @@ public final class JavaInput extends Input {
                     }
                 }
                 if (isParamComment(toks.get(k))) {
-                    tokens.add(new Token(toksBefore.build(), tok, toksAfter.build()));
-                    toksBefore = ImmutableList.<Tok>builder().add(toks.get(k++));
+                    tokens.add(new Token(List.copyOf(toksBefore), tok, List.copyOf(toksAfter)));
+                    toksBefore = new ArrayList<>();
+                    toksBefore.add(toks.get(k++));
                     // drop newlines after parameter comments
                     while (toks.get(k).isNewline()) {
                         k++;
@@ -628,10 +625,10 @@ public final class JavaInput extends Input {
                     break;
                 }
             }
-            tokens.add(new Token(toksBefore.build(), tok, toksAfter.build()));
-            toksBefore = ImmutableList.builder();
+            tokens.add(new Token(List.copyOf(toksBefore), tok, List.copyOf(toksAfter)));
+            toksBefore = new ArrayList<>();
         }
-        return tokens.build();
+        return List.copyOf(tokens);
     }
 
     private static boolean isParamComment(Tok tok) {
@@ -659,7 +656,7 @@ public final class JavaInput extends Input {
             // 0 stands for "format the line under the cursor"
             length = 1;
         }
-        ImmutableCollection<Token> enclosed = getPositionTokenMap()
+        Collection<Token> enclosed = getPositionTokenMap()
                 .subRangeMap(Range.closedOpen(offset, offset + length))
                 .asMapOfRanges()
                 .values();
@@ -695,7 +692,7 @@ public final class JavaInput extends Input {
      * @return the input tokens
      */
     @Override
-    public ImmutableList<? extends Input.Token> getTokens() {
+    public List<? extends Input.Token> getTokens() {
         return tokens;
     }
 
@@ -706,7 +703,7 @@ public final class JavaInput extends Input {
      * @return the navigable map from position to {@link Token}
      */
     @Override
-    public ImmutableRangeMap<Integer, Token> getPositionTokenMap() {
+    public RangeMap<Integer, Token> getPositionTokenMap() {
         return positionTokenMap;
     }
 

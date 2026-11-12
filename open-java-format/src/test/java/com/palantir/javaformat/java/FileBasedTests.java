@@ -23,13 +23,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.io.CharStreams;
-import com.google.common.reflect.ClassPath;
-import com.google.common.reflect.ClassPath.ResourceInfo;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -74,12 +73,32 @@ public final class FileBasedTests {
                 Formatter.getRuntimeVersion() >= version, String.format("Not running on jdk %d or later", version)));
     }
 
+    /** The names of the resources under {@link #resourcePrefix}, in every directory of the class path that has it. */
+    private List<String> resourceNames(ClassLoader classLoader) throws IOException {
+        var names = new ArrayList<String>();
+        var roots = classLoader.getResources(resourcePrefix.toString().replace('\\', '/'));
+        while (roots.hasMoreElements()) {
+            Path root;
+            try {
+                root = Path.of(roots.nextElement().toURI());
+            } catch (URISyntaxException e) {
+                throw new IllegalStateException(e);
+            }
+            try (var files = Files.walk(root)) {
+                files.filter(Files::isRegularFile)
+                        .map(file ->
+                                resourcePrefix.resolve(root.relativize(file)).toString())
+                        .forEach(names::add);
+            }
+        }
+        return names;
+    }
+
     public List<Object[]> paramsAsNameInputOutput() throws IOException {
         ClassLoader classLoader = testClass.getClassLoader();
         Map<String, String> inputs = new TreeMap<>();
         Map<String, String> outputs = new TreeMap<>();
-        for (ResourceInfo resourceInfo : ClassPath.from(classLoader).getResources()) {
-            String resourceName = resourceInfo.getResourceName();
+        for (String resourceName : resourceNames(classLoader)) {
             Path resourceNamePath = Paths.get(resourceName);
             if (resourceNamePath.startsWith(resourcePrefix)) {
                 Path subPath = resourcePrefix.relativize(resourceNamePath);

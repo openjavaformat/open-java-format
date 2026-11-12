@@ -19,7 +19,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.DiscreteDomain;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeSet;
@@ -234,7 +233,7 @@ public final class JavaOutput extends Output {
             ranges.add(Formatter.EMPTY_RANGE);
         }
         ranges.add(eofRange);
-        setLines(ImmutableList.copyOf(mutableLines));
+        setLines(List.copyOf(mutableLines));
     }
 
     // The following methods can be used after the Output has been built.
@@ -244,8 +243,8 @@ public final class JavaOutput extends Output {
      *
      * @return a list of {@link Replacement}s, sorted by start index, without overlaps
      */
-    public ImmutableList<Replacement> getFormatReplacements(RangeSet<Integer> iRangeSet0) {
-        ImmutableList.Builder<Replacement> result = ImmutableList.builder();
+    public List<Replacement> getFormatReplacements(RangeSet<Integer> iRangeSet0) {
+        var result = new ArrayList<Replacement>();
         Map<Integer, Range<Integer>> kToJ = JavaOutput.makeKToIJ(this);
 
         // Expand the token ranges to align with re-formattable boundaries.
@@ -348,7 +347,7 @@ public final class JavaOutput extends Output {
 
             result.add(Replacement.create(replaceFrom, replaceTo, replacement.toString()));
         }
-        return result.build();
+        return List.copyOf(result);
     }
 
     /**

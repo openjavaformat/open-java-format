@@ -16,10 +16,7 @@
 
 package com.palantir.javaformat.java.java14;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
-
 import com.google.common.base.Verify;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.palantir.javaformat.Op;
 import com.palantir.javaformat.OpsBuilder;
@@ -46,6 +43,7 @@ import com.sun.tools.javac.tree.TreeInfo;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.lang.model.element.Name;
 import org.jspecify.annotations.Nullable;
 
@@ -197,7 +195,7 @@ public class Java14InputAstVisitor extends JavaInputAstVisitor {
             if (!node.getTypeParameters().isEmpty()) {
                 typeParametersRest(node.getTypeParameters(), hasSuperInterfaceTypes ? plusFour : ZERO);
             }
-            ImmutableList<JCVariableDecl> parameters = recordVariables(node);
+            List<JCVariableDecl> parameters = recordVariables(node);
             token("(");
             if (!parameters.isEmpty()) {
                 // Break before args.
@@ -229,18 +227,18 @@ public class Java14InputAstVisitor extends JavaInputAstVisitor {
         } else {
             List<Tree> members = node.getMembers().stream()
                     .filter(t -> (TreeInfo.flags((JCTree) t) & Flags.GENERATED_MEMBER) == 0)
-                    .collect(toImmutableList());
+                    .collect(Collectors.toUnmodifiableList());
             addBodyDeclarations(members, BracesOrNot.YES, FirstDeclarationsOrNot.YES);
         }
         dropEmptyDeclarations();
     }
 
-    private static ImmutableList<JCTree.JCVariableDecl> recordVariables(ClassTree node) {
+    private static List<JCTree.JCVariableDecl> recordVariables(ClassTree node) {
         return node.getMembers().stream()
                 .filter(JCTree.JCVariableDecl.class::isInstance)
                 .map(JCTree.JCVariableDecl.class::cast)
                 .filter(m -> (m.mods.flags & RECORD) == RECORD)
-                .collect(toImmutableList());
+                .toList();
     }
 
     @Override

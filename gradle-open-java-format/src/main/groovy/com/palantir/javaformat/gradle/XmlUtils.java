@@ -16,7 +16,6 @@
 
 package com.palantir.javaformat.gradle;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 import groovy.util.Node;
 import groovy.xml.XmlNodePrinter;
@@ -26,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
+import java.util.Map;
 import java.util.function.Consumer;
 import javax.xml.parsers.ParserConfigurationException;
 import org.xml.sax.SAXException;
@@ -41,7 +41,7 @@ public class XmlUtils {
                 throw new RuntimeException("Couldn't parse existing configuration file: " + configurationFile, e);
             }
         } else {
-            rootNode = new Node(null, "project", ImmutableMap.of("version", "4"));
+            rootNode = new Node(null, "project", Map.of("version", "4"));
         }
 
         configure.accept(rootNode);
