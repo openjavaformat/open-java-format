@@ -24,6 +24,7 @@ import com.google.common.collect.Range;
 import com.palantir.javaformat.Utils;
 import com.palantir.javaformat.java.FormatterException;
 import com.palantir.javaformat.java.FormatterService;
+import com.palantir.javaformat.java.FormatterServiceImpl;
 import com.palantir.javaformat.java.Replacement;
 import java.io.File;
 import java.net.URI;
@@ -96,11 +97,45 @@ final class FormatterServicesTest {
                 .isEmpty();
     }
 
+    @ParameterizedTest
+    @MethodSource("getFormattersAndTheInProcessOne")
+    void reflows_the_long_strings_of_the_ranges_only(FormatterService formatterService) throws FormatterException {
+        String input = """
+            class S {
+                String outside = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat sed.";
+
+                String changed = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna.";
+            }
+            """;
+        String expectedOutput = """
+            class S {
+                String outside = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat sed.";
+
+                String changed =
+                        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et"
+                                + " dolore magna.";
+            }
+            """;
+        int start = input.indexOf("    String changed");
+        int end = input.indexOf('\n', start);
+
+        List<Replacement> replacements =
+                formatterService.getFormatReplacements(input, List.of(Range.closedOpen(start, end)));
+
+        assertThat(Utils.applyReplacements(input, replacements)).isEqualTo(expectedOutput);
+    }
+
     private static Stream<FormatterService> getFormatters() {
         return Stream.of(
                 new BootstrappingFormatterService(
                         javaBinPath(), Runtime.version().feature(), getClasspath()),
                 new NativeImageFormatterService(Path.of(System.getenv("NATIVE_IMAGE_CLASSPATH"))));
+    }
+
+    // With the one that formats in this JVM, as formatDiff does without the native binary. On input that does not parse
+    // it throws, where the other two return no replacements, so it is not among getFormatters.
+    private static Stream<FormatterService> getFormattersAndTheInProcessOne() {
+        return Stream.concat(Stream.of(new FormatterServiceImpl()), getFormatters());
     }
 
     private String getTestResourceContent(String resourceName) {

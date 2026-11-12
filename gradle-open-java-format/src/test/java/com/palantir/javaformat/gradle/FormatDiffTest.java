@@ -69,11 +69,7 @@ final class FormatDiffTest {
     @MethodSource("getFormatters")
     void reformat_a_subpath_of_a_git_directory_for_only_changed_lines(FormatterService formatterService)
             throws IOException, InterruptedException {
-        runCommandInRepo("git", "init");
-        runCommandInRepo("git", "config", "user.name", "Test User");
-        runCommandInRepo("git", "config", "user.email", "test-user@palantir.com");
-        runCommandInRepo("git", "config", "commit.gpgsign", "false");
-        runCommandInRepo("git", "commit", "--allow-empty", "-m", "Init");
+        initRepo();
 
         Path subdir = repo.resolve("subdir");
         Files.createDirectories(subdir);
@@ -92,6 +88,52 @@ final class FormatDiffTest {
         assertThat(dontTouchMe).hasContent("                                 class DontTouchMe {}");
     }
 
+    @ParameterizedTest
+    @MethodSource("getFormatters")
+    void reflows_the_long_strings_of_changed_lines_only(FormatterService formatterService)
+            throws IOException, InterruptedException {
+        initRepo();
+        String outside = "    String outside = \"Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris"
+                + " nisi ut aliquip ex ea commodo consequat sed.\";";
+        Path longStrings = repo.resolve("LongStrings.java");
+        Files.write(longStrings, List.of("class LongStrings {", outside, "}"), UTF_8);
+        runCommandInRepo("git", "add", ".");
+        runCommandInRepo("git", "commit", "-m", "A long string");
+
+        Files.write(
+                longStrings,
+                List.of(
+                        "class LongStrings {",
+                        outside,
+                        "",
+                        "    String changed = \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod"
+                                + " tempor incididunt ut labore et dolore magna.\";",
+                        "}"),
+                UTF_8);
+
+        FormatDiff.formatDiff(repo, formatterService);
+
+        assertThat(longStrings)
+                .hasContent(String.join(
+                        "\n",
+                        "class LongStrings {",
+                        outside,
+                        "",
+                        "    String changed =",
+                        "            \"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor"
+                                + " incididunt ut labore et\"",
+                        "                    + \" dolore magna.\";",
+                        "}"));
+    }
+
+    private void initRepo() throws IOException, InterruptedException {
+        runCommandInRepo("git", "init");
+        runCommandInRepo("git", "config", "user.name", "Test User");
+        runCommandInRepo("git", "config", "user.email", "test-user@palantir.com");
+        runCommandInRepo("git", "config", "commit.gpgsign", "false");
+        runCommandInRepo("git", "commit", "--allow-empty", "-m", "Init");
+    }
+
     private void runCommandInRepo(String... args) throws IOException, InterruptedException {
         Process process =
                 new ProcessBuilder().command(args).directory(repo.toFile()).start();
@@ -107,6 +149,9 @@ final class FormatDiffTest {
 
     private static Stream<FormatterService> getFormatters() throws IOException {
         return Stream.of(
+                // In this JVM, as formatDiff runs it without the native binary.
+                FormatterServiceLoader.load(
+                        getClasspath().stream().map(Path::toFile).toList()),
                 new BootstrappingFormatterService(
                         javaBinPath(), Runtime.version().feature(), getClasspath()),
                 new NativeImageFormatterService(
