@@ -96,7 +96,7 @@ public final class Main {
      *
      * @param args the command-line arguments
      */
-    public int format(String... args) throws UsageException {
+    int format(String... args) throws UsageException {
         CommandLineOptions parameters = processArgs(args);
 
         if (parameters.version()) {
@@ -251,7 +251,7 @@ public final class Main {
     }
 
     /** Parses and validates command-line flags. */
-    public static CommandLineOptions processArgs(String... args) throws UsageException {
+    static CommandLineOptions processArgs(String... args) throws UsageException {
         CommandLineOptions parameters;
         try {
             parameters = CommandLineOptionsParser.parse(Arrays.asList(args));
