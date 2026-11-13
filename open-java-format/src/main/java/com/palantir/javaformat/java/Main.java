@@ -146,7 +146,7 @@ public final class Main {
             Path path = Paths.get(fileName);
             String input;
             try {
-                input = new String(Files.readAllBytes(path), UTF_8);
+                input = Files.readString(path);
                 inputs.put(path, input);
                 results.put(path, executorService.submit(new FormatFileCallable(parameters, input, options)));
             } catch (IOException e) {
