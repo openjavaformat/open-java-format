@@ -64,7 +64,7 @@ public final class BootstrappingFormatterService implements FormatterService {
     @Override
     public String formatSourceReflowStringsAndFixImports(String input) {
         try {
-            return runFormatterCommand(input);
+            return runFormatterCommand(input, /* fixImportsOnly= */ false);
         } catch (IOException e) {
             throw new UncheckedIOException("Error running formatter command", e);
         }
@@ -73,7 +73,7 @@ public final class BootstrappingFormatterService implements FormatterService {
     @Override
     public String fixImports(String input) throws FormatterException {
         try {
-            return runFormatterCommand(input);
+            return runFormatterCommand(input, /* fixImportsOnly= */ true);
         } catch (IOException e) {
             throw new UncheckedIOException("Error running formatter command", e);
         }
@@ -86,6 +86,7 @@ public final class BootstrappingFormatterService implements FormatterService {
                 jdkPath,
                 jvmArgsForVersion(jdkMajorVersion),
                 implementationClassPath,
+                /* fixImportsOnly= */ false,
                 /* outputReplacements= */ true,
                 ranges.stream().map(RangeUtils::toStringRange).toList());
 
@@ -97,11 +98,12 @@ public final class BootstrappingFormatterService implements FormatterService {
         return MAPPER.readValue(output.get(), new TypeReference<>() {});
     }
 
-    private String runFormatterCommand(String input) throws IOException {
+    private String runFormatterCommand(String input, boolean fixImportsOnly) throws IOException {
         FormatterCliArgs command = new FormatterCliArgs(
                 jdkPath,
                 jvmArgsForVersion(jdkMajorVersion),
                 implementationClassPath,
+                fixImportsOnly,
                 /* outputReplacements= */ false,
                 /* characterRanges= */ List.of());
         return FormatterCommandRunner.runWithStdin(command.toArgs(), input, Optional.ofNullable(jdkPath.getParent()))
@@ -124,6 +126,7 @@ public final class BootstrappingFormatterService implements FormatterService {
             Path jdkPath,
             List<String> jvmArgs,
             List<Path> implementationClasspath,
+            boolean fixImportsOnly,
             boolean outputReplacements,
             List<String> characterRanges) {
 
@@ -137,6 +140,9 @@ public final class BootstrappingFormatterService implements FormatterService {
                     .collect(Collectors.joining(System.getProperty("path.separator"))));
             args.add(FORMATTER_MAIN_CLASS);
 
+            if (fixImportsOnly) {
+                args.add("--fix-imports-only");
+            }
             if (!characterRanges.isEmpty()) {
                 args.add("--character-ranges");
                 args.add(Joiner.on(',').join(characterRanges));

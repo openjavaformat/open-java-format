@@ -65,6 +65,15 @@ final class FormatterServicesTest {
 
     @ParameterizedTest
     @MethodSource("getFormatters")
+    void fixes_only_the_imports(FormatterService formatterService) throws FormatterException {
+        String input = getTestResourceContent("fix-imports.input");
+        String expectedOutput = getTestResourceContent("fix-imports.output");
+
+        assertThat(formatterService.fixImports(input)).isEqualTo(expectedOutput);
+    }
+
+    @ParameterizedTest
+    @MethodSource("getFormatters")
     void can_format_large_input_file(FormatterService formatterService) throws FormatterException {
         String input = "class A {\n"
                 + "  void f(){\n"
@@ -112,7 +121,7 @@ final class FormatterServicesTest {
         }
     }
 
-    private static List<Path> getClasspath() {
+    static List<Path> getClasspath() {
         String classpath = System.getProperty("java.class.path");
         return Splitter.on(File.pathSeparatorChar)
                 .trimResults()
@@ -122,7 +131,7 @@ final class FormatterServicesTest {
                 .toList();
     }
 
-    private static Path javaBinPath() {
+    static Path javaBinPath() {
         String javaHome = Preconditions.checkNotNull(System.getProperty("java.home"), "java.home property not set");
         return Path.of(javaHome).resolve("bin").resolve("java" + (isWindows() ? ".exe" : ""));
     }
