@@ -15,6 +15,7 @@
 package com.palantir.javaformat.java;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Optional.ofNullable;
 
 import com.google.common.io.ByteStreams;
 import com.palantir.javaformat.java.JavaFormatterOptions.Style;
@@ -30,7 +31,6 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -96,12 +96,14 @@ public final class Main {
      *
      * @param args the command-line arguments
      */
-    public int format(String... args) throws UsageException {
+    int format(String... args) throws UsageException {
         CommandLineOptions parameters = processArgs(args);
+
         if (parameters.version()) {
             errWriter.println(versionString());
             return 0;
         }
+
         if (parameters.help()) {
             throw new UsageException();
         }
@@ -144,7 +146,7 @@ public final class Main {
             Path path = Paths.get(fileName);
             String input;
             try {
-                input = new String(Files.readAllBytes(path), UTF_8);
+                input = Files.readString(path);
                 inputs.put(path, input);
                 results.put(path, executorService.submit(new FormatFileCallable(parameters, input, options)));
             } catch (IOException e) {
@@ -153,9 +155,10 @@ public final class Main {
             }
         }
 
-        for (Map.Entry<Path, Future<String>> result : results.entrySet()) {
+        for (var result : results.entrySet()) {
             Path path = result.getKey();
             String formatted;
+
             try {
                 formatted = result.getValue().get();
             } catch (InterruptedException e) {
@@ -163,21 +166,24 @@ public final class Main {
                 allOk = false;
                 continue;
             } catch (ExecutionException e) {
-                if (e.getCause() instanceof FormatterException) {
-                    for (FormatterDiagnostic diagnostic : ((FormatterException) e.getCause()).diagnostics()) {
+                var cause = e.getCause();
+
+                if (cause instanceof FormatterException formatterException) {
+                    for (FormatterDiagnostic diagnostic : formatterException.diagnostics()) {
                         errWriter.println(path + ":" + diagnostic);
                     }
                 } else {
                     errWriter.println(path + ": error: "
-                            + Optional.ofNullable(e.getCause())
-                                    .map(Throwable::getMessage)
-                                    .orElse("null"));
-                    Optional.ofNullable(e.getCause()).ifPresent(cause -> cause.printStackTrace(errWriter));
+                            + ofNullable(cause).map(Throwable::getMessage).orElse("null"));
+
+                    ofNullable(cause).ifPresent(c -> c.printStackTrace(errWriter));
                 }
                 allOk = false;
                 continue;
             }
+
             boolean changed = !formatted.equals(inputs.get(path));
+
             if (changed && parameters.setExitIfChanged()) {
                 anyChanged = true;
             }
@@ -186,11 +192,11 @@ public final class Main {
                     continue; // preserve original file
                 }
                 try {
-                    Files.write(path, formatted.getBytes(UTF_8));
+                    Files.writeString(path, formatted);
                 } catch (IOException e) {
                     errWriter.println(path + ": could not write file: " + e.getMessage());
+
                     allOk = false;
-                    continue;
                 }
             } else if (parameters.dryRun()) {
                 if (changed) {
@@ -245,7 +251,7 @@ public final class Main {
     }
 
     /** Parses and validates command-line flags. */
-    public static CommandLineOptions processArgs(String... args) throws UsageException {
+    static CommandLineOptions processArgs(String... args) throws UsageException {
         CommandLineOptions parameters;
         try {
             parameters = CommandLineOptionsParser.parse(Arrays.asList(args));
@@ -255,7 +261,9 @@ public final class Main {
             t.printStackTrace();
             throw new UsageException(Objects.requireNonNullElse(t.getMessage(), "null"));
         }
+
         int filesToFormat = parameters.files().size();
+
         if (parameters.stdin()) {
             filesToFormat++;
         }
@@ -281,6 +289,7 @@ public final class Main {
         if (parameters.dryRun() && parameters.inPlace()) {
             throw new UsageException("cannot use --dry-run and --replace at the same time");
         }
+
         return parameters;
     }
 }
