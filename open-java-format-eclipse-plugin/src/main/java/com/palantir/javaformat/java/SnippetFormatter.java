@@ -101,7 +101,8 @@ public class SnippetFormatter {
             if (kind != SnippetKind.COMPILATION_UNIT) {
                 throw new IllegalArgumentException("comment formatting is only supported for compilation units");
             }
-            return formatter.getFormatReplacements(source, ranges);
+            // A whole file, as the editor formats it: the ranges reflow their long strings, as on the command line.
+            return formatter.getFormatAndReflowReplacements(source, rangeSet);
         }
         SnippetWrapper wrapper = snippetWrapper(kind, source, initialIndent);
         ranges = offsetRanges(ranges, wrapper.offset);
