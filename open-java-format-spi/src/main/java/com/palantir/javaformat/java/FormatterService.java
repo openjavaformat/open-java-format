@@ -28,9 +28,6 @@ public interface FormatterService {
     /**
      * Emit a list of {@link Replacement}s to convert from input to formatted output.
      *
-     * <p>The ranges are formatted, and the long strings in the code that formatting them rewrites are reflowed; the
-     * imports, and the strings elsewhere, stay as they are.
-     *
      * @param input the input compilation unit
      * @param ranges the character ranges to reformat
      * @return a list of {@link Replacement}s, sorted from low index to high index, without overlaps

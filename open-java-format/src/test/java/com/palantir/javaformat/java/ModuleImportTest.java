@@ -115,10 +115,16 @@ final class ModuleImportTest {
         assertThat(Formatter.create().fixImports(input)).isEqualTo(reordered);
         assertThat(Formatter.create().fixImports(reordered)).isEqualTo(reordered);
 
-        // Formatting breaks the line after the dot, which is where the formatter puts a comment in a
-        // qualified name, and reordering, which comes after it as on the command line, joins it again.
-        assertThat(Formatter.create().formatSourceAndFixImports(input)).isEqualTo(reordered);
-        assertThat(Formatter.create().formatSourceAndFixImports(reordered)).isEqualTo(reordered);
+        // Formatting then breaks the line after the dot, which is where the formatter puts a comment
+        // in a qualified name; that output is stable too.
+        String formatted = """
+            import module java.
+            /* comment */ base;
+
+            class Example {}
+            """;
+        assertThat(Formatter.create().formatSourceAndFixImports(input)).isEqualTo(formatted);
+        assertThat(Formatter.create().formatSourceAndFixImports(formatted)).isEqualTo(formatted);
     }
 
     @Test

@@ -18,7 +18,6 @@ package com.palantir.javaformat.java;
 import com.google.auto.service.AutoService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
-import com.google.common.collect.TreeRangeSet;
 import com.palantir.javaformat.java.JavaFormatterOptions.Style;
 import java.util.Collection;
 
@@ -37,8 +36,7 @@ public final class FormatterServiceImpl implements FormatterService {
     @SuppressForbidden(reason = "FormatterService, kept in the SPI for compatibility, returns ImmutableList")
     public ImmutableList<Replacement> getFormatReplacements(String text, Collection<Range<Integer>> toRanges)
             throws FormatterException {
-        // What the command line prints for --output-replacements, which the bootstrapping and native services run.
-        return ImmutableList.copyOf(formatter.getFormatAndReflowReplacements(text, TreeRangeSet.create(toRanges)));
+        return ImmutableList.copyOf(formatter.getFormatReplacements(text, toRanges));
     }
 
     @Override

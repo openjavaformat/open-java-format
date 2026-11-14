@@ -296,8 +296,7 @@ public final class Formatter {
     /**
      * Formats an input string (a Java compilation unit) and fixes imports.
      *
-     * <p>Fixing imports includes ordering, spacing, and removal of unused import statements. Long strings are reflowed
-     * too, and the result is what {@code open-java-format -} prints with no flags.
+     * <p>Fixing imports includes ordering, spacing, and removal of unused import statements.
      *
      * @param input the input string
      * @return the output string
@@ -306,10 +305,9 @@ public final class Formatter {
      * Style Guide - 3.3.3 Import ordering and spacing</a>
      */
     public String formatSourceAndFixImports(String input) throws FormatterException {
-        // The imports are fixed after formatting, as the command line fixes them: it has to format first, because the
-        // ranges it formats are offsets into the input. In the other order the comment of a removed import ends up
-        // elsewhere, and an extraneous semicolon between imports is dropped where the command line fails the file.
-        String formatted = fixImports(formatSource(input));
+        input = ImportOrderer.reorderImports(input, options.style());
+        input = RemoveUnusedImports.removeUnusedImports(input);
+        String formatted = formatSource(input);
         return StringWrapper.wrap(options.maxLineLength(), formatted, this);
     }
 
@@ -365,28 +363,5 @@ public final class Formatter {
         }
         RangeSet<Integer> tokenRangeSet = javaInput.characterRangesToTokenRanges(characterRanges);
         return javaOutput.getFormatReplacements(tokenRangeSet);
-    }
-
-    /**
-     * Emit the {@link Replacement}s that format the given character ranges and reflow the long strings in the code
-     * that formatting them rewrites; the imports, and the strings elsewhere, stay as they are. The command line prints
-     * these for {@code --output-replacements}, and {@link FormatterServiceImpl#getFormatReplacements} returns them,
-     * so that {@code formatDiff} and IntelliJ IDEA format the same on the JVM and with the native binary.
-     */
-    List<Replacement> getFormatAndReflowReplacements(String input, RangeSet<Integer> characterRanges)
-            throws FormatterException {
-        List<Replacement> replacements = getFormatReplacements(input, characterRanges.asRanges());
-        String formatted = Utils.applyReplacements(input, replacements);
-        RangeSet<Integer> formattedRanges = StringWrapper.moveRanges(characterRanges, replacements);
-        // avoid trying to wrap the input unless the lines needing wrapping are part of the ranges
-        if (!StringWrapper.linesNeedWrapping(options.maxLineLength(), formatted, formattedRanges)) {
-            return replacements;
-        }
-        String wrapped = StringWrapper.wrap(options.maxLineLength(), formatted, formattedRanges, this);
-        // if no wrapping change happened, return the initial replacements
-        if (wrapped.equals(formatted)) {
-            return replacements;
-        }
-        return List.of(Replacement.create(0, input.length(), wrapped));
     }
 }

@@ -19,7 +19,6 @@ import static java.util.stream.Collectors.joining;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Verify;
-import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
 import com.google.common.collect.TreeRangeMap;
@@ -42,7 +41,6 @@ import com.sun.tools.javac.util.Position;
 import com.sun.tools.javac.util.Position.LineMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
@@ -74,30 +72,16 @@ public final class StringWrapper {
      * adjacent string literals that share a line.
      */
     static String wrap(final int columnLimit, String input, Formatter formatter) throws FormatterException {
-        return wrap(columnLimit, new Source(input, null), formatter).text();
-    }
-
-    /**
-     * Reflows, as {@link #wrap(int, String, Formatter)} does, only the string literals and text blocks that overlap
-     * the given character ranges: when part of a file is formatted, the long strings in the rest of it stay as they
-     * are.
-     */
-    static String wrap(final int columnLimit, String input, RangeSet<Integer> characterRanges, Formatter formatter)
-            throws FormatterException {
-        return wrap(columnLimit, new Source(input, characterRanges), formatter).text();
-    }
-
-    private static Source wrap(final int columnLimit, Source input, Formatter formatter) throws FormatterException {
-        Source result = wrapOnce(columnLimit, input, formatter);
-        for (int round = 1; round < MAX_ROUNDS && !result.text().equals(input.text()); round++) {
+        String result = wrapOnce(columnLimit, input, formatter);
+        for (int round = 1; round < MAX_ROUNDS && !result.equals(input); round++) {
             input = result;
             result = wrapOnce(columnLimit, input, formatter);
         }
         return result;
     }
 
-    private static Source wrapOnce(final int columnLimit, Source input, Formatter formatter) throws FormatterException {
-        if (!needWrapping(columnLimit, input.text())) {
+    private static String wrapOnce(final int columnLimit, String input, Formatter formatter) throws FormatterException {
+        if (!needWrapping(columnLimit, input)) {
             // fast path
             return input;
         }
@@ -105,36 +89,36 @@ public final class StringWrapper {
         // The pieces continue the way the formatter continues a chain of +: four columns times the multiplier of its
         // style, eight in OJF.
         var continuationIndent = 4 * formatter.options().indentationMultiplier();
-        TreeRangeMap<Integer, String> replacements = input.reflowReplacements(columnLimit, continuationIndent);
+        TreeRangeMap<Integer, String> replacements = getReflowReplacements(columnLimit, continuationIndent, input);
         if (replacements.asMapOfRanges().isEmpty()) {
             // needWrapping is an over-approximation, so there may be nothing to do after all.
             return input;
         }
-        Source firstPass = input.format(formatter, replacements.asMapOfRanges().keySet());
+        String firstPass =
+                formatter.formatSource(input, replacements.asMapOfRanges().keySet());
 
-        if (!firstPass.text().equals(input.text())) {
+        if (!firstPass.equals(input)) {
             // If formatting the replacement ranges resulted in a change, recalculate the replacements on
             // the updated input.
             input = firstPass;
-            replacements = input.reflowReplacements(columnLimit, continuationIndent);
+            replacements = getReflowReplacements(columnLimit, continuationIndent, input);
         }
 
-        Source result = input.apply(replacements);
+        String result = applyReplacements(input, replacements);
 
         // Format again, because broken strings might now fit on the first line in case of assignments
-        Source secondPass = result.format(formatter, rangesAfterAppliedReplacements(replacements));
+        String secondPass = formatter.formatSource(result, rangesAfterAppliedReplacements(replacements));
 
-        if (!secondPass.text().equals(result.text())) {
-            replacements = secondPass.reflowReplacements(columnLimit, continuationIndent);
-            result = secondPass.apply(replacements);
+        if (!secondPass.equals(result)) {
+            replacements = getReflowReplacements(columnLimit, continuationIndent, secondPass);
+            result = applyReplacements(secondPass, replacements);
         }
 
         {
             // We really don't want bugs in this pass to change the behaviour of programs we're
             // formatting, so check that the pretty-printed AST is the same before and after reformatting.
-            String expected =
-                    parse(input.text(), /* allowStringFolding= */ true).toString();
-            String actual = parse(result.text(), /* allowStringFolding= */ true).toString();
+            String expected = parse(input, /* allowStringFolding= */ true).toString();
+            String actual = parse(result, /* allowStringFolding= */ true).toString();
             if (!expected.equals(actual)) {
                 throw new FormatterException(String.format(
                         "Something has gone terribly wrong. Please file a bug: "
@@ -145,82 +129,6 @@ public final class StringWrapper {
         }
 
         return result;
-    }
-
-    /**
-     * The source between two passes of {@link #wrapOnce}, with the character ranges of it that the passes may change:
-     * the ranges being formatted, moved along with every change, or {@code null} when the whole file is.
-     */
-    private record Source(String text, @Nullable RangeSet<Integer> ranges) {
-
-        /** The replacements of {@link #getReflowReplacements}, less those for literals outside the ranges. */
-        TreeRangeMap<Integer, String> reflowReplacements(int columnLimit, int continuationIndent)
-                throws FormatterException {
-            TreeRangeMap<Integer, String> replacements = getReflowReplacements(columnLimit, continuationIndent, text);
-            RangeSet<Integer> within = ranges;
-            if (within == null) {
-                return replacements;
-            }
-            TreeRangeMap<Integer, String> inRanges = TreeRangeMap.create();
-            replacements.asMapOfRanges().forEach((literal, replacement) -> {
-                if (within.intersects(literal)) {
-                    inRanges.put(literal, replacement);
-                }
-            });
-            return inRanges;
-        }
-
-        /** Formats the given ranges, as {@link Formatter#formatSource(String, Collection)} does. */
-        Source format(Formatter formatter, Collection<Range<Integer>> rangesToFormat) throws FormatterException {
-            List<Replacement> replacements = formatter.getFormatReplacements(text, rangesToFormat);
-            return new Source(Utils.applyReplacements(text, replacements), moved(replacements));
-        }
-
-        Source apply(TreeRangeMap<Integer, String> replacements) {
-            List<Replacement> applied = replacements.asMapOfRanges().entrySet().stream()
-                    .map(entry -> Replacement.create(
-                            entry.getKey().lowerEndpoint(), entry.getKey().upperEndpoint(), entry.getValue()))
-                    .toList();
-            return new Source(applyReplacements(text, replacements), moved(applied));
-        }
-
-        private @Nullable RangeSet<Integer> moved(List<Replacement> replacements) {
-            return ranges == null ? null : moveRanges(ranges, replacements);
-        }
-    }
-
-    /**
-     * Where the given character ranges are once the replacements, sorted and without overlaps, have been applied. A
-     * range grows to take in all of a replacement that overlaps it, or that inserts text at its start.
-     */
-    static RangeSet<Integer> moveRanges(RangeSet<Integer> ranges, List<Replacement> replacements) {
-        RangeSet<Integer> moved = TreeRangeSet.create();
-        for (Range<Integer> range : ranges.asRanges()) {
-            Range<Integer> canonical = range.canonical(DiscreteDomain.integers());
-            moved.add(Range.closedOpen(
-                    movePosition(canonical.lowerEndpoint(), replacements, /* start= */ true),
-                    movePosition(canonical.upperEndpoint(), replacements, /* start= */ false)));
-        }
-        return moved;
-    }
-
-    private static int movePosition(int position, List<Replacement> replacements, boolean start) {
-        int shift = 0;
-        for (Replacement replacement : replacements) {
-            int lower = replacement.getReplaceRange().lowerEndpoint();
-            int upper = replacement.getReplaceRange().upperEndpoint();
-            int length = replacement.getReplacementString().length();
-            if (upper < position || (upper == position && lower < position)) {
-                // Before the position.
-                shift += length - (upper - lower);
-            } else if (lower < position) {
-                // Around the position, which moves to the replacement's start or end.
-                return lower + shift + (start ? 0 : length);
-            } else {
-                break;
-            }
-        }
-        return position + shift;
     }
 
     private static Set<Range<Integer>> rangesAfterAppliedReplacements(TreeRangeMap<Integer, String> replacements) {
