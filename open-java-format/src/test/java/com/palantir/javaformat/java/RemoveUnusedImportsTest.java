@@ -23,9 +23,9 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /**
- * {@link RemoveUnusedImports} on its own, where a case under {@code test-cases/imports} cannot show it. A case fixes the
- * imports before it formats, and formatting takes a doubled blank line away by itself, while the command line formats
- * first. And the cases run on JDK 21, where a module import does not parse.
+ * {@link RemoveUnusedImports} on its own, where a case under {@code test-cases-java21/imports} cannot show it. A case
+ * fixes the imports before it formats, and formatting takes a doubled blank line away by itself, while the command line
+ * formats first. And the cases run on JDK 21, where a module import does not parse.
  */
 @Execution(ExecutionMode.CONCURRENT)
 final class RemoveUnusedImportsTest {

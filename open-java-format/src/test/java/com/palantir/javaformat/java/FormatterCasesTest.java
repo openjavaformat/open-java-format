@@ -28,12 +28,12 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /**
- * One test for each {@link CaseFile} under {@code test-cases} on the test classpath: formatting the before block gives
- * the after block, and formatting that again changes nothing. Adding a case is adding a file.
+ * One test for each {@link CaseFile} under {@code test-cases-java21} on the test classpath: formatting the before block
+ * gives the after block, and formatting that again changes nothing. Adding a case is adding a file.
  */
 @Execution(ExecutionMode.CONCURRENT)
 final class FormatterCasesTest {
-    private static final String CASES = "test-cases";
+    private static final String CASES = "test-cases-java21";
 
     private static final Formatter FORMATTER = Formatter.createFormatter(
             JavaFormatterOptions.builder().style(Style.OJF).build());
