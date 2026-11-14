@@ -43,12 +43,6 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 
 @Execution(ExecutionMode.CONCURRENT)
 public final class FileBasedTests {
-    // Test files that are only used when run with a minimum Java version
-    private static final ImmutableMultimap<Integer, String> VERSIONED_TESTS =
-            ImmutableMultimap.<Integer, String>builder()
-                    .putAll(23, "ModuleImport")
-                    .build();
-
     private final Class<?> testClass;
     /** The path prefix for all tests if loaded as resources. */
     private final Path resourcePrefix;
@@ -64,13 +58,6 @@ public final class FileBasedTests {
                 Paths.get(testClass.getPackage().getName().replace('.', '/')).resolve(testDirName);
         this.testClass = testClass;
         this.fullTestPath = Paths.get("src/test/resources").resolve(resourcePrefix);
-    }
-
-    public static void assumeJavaVersionForTest(String testName) {
-        Optional<Integer> maybeJavaVersion =
-                VERSIONED_TESTS.inverse().get(testName).stream().collect(toOptional());
-        maybeJavaVersion.ifPresent(version -> Assumptions.assumeTrue(
-                Formatter.getRuntimeVersion() >= version, String.format("Not running on jdk %d or later", version)));
     }
 
     /** The names of the resources under {@link #resourcePrefix}, in every directory of the class path that has it. */

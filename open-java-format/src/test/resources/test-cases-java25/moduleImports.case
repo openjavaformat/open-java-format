@@ -1,0 +1,19 @@
+# Module imports (JEP 511) before an ordinary import.
+----------
+import module java.base;
+import module java.sql;
+
+import java.util.List;
+
+class ModuleImport {
+  List<String> xs;
+}
+----------
+import module java.base;
+import module java.sql;
+
+import java.util.List;
+
+class ModuleImport {
+    List<String> xs;
+}

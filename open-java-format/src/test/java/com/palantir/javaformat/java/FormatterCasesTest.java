@@ -29,21 +29,25 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /**
  * One test for each {@link CaseFile} under {@code test-cases-java21} on the test classpath: formatting the before block
- * gives the after block, and formatting that again changes nothing. Adding a case is adding a file.
+ * gives the after block, and formatting that again changes nothing. Adding a case is adding a file. Cases that need a
+ * newer JDK are in a folder of that JDK, run by a class of their own, such as {@link FormatterCasesJava25Test}.
  */
 @Execution(ExecutionMode.CONCURRENT)
 final class FormatterCasesTest {
-    private static final String CASES = "test-cases-java21";
-
     private static final Formatter FORMATTER = Formatter.createFormatter(
             JavaFormatterOptions.builder().style(Style.OJF).build());
 
     @TestFactory
     List<DynamicTest> cases() throws Exception {
-        var folder = requireNonNull(
-                FormatterCasesTest.class.getClassLoader().getResource(CASES),
-                "no " + CASES + " folder on the test classpath");
-        var root = Path.of(folder.toURI());
+        return casesIn("test-cases-java21");
+    }
+
+    /** The tests of the case files under {@code folder} on the test classpath. */
+    static List<DynamicTest> casesIn(String folder) throws Exception {
+        var url = requireNonNull(
+                FormatterCasesTest.class.getClassLoader().getResource(folder),
+                "no " + folder + " folder on the test classpath");
+        var root = Path.of(url.toURI());
         var paths = CaseFile.pathsIn(root);
 
         // A wrong folder or a resource filter would otherwise pass with no tests at all.
@@ -59,13 +63,13 @@ final class FormatterCasesTest {
                 var once = FORMATTER.formatSourceAndFixImports(testCase.before());
 
                 assertThat(once)
-                        .as(() -> CASES + "/" + path + ", first run, " + testCase.firstDifference(once))
+                        .as(() -> folder + "/" + path + ", first run, " + testCase.firstDifference(once))
                         .isEqualTo(testCase.after());
 
                 var twice = FORMATTER.formatSourceAndFixImports(once);
 
                 assertThat(twice)
-                        .as(() -> CASES + "/" + path + ", second run, " + testCase.firstDifference(twice))
+                        .as(() -> folder + "/" + path + ", second run, " + testCase.firstDifference(twice))
                         .isEqualTo(once);
             }));
         }
