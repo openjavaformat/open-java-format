@@ -22,12 +22,12 @@ import org.junit.jupiter.api.condition.JRE;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
-/** The cases under {@code test-cases-java28}, as {@link FormatterCasesTest} runs those of JDK 21, for syntax of JDK 28. */
+/** The cases on JDK 28 and later: those of JDK 21 and 25, and those for the syntax of JDK 28. */
 @EnabledForJreRange(min = JRE.JAVA_28)
 @Execution(ExecutionMode.CONCURRENT)
 final class FormatterCasesJava28Test {
     @TestFactory
     List<DynamicTest> cases() throws Exception {
-        return FormatterCasesTest.casesIn("test-cases-java28");
+        return FormatterCasesTest.casesIn("test-cases-java21", "test-cases-java25", "test-cases-java28");
     }
 }
