@@ -22,8 +22,9 @@ On JDK 21, where a local build runs, these 14 tests count as skipped among 1,422
 
 A test that needs a newer JDK says so on its class, and its case files live in a folder of that JDK:
 
-- **Case files by JDK, side by side.** `test-cases/` becomes `test-cases-java21/`, for any JDK from 21; cases that need JDK 25 go to `test-cases-java25/` beside it, those that need JDK 28 to `test-cases-java28/`, and so on, one level deep. Each folder is run by a class of its own.
+- **Case files by JDK, side by side.** `test-cases/` becomes `test-cases-java21/`, for any JDK from 21; cases that need JDK 25 go to `test-cases-java25/` beside it, those that need JDK 28 to `test-cases-java28/`, and so on, one level deep.
 - **Classes by JDK.** A test class that needs a newer Java carries `@EnabledForJreRange` with that version, as `min = JRE.JAVA_25` (JUnit 6.1.3 has constants up to `JRE.JAVA_28`). On an older JDK it reports as disabled; on that JDK and later it runs with the JDK 21 tests.
+- **One class per JDK for the case folders, JDK 21 too.** Each names the folders its JDK parses, one, two or three of them, as `FormatterCasesJava25Test` runs `test-cases-java21` and `test-cases-java25`; their ranges do not overlap (`max = JRE.JAVA_24`; `min = JRE.JAVA_25, max = JRE.JAVA_27`; `min = JRE.JAVA_28`), so on any JDK every case runs once. The code they share takes the folders as arguments.
 - **Module imports from JDK 25.** They parse from JDK 23 as a preview, and are final in 25; CI runs no 23 or 24.
 - **Preview features by the version that previews them.** Value classes are a preview of JDK 28: their formatting case goes to `test-cases-java28/`, and the `ModifierOrderer` test to a class with `@EnabledForJreRange(min = JRE.JAVA_28)`. CI's JDK 28 job runs early-access builds, which have the `value` modifier.
 - **No assumption on the runtime inside a test.** `assumeTrue` on the runtime and `VERSIONED_TESTS` go.
@@ -52,7 +53,7 @@ A test that needs a newer JDK says so on its class, and its case files live in a
 
 ## Consequences
 
-- `FormatterCasesTest` reads `test-cases-java21/`; new classes read `test-cases-java25/` and `test-cases-java28/`. The comments that name `test-cases/`, in `Level.java` and `RemoveUnusedImportsTest`, change with it.
+- `FormatterCasesTest` keeps the code that runs the cases; `FormatterCasesJava21Test`, `FormatterCasesJava25Test` and `FormatterCasesJava28Test` run them. A new JDK folder means a new class, and a `max` on the one before it. The comments that name `test-cases/`, in `Level.java` and `RemoveUnusedImportsTest`, change with it.
 - The `ModuleImport` pair of `FormatterIntegrationTest` becomes a case in `test-cases-java25/`; `ModuleImportTest` and the module-import test of `RemoveUnusedImportsTest` carry `@EnabledForJreRange(min = JRE.JAVA_25)`.
 - The value-class test of `FormatterTest` becomes a case in `test-cases-java28/`; the one of `ModifierOrdererTest` moves to a class with `@EnabledForJreRange(min = JRE.JAVA_28)`.
 - On JDK 23 and 24 the module-import tests no longer run.
