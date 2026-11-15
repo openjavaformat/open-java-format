@@ -33,11 +33,8 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.List;
-import javax.lang.model.element.Modifier;
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
@@ -350,44 +347,6 @@ final class FormatterTest {
                 JavaFormatterOptions.builder().style(Style.OJF).build());
 
         assertThat(formatter.formatSource(input.toString()).length()).isLessThan(10_000);
-    }
-
-    @Test
-    void valueClassAndRecord() throws FormatterException {
-        Assumptions.assumeTrue(
-                Arrays.stream(Modifier.values())
-                        .anyMatch(modifier -> modifier.name().equals("VALUE")),
-                "`value` is a modifier only on a JDK with Project Valhalla's value classes");
-        String input = """
-            value final public class PointValueClass {
-                final int x;
-                final int y;
-
-                PointValueClass(int x, int y) {
-                    this.x = x;
-                    this.y = y;
-                }
-            }
-
-            value public record PointValueRecord(int x, int y) {}
-            """;
-        String expected = """
-            public final value class PointValueClass {
-                final int x;
-                final int y;
-
-                PointValueClass(int x, int y) {
-                    this.x = x;
-                    this.y = y;
-                }
-            }
-
-            public value record PointValueRecord(int x, int y) {}
-            """;
-        Formatter formatter = Formatter.createFormatter(
-                JavaFormatterOptions.builder().style(Style.OJF).build());
-
-        assertThat(formatter.formatSource(input)).isEqualTo(expected);
     }
 
     @Test

@@ -17,15 +17,14 @@ package com.palantir.javaformat.java;
 import static com.google.common.truth.Truth.assertThat;
 import static com.palantir.javaformat.java.RemoveUnusedImports.removeUnusedImports;
 
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
 /**
- * {@link RemoveUnusedImports} on its own, where a case under {@code test-cases/imports} cannot show it. A case fixes the
- * imports before it formats, and formatting takes a doubled blank line away by itself, while the command line formats
- * first. And the cases run on JDK 21, where a module import does not parse.
+ * {@link RemoveUnusedImports} on its own, where a case under {@code test-cases-java21/imports} cannot show it. A case
+ * fixes the imports before it formats, and formatting takes a doubled blank line away by itself, while the command line
+ * formats first.
  */
 @Execution(ExecutionMode.CONCURRENT)
 final class RemoveUnusedImportsTest {
@@ -82,29 +81,6 @@ final class RemoveUnusedImportsTest {
 
         assertThat(removeUnusedImports(input)).isEqualTo("""
             public class TestBug {}
-            """);
-    }
-
-    // Module imports (JEP 511, `import module foo.bar;`) parse to JCModuleImport, a sibling of JCImport rather than a
-    // subtype. They must never be reported as unused (see isUnused), and must not crash buildReplacements when mixed
-    // with ordinary imports, some used and some not.
-    @Test
-    void moduleImportStaysAmongOrdinaryImports() throws FormatterException {
-        // Module imports parse from JDK 23 on, as preview there; the formatter enables preview.
-        Assumptions.assumeTrue(
-                Formatter.getRuntimeVersion() >= 23, "import module requires running on JDK 23 or later");
-
-        var input = """
-            import module java.base;
-            import java.util.List;
-            import java.util.Map;
-            class T { List<String> xs; }
-            """;
-
-        assertThat(removeUnusedImports(input)).isEqualTo("""
-            import module java.base;
-            import java.util.List;
-            class T { List<String> xs; }
             """);
     }
 }

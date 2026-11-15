@@ -22,22 +22,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.ByteArrayInputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledForJreRange;
+import org.junit.jupiter.api.condition.JRE;
 
 /**
  * End-to-end tests for module import declarations (JEP 511) through the pipeline the Gradle plugin and Spotless use,
- * which reorders imports before formatting. The {@code ModuleImport} golden only exercises {@code formatSource}.
+ * which reorders imports before formatting. Module imports are final from JDK 25 on, and the tests run there.
  */
+@EnabledForJreRange(min = JRE.JAVA_25)
 final class ModuleImportTest {
-
-    @BeforeAll
-    static void requiresAParserThatProducesModuleImports() {
-        // Module imports parse from JDK 23 on, as a preview feature there; the formatter enables preview.
-        Assumptions.assumeTrue(
-                Formatter.getRuntimeVersion() >= 23, "import module requires running on JDK 23 or later");
-    }
 
     /** Asserts both entry points that reorder imports, and that their output survives a second pass. */
     private static void assertFormats(String input, String expected) throws FormatterException {
