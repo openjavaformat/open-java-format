@@ -22,8 +22,8 @@ import org.junit.jupiter.api.condition.JRE;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
-/** The cases on JDK 25 to 27: those of JDK 21, and those for the syntax of JDK 25. */
-@EnabledForJreRange(min = JRE.JAVA_25, max = JRE.JAVA_27)
+/** The cases on JDK 25 and later: those of JDK 21, and those for the syntax of JDK 25. */
+@EnabledForJreRange(min = JRE.JAVA_25)
 @Execution(ExecutionMode.CONCURRENT)
 final class FormatterCasesJava25Test {
     @TestFactory

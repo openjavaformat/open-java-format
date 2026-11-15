@@ -22,8 +22,8 @@ import org.junit.jupiter.api.condition.JRE;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
-/** The cases on JDK 21 to 24, which parse the syntax of JDK 21. */
-@EnabledForJreRange(max = JRE.JAVA_24)
+/** The cases on JDK 21 and later: those for the syntax of JDK 21. */
+@EnabledForJreRange(min = JRE.JAVA_21)
 @Execution(ExecutionMode.CONCURRENT)
 final class FormatterCasesJava21Test {
     @TestFactory
