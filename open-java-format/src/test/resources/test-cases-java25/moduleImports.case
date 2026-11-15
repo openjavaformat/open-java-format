@@ -1,0 +1,18 @@
+# Module imports (JEP 511) are sorted before the ordinary imports, with a blank line between them.
+----------
+import java.util.List;
+import module java.sql;
+import module java.base;
+
+class ModuleImport {
+  List<String> xs;
+}
+----------
+import module java.base;
+import module java.sql;
+
+import java.util.List;
+
+class ModuleImport {
+    List<String> xs;
+}

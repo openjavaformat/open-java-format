@@ -15,7 +15,6 @@
 package com.palantir.javaformat.java;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.palantir.javaformat.java.FileBasedTests.assumeJavaVersionForTest;
 import static com.palantir.javaformat.java.FileBasedTests.isRecreate;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -74,7 +73,6 @@ public class FormatterIntegrationTest {
 
     @TestTemplate
     public void format() {
-        assumeJavaVersionForTest(name);
         try {
             Formatter formatter = createFormatter();
             String output = formatter.formatSource(input);
@@ -99,7 +97,6 @@ public class FormatterIntegrationTest {
 
     @TestTemplate
     public void idempotentLF() {
-        assumeJavaVersionForTest(name);
         Assumptions.assumeFalse(isRecreate(), "Not running when recreating test outputs");
         try {
             String mangled = expected.replace(separator(), "\n");
@@ -112,7 +109,6 @@ public class FormatterIntegrationTest {
 
     @TestTemplate
     public void idempotentCR() {
-        assumeJavaVersionForTest(name);
         Assumptions.assumeFalse(isRecreate(), "Not running when recreating test outputs");
         try {
             String mangled = expected.replace(separator(), "\r");
@@ -125,7 +121,6 @@ public class FormatterIntegrationTest {
 
     @TestTemplate
     public void idempotentCRLF() {
-        assumeJavaVersionForTest(name);
         Assumptions.assumeFalse(isRecreate(), "Not running when recreating test outputs");
         try {
             String mangled = expected.replace(separator(), "\r\n");
