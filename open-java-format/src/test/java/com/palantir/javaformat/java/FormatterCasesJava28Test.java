@@ -28,6 +28,6 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 final class FormatterCasesJava28Test {
     @TestFactory
     List<DynamicTest> cases() throws Exception {
-        return FormatterCasesTest.casesIn("test-cases-java21", "test-cases-java25", "test-cases-java28");
+        return FormatterCasesTest.casesIn("test-cases-java28", "test-cases-java25", "test-cases-java21");
     }
 }
