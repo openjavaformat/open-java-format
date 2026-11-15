@@ -1,0 +1,26 @@
+# The `value` modifier of value classes and records (JEP 401, a preview of JDK 28) goes after the other
+# modifiers (#131).
+----------
+value final public class PointValueClass {
+    final int x;
+    final int y;
+
+    PointValueClass(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+}
+
+value public record PointValueRecord(int x, int y) {}
+----------
+public final value class PointValueClass {
+    final int x;
+    final int y;
+
+    PointValueClass(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+}
+
+public value record PointValueRecord(int x, int y) {}
