@@ -96,6 +96,7 @@ final class FormatDiffTest {
         Path longString = repo.resolve("LongString.java");
         Files.writeString(longString, """
             class LongString {
+                String outside = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat sed.";
             }
             """);
         runCommandInRepo("git", "add", ".");
@@ -103,6 +104,8 @@ final class FormatDiffTest {
 
         Files.writeString(longString, """
             class LongString {
+                String outside = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat sed.";
+
                 String changed = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna.";
             }
             """);
@@ -111,6 +114,8 @@ final class FormatDiffTest {
 
         assertThat(longString).hasContent("""
             class LongString {
+                String outside = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat sed.";
+
                 String changed =
                         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et"
                                 + " dolore magna.";
