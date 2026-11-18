@@ -102,11 +102,15 @@ final class FormatterServicesTest {
     void reflows_the_long_string_of_the_range(FormatterService formatterService) throws FormatterException {
         String input = """
             class S {
+                String outside = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat sed.";
+
                 String changed = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna.";
             }
             """;
         String expectedOutput = """
             class S {
+                String outside = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat sed.";
+
                 String changed =
                         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et"
                                 + " dolore magna.";
