@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.google.common.collect.Range;
+import com.palantir.javaformat.Utils;
 import com.palantir.javaformat.java.JavaFormatterOptions.Style;
 import java.io.ByteArrayInputStream;
 import java.io.PrintWriter;
@@ -37,9 +38,9 @@ import org.junit.jupiter.api.DynamicTest;
  * One test for each {@link CaseFile} in the given folders on the test classpath: formatting the before block gives the
  * after block, and formatting that again changes nothing. For the lines that formatting changes, taken as a range, the
  * service that formats in this JVM, as {@code formatDiff} does without the native binary, gives the replacements that
- * the command line prints, which the bootstrapping and native services run. Adding a case is adding a file. The cases
- * are in a folder of the JDK they need, and each JDK has a class that runs the folders it can parse, such as
- * {@link FormatterCasesJava21Test}.
+ * the command line prints, which the bootstrapping and native services run, and the command line printing text gives
+ * what applying them gives. Adding a case is adding a file. The cases are in a folder of the JDK they need, and each
+ * JDK has a class that runs the folders it can parse, such as {@link FormatterCasesJava21Test}.
  */
 final class FormatterCasesTest {
     private static final Formatter FORMATTER = Formatter.createFormatter(
@@ -80,18 +81,19 @@ final class FormatterCasesTest {
                             .isEqualTo(once);
 
                     var lines = changedLines(testCase);
+                    var characters = lines.lowerEndpoint() + ":" + (lines.upperEndpoint() - 1);
                     List<Replacement> replacements = MAPPER.readValue(
                             commandLine(
-                                    testCase.before(),
-                                    "--character-ranges",
-                                    lines.lowerEndpoint() + ":" + (lines.upperEndpoint() - 1),
-                                    "--output-replacements",
-                                    "-"),
+                                    testCase.before(), "--character-ranges", characters, "--output-replacements", "-"),
                             new TypeReference<>() {});
 
                     assertThat(SERVICE.getFormatReplacements(testCase.before(), List.of(lines)))
                             .as(() -> folder + "/" + path + ", the in-process service on characters " + lines)
                             .isEqualTo(replacements);
+
+                    assertThat(commandLine(testCase.before(), "--character-ranges", characters, "-"))
+                            .as(() -> folder + "/" + path + ", the command line printing characters " + lines)
+                            .isEqualTo(Utils.applyReplacements(testCase.before(), replacements));
                 }));
             }
         }

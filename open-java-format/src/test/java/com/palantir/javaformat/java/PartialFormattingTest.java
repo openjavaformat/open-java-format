@@ -1551,11 +1551,12 @@ public final class PartialFormattingTest {
                 "  ArrayList<String> xs = new ArrayList<>();",
                 "}",
                 "");
+        // The line of the import is laid out, and the imports are not fixed: the blank line after it was the import
+        // orderer's, which -lines no longer runs (ADR-001).
         String expectedOutput = lines(
                 "package p;",
                 "",
                 "import java.util.ArrayList;",
-                "",
                 "/** */",
                 "class Foo {",
                 "  ArrayList<String> xs = new ArrayList<>();",

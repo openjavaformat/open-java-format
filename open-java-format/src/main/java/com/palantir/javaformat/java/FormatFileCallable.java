@@ -49,13 +49,28 @@ class FormatFileCallable implements Callable<String> {
 
         Formatter formatter = Formatter.createFormatter(options);
         if (parameters.outputReplacements()) {
-            RangeSet<Integer> characterRanges = characterRanges(input);
-            return writeFormatReplacements(
-                    parameters.reflowLongStrings()
-                            ? formatter.getFormatAndReflowReplacements(input, characterRanges)
-                            : formatter.getFormatReplacements(input, characterRanges.asRanges()));
+            return writeFormatReplacements(replacements(formatter));
+        }
+        if (!wholeFile()) {
+            // A part of the file, as --output-replacements has it: the imports and the rest of the file stay as they
+            // are.
+            return Utils.applyReplacements(input, replacements(formatter));
         }
         return formatFile(formatter);
+    }
+
+    private List<Replacement> replacements(Formatter formatter) throws FormatterException {
+        RangeSet<Integer> characterRanges = characterRanges(input);
+        return parameters.reflowLongStrings()
+                ? formatter.getFormatAndReflowReplacements(input, characterRanges)
+                : formatter.getFormatReplacements(input, characterRanges.asRanges());
+    }
+
+    /** No {@code --lines}, {@code --offset} or {@code --character-ranges}. */
+    private boolean wholeFile() {
+        return parameters.characterRanges().isEmpty()
+                && parameters.lines().isEmpty()
+                && parameters.offsets().isEmpty();
     }
 
     String writeFormatReplacements(List<Replacement> replacements) throws FormatterException {
@@ -88,9 +103,7 @@ class FormatFileCallable implements Callable<String> {
     private RangeSet<Integer> characterRanges(String input) {
         final RangeSet<Integer> characterRanges = TreeRangeSet.create();
 
-        if (parameters.characterRanges().isEmpty()
-                && parameters.lines().isEmpty()
-                && parameters.offsets().isEmpty()) {
+        if (wholeFile()) {
             characterRanges.add(Range.closedOpen(0, input.length()));
             return characterRanges;
         }
