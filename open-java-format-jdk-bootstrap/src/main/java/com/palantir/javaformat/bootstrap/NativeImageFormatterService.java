@@ -49,6 +49,7 @@ public class NativeImageFormatterService implements FormatterService {
         try {
             FormatterNativeImageArgs command = new FormatterNativeImageArgs(
                     nativeImagePath,
+                    /* fixImportsOnly= */ false,
                     /* outputReplacements= */ true,
                     ranges.stream().map(RangeUtils::toStringRange).toList());
 
@@ -67,7 +68,7 @@ public class NativeImageFormatterService implements FormatterService {
     @Override
     public String formatSourceReflowStringsAndFixImports(String input) {
         try {
-            return runFormatterCommand(input);
+            return runFormatterCommand(input, /* fixImportsOnly= */ false);
         } catch (IOException e) {
             throw new UncheckedIOException("Error running the native image command", e);
         }
@@ -76,26 +77,30 @@ public class NativeImageFormatterService implements FormatterService {
     @Override
     public String fixImports(String input) {
         try {
-            return runFormatterCommand(input);
+            return runFormatterCommand(input, /* fixImportsOnly= */ true);
         } catch (IOException e) {
             throw new UncheckedIOException("Error running the native image command", e);
         }
     }
 
-    private String runFormatterCommand(String input) throws IOException {
+    private String runFormatterCommand(String input, boolean fixImportsOnly) throws IOException {
         FormatterNativeImageArgs command = new FormatterNativeImageArgs(
-                nativeImagePath, /* outputReplacements= */ false, /* characterRanges= */ List.of());
+                nativeImagePath, fixImportsOnly, /* outputReplacements= */ false, /* characterRanges= */ List.of());
         return FormatterCommandRunner.runWithStdin(
                         command.toArgs(), input, Optional.ofNullable(nativeImagePath.getParent()))
                 .orElse(input);
     }
 
-    record FormatterNativeImageArgs(Path nativeImagePath, boolean outputReplacements, List<String> characterRanges) {
+    record FormatterNativeImageArgs(
+            Path nativeImagePath, boolean fixImportsOnly, boolean outputReplacements, List<String> characterRanges) {
 
         List<String> toArgs() {
             var args = new ArrayList<String>();
             args.add(nativeImagePath.toAbsolutePath().toString());
 
+            if (fixImportsOnly) {
+                args.add("--fix-imports-only");
+            }
             if (!characterRanges.isEmpty()) {
                 args.add("--character-ranges");
                 args.add(Joiner.on(',').join(characterRanges));
