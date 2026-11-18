@@ -7,7 +7,7 @@ buildscript {
     dependencies {
         classpath 'com.gradle.publish:plugin-publish-plugin:2.2.1'
         // The released open-java-format formats this repository, not the one being built here.
-        classpath 'dev.openjavaformat:gradle-open-java-format:2.98.0.6'
+        classpath 'dev.openjavaformat:gradle-open-java-format:21.0.2'
         classpath 'me.champeau.jmh:jmh-gradle-plugin:0.7.3'
     }
 }
@@ -73,16 +73,19 @@ allprojects {
     }
 
     repositories {
-        mavenCentral() { metadataSources { mavenPom(); ignoreGradleMetadataRedirection() } }
-        gradlePluginPortal()
+        mavenCentral() {
+            metadataSources {
+                mavenPom(); ignoreGradleMetadataRedirection()
+            }
+        }
     }
 }
 
 subprojects {
     apply plugin: 'java-library'
-    // Java toolchains, javac and test settings; Error Prone. Both in buildSrc/src/main/groovy.
     apply plugin: 'open-java-format.java-conventions'
     apply plugin: 'open-java-format.error-prone-conventions'
+
     // Bans Guava's immutable collections, but not in the SPI: FormatterService.getFormatReplacements keeps
     // returning ImmutableList, so that code compiled against an older SPI still links.
     if (path != ':open-java-format-spi') {

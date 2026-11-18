@@ -264,9 +264,10 @@ final class MainTest {
         assertThat(out.toString()).isEqualTo(joiner.join(expected));
     }
 
-    // test that -lines handling works with import removal
+    // -lines formats those lines only, as --output-replacements does: an unused import stays, where it was removed with
+    // every other import of the file fixed (ADR-001).
     @Test
-    void importRemovalLines() throws Exception {
+    void linesLeaveTheImports() throws Exception {
         String[] input = {
             "import java.util.ArrayList;",
             "import java.util.List;",
@@ -277,7 +278,7 @@ final class MainTest {
         };
         String[] expected = {
             "import java.util.ArrayList;",
-            "",
+            "import java.util.List;",
             "class Test {",
             "    ArrayList<String> a = new ArrayList<>();",
             "ArrayList<String> b = new ArrayList<>();",
