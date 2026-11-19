@@ -159,14 +159,9 @@ jobs:
 
   # One explicit job per target, so every binary we ship is traceable to a named run.
   native:
-    name: native (${{ matrix.platform }})
+    name: native (${{ matrix.runner }})
     needs: build
-    # Each platform's runner, looked up here rather than added by the matrix's `include`: an `include` entry
-    # puts back a platform that `exclude` takes out.
-    runs-on: >-
-      ${{ fromJSON('{"linux-x86-64": "ubuntu-latest", "linux-aarch64": "ubuntu-24.04-arm",
-      "macos-aarch64": "macos-15", "macos-x86-64": "macos-15-intel",
-      "windows-x86-64": "windows-latest"}')[matrix.platform] }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     # bash on Windows too, so that every step reads the same on every runner.
     defaults:
@@ -175,12 +170,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [linux-x86-64, linux-aarch64, macos-aarch64, macos-x86-64, windows-x86-64]
-        # Pull requests leave out macos-aarch64. GitHub's macOS arm64 runners are scarce: from 17 to 19 November
-        # 2026 it found none for 13 of the job's 21 pull-request runs, and each failed after 15 minutes of waiting.
-        # Pushes to a release line still build it, and so does the release.
-        exclude:
-          - platform: ${{ github.event_name == 'pull_request' && 'macos-aarch64' || 'none' }}
+        runner:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          # macOS arm64 is left out: GitHub's runners for it are scarce, and from 17 to 19 November 2026 it found
+          # none for 13 of the job's 21 pull-request runs, each failing after 15 minutes of waiting. The release
+          # still builds it.
+          # - macos-15
+          - macos-15-intel
+          - windows-latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
