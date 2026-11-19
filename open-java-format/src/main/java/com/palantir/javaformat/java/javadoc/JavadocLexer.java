@@ -647,15 +647,15 @@ final class JavadocLexer {
     private static final Pattern BR_PATTERN = openTagPattern("br");
     private static final Pattern SNIPPET_TAG_OPEN_PATTERN = compile("^[{]@snippet\\b");
     private static final Pattern INLINE_TAG_OPEN_PATTERN = compile("^[{]@\\w*");
-    /*
-     * We exclude < so that we don't swallow following HTML tags. This lets us fix up "foo<p>" (~400
-     * hits in Google-internal code). We will join unnecessarily split "words" (like "foo<b>bar</b>")
-     * in a later step. There's a similar story for braces. I'm not sure I actually need to exclude @
-     * or *. TODO(cpovirk): Try removing them.
+    /**
+     * We exclude {@code <} so that we don't swallow following HTML tags. This lets us fix up {@code foo<p>} (~400
+     * hits in Google-internal code). We will join unnecessarily split "words" (like {@code foo<b>bar</b>}) in a later
+     * step. There's a similar story for braces. I'm not sure I actually need to exclude {@code @} or {@code *}.
+     * TODO(cpovirk): Try removing them.
      *
-     * Thanks to the "rejoin" step in joinAdjacentLiteralsAndAdjacentWhitespace(), we could get away
-     * with matching only one character here. That would eliminate the need for the regex entirely.
-     * That might be faster or slower than what we do now.
+     * <p>Thanks to the "rejoin" step in {@link #joinAdjacentLiteralsAndAdjacentWhitespace}, we could get away with
+     * matching only one character here. That would eliminate the need for the regex entirely. That might be faster or
+     * slower than what we do now.
      */
     private static final Pattern LITERAL_PATTERN = compile("^.[^ \t\n@<{}*]*", DOTALL);
 

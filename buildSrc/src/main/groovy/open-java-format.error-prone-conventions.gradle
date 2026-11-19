@@ -25,6 +25,7 @@ tasks.withType(JavaCompile).configureEach {
         nullaway {
             handleTestAssertionLibraries = true
         }
+        error('AlmostJavadoc')
         error('CanonicalAnnotationSyntax')
         error('CollectorMutability')
         error('DefaultCharset')
