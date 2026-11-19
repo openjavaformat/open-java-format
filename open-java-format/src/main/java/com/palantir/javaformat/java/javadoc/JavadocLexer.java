@@ -173,7 +173,8 @@ final class JavadocLexer {
         result = joinAdjacentLiteralsAndAdjacentWhitespace(result);
         result = inferParagraphTags(result);
         result = optionalizeSpacesAfterLinks(result);
-        return deindentPreCodeBlocks(result);
+        result = deindentPreCodeBlocks(result);
+        return removeTrailingParagraphTags(result);
     }
 
     private Token readToken() throws LexException {
@@ -573,6 +574,35 @@ final class JavadocLexer {
             output.add(new Token(FORCED_NEWLINE, "\n"));
         }
     }
+
+    /**
+     * Remove the {@code <p>} tags at the end of the comment, and the whitespace and {@code </p>} tags among them.
+     * Nothing follows such a tag, but the writer would still put it on a line of its own after a blank one.
+     *
+     * <p>A {@code <p>} with attributes stays: its {@code id} may be the target of a link.
+     */
+    private static List<Token> removeTrailingParagraphTags(List<Token> input) {
+        // The last token is always END_JAVADOC, and the scan stops at BEGIN_JAVADOC at the latest.
+        int end = input.size() - 1;
+        int cut = end;
+        for (int i = end - 1; i >= 0; i--) {
+            Token token = input.get(i);
+            if (token.getType() == PARAGRAPH_OPEN_TAG
+                    && BARE_PARAGRAPH_OPEN_PATTERN.matcher(token.getValue()).matches()) {
+                cut = i;
+            } else if (token.getType() != WHITESPACE && token.getType() != PARAGRAPH_CLOSE_TAG) {
+                break;
+            }
+        }
+        if (cut == end) {
+            return input;
+        }
+        var output = new ArrayList<Token>(input.subList(0, cut));
+        output.add(input.get(end));
+        return List.copyOf(output);
+    }
+
+    private static final Pattern BARE_PARAGRAPH_OPEN_PATTERN = compile("<p\\s*/?\\s*>", CASE_INSENSITIVE);
 
     private static final CharMatcher NEWLINE = CharMatcher.is('\n');
 
