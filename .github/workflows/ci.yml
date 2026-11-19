@@ -161,7 +161,12 @@ jobs:
   native:
     name: native (${{ matrix.platform }})
     needs: build
-    runs-on: ${{ matrix.runner }}
+    # Each platform's runner, looked up here rather than added by the matrix's `include`: an `include` entry
+    # puts back a platform that `exclude` takes out.
+    runs-on: >-
+      ${{ fromJSON('{"linux-x86-64": "ubuntu-latest", "linux-aarch64": "ubuntu-24.04-arm",
+      "macos-aarch64": "macos-15", "macos-x86-64": "macos-15-intel",
+      "windows-x86-64": "windows-latest"}')[matrix.platform] }}
     timeout-minutes: 90
     # bash on Windows too, so that every step reads the same on every runner.
     defaults:
@@ -170,17 +175,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: linux-x86-64
-            runner: ubuntu-latest
-          - platform: linux-aarch64
-            runner: ubuntu-24.04-arm
-          - platform: macos-aarch64
-            runner: macos-15
-          - platform: macos-x86-64
-            runner: macos-15-intel
-          - platform: windows-x86-64
-            runner: windows-latest
+        platform: [linux-x86-64, linux-aarch64, macos-aarch64, macos-x86-64, windows-x86-64]
+        # Pull requests leave out macos-aarch64. GitHub's macOS arm64 runners are scarce: from 17 to 19 November
+        # 2026 it found none for 13 of the job's 21 pull-request runs, and each failed after 15 minutes of waiting.
+        # Pushes to a release line still build it, and so does the release.
+        exclude:
+          - platform: ${{ github.event_name == 'pull_request' && 'macos-aarch64' || 'none' }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
