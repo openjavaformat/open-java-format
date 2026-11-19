@@ -41,16 +41,12 @@ class JavacTokens {
     /** An unprocessed input token, including whitespace and comments. */
     static class RawTok {
         @Nullable
-        private final String stringVal;
-
-        @Nullable
         private final TokenKind kind;
 
         private final int pos;
         private final int endPos;
 
-        RawTok(@Nullable String stringVal, @Nullable TokenKind kind, int pos, int endPos) {
-            this.stringVal = stringVal;
+        RawTok(@Nullable TokenKind kind, int pos, int endPos) {
             this.kind = kind;
             this.pos = pos;
             this.endPos = endPos;
@@ -71,12 +67,6 @@ class JavacTokens {
         public int endPos() {
             return endPos;
         }
-
-        /** The escaped string value of a literal, or {@code null} for other tokens. */
-        @Nullable
-        public String stringVal() {
-            return stringVal;
-        }
     }
 
     /** Lex the input and return a list of {@link RawTok}s. */
@@ -96,10 +86,9 @@ class JavacTokens {
             if (t.comments != null) {
                 for (Comment c : Lists.reverse(t.comments)) {
                     if (last < c.getSourcePos(0)) {
-                        tokens.add(new RawTok(null, null, last, c.getSourcePos(0)));
+                        tokens.add(new RawTok(null, last, c.getSourcePos(0)));
                     }
                     tokens.add(new RawTok(
-                            null,
                             null,
                             c.getSourcePos(0),
                             c.getSourcePos(0) + c.getText().length()));
@@ -113,14 +102,13 @@ class JavacTokens {
                 break;
             }
             if (last < t.pos) {
-                tokens.add(new RawTok(null, null, last, t.pos));
+                tokens.add(new RawTok(null, last, t.pos));
             }
-            tokens.add(new RawTok(
-                    t.kind == TokenKind.STRINGLITERAL ? "\"" + t.stringVal() + "\"" : null, t.kind, t.pos, t.endPos));
+            tokens.add(new RawTok(t.kind, t.pos, t.endPos));
             last = t.endPos;
         } while (scanner.token().kind != TokenKind.EOF);
         if (last < end) {
-            tokens.add(new RawTok(null, null, last, end));
+            tokens.add(new RawTok(null, last, end));
         }
         return List.copyOf(tokens);
     }

@@ -236,6 +236,25 @@ final class FormatterTest {
                 .isInstanceOf(FormatterException.class);
     }
 
+    // Fixing the imports leaves imports it cannot sort alone, so the error reported is what is wrong with the file,
+    // not "Imports not contiguous" (google/google-java-format#1528).
+    @Test
+    void straySemicolonBetweenImportsReportsTheParseError() {
+        String input = """
+            import b.B;
+            ;
+            import a.A;
+
+            class T {
+                A a;
+                B b;
+            }
+            """;
+        assertThatThrownBy(() -> FORMATTER.formatSourceAndFixImports(input))
+                .isInstanceOf(FormatterException.class)
+                .hasMessage("2:1: error: extraneous semicolon");
+    }
+
     @Test
     void blankLinesImportComment() throws FormatterException {
         String withBlank = """
@@ -378,5 +397,23 @@ final class FormatterTest {
                 .isEqualTo(FORMATTER.formatSourceAndFixImports(input));
         assertThat(ImportOrderer.reorderImports(input, palantirStyle))
                 .isEqualTo(ImportOrderer.reorderImports(input, Style.OJF));
+    }
+
+    @Test
+    void unicodeEscapesInLiteralAndCommentContents() throws FormatterException {
+        // Unicode escapes in the contents of comments and literals are preserved. The input contains Unicode escapes,
+        // so they need to be escaped in the string literal in this test.
+        String input = """
+            class T {
+                // \\u221e
+                /* \\u221e */
+                String s = "\\u0041\\u005c\\u005c";
+                char c = '\\u0041';
+                String t = \"""
+                    \\\\u000a \\u0041
+                    \""";
+            }
+            """;
+        assertThat(FORMATTER.formatSource(input)).isEqualTo(input);
     }
 }
