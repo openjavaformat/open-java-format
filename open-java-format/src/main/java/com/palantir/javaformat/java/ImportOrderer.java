@@ -76,10 +76,13 @@ public final class ImportOrderer {
         ImportsAndIndex imports = scanImports(firstImportStart);
         int afterLastImport = imports.index;
 
-        // Make sure there are no more imports before the next class (etc) definition.
+        // Another import before the next class (etc) definition means something other than whitespace and comments
+        // separates the imports, such as a stray `;`, which javac rejects from Java 21 on. Leave the imports as they
+        // are rather than fail the whole file (google/google-java-format#1528): the formatter reports what is wrong
+        // with the file, or formats it if nothing is.
         Optional<Integer> maybeLaterImport = findIdentifier(afterLastImport, IMPORT_OR_CLASS_START);
         if (maybeLaterImport.isPresent() && tokenAt(maybeLaterImport.get()).equals("import")) {
-            throw new FormatterException("Imports not contiguous (perhaps a comment separates them?)");
+            return text;
         }
 
         StringBuilder result = new StringBuilder();

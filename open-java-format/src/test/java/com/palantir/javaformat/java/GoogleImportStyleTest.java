@@ -411,6 +411,16 @@ public class GoogleImportStyleTest {
                     "import com.foo.Third;",
                 }
             },
+            // Anything else between two imports leaves them all where they are, rather than failing the file
+            // (google/google-java-format#1528).
+            {
+                {
+                    "import com.foo.Second;", //
+                    ";",
+                    "import com.foo.First;",
+                },
+                {}
+            },
             {
                 {
                     "import com.foo.Second; /* A block comment after an import stays with it. */", //

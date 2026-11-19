@@ -236,6 +236,25 @@ final class FormatterTest {
                 .isInstanceOf(FormatterException.class);
     }
 
+    // Fixing the imports leaves imports it cannot sort alone, so the error reported is what is wrong with the file,
+    // not "Imports not contiguous" (google/google-java-format#1528).
+    @Test
+    void straySemicolonBetweenImportsReportsTheParseError() {
+        String input = """
+            import b.B;
+            ;
+            import a.A;
+
+            class T {
+                A a;
+                B b;
+            }
+            """;
+        assertThatThrownBy(() -> FORMATTER.formatSourceAndFixImports(input))
+                .isInstanceOf(FormatterException.class)
+                .hasMessage("2:1: error: extraneous semicolon");
+    }
+
     @Test
     void blankLinesImportComment() throws FormatterException {
         String withBlank = """
