@@ -133,11 +133,15 @@ final class JavaCommentsHelperTest {
 
     @Test
     void addMissingSpaceLeavesSpacedCommentsAndIdeMarkersAlone() {
-        // A blank or a tab after the slashes is a space already; the IDE markers are recognised only without one.
+        // A blank, a tab or a Unicode space after the slashes is a space already; the IDE markers are recognised only
+        // without one.
         var comments = List.of(
                 "// foo",
                 "//  two spaces",
                 "//\tfoo",
+                "//\u00a0no-break space",
+                "///\u00a0no-break space",
+                "//\u3000ideographic space",
                 "//",
                 "///",
                 "//$NON-NLS-1$ //$NON-NLS-2$",
