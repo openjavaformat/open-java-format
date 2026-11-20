@@ -1029,6 +1029,73 @@ final class JavadocFormattingTest {
     }
 
     @Test
+    void removeTrailingParagraphTag() {
+        String[] input = {
+            "/**", //
+            " * The client's first name.",
+            " *",
+            " * <p>",
+            " */",
+            "class Test {}",
+        };
+        String[] expected = {
+            "/** The client's first name. */", //
+            "class Test {}",
+        };
+        doFormatTest(input, expected);
+    }
+
+    @Test
+    void removeEveryTrailingParagraphTag() {
+        String[] input = {
+            "class Test {",
+            "  /**",
+            "   * Returns nothing.",
+            "   *",
+            "   * @param x the x",
+            "   * <p>",
+            "   */",
+            "  void f(int x) {}",
+            "",
+            "  /**",
+            "   * Closed and repeated.",
+            "   *",
+            "   * <p></p>",
+            "   * <P/>",
+            "   */",
+            "  void g() {}",
+            "}",
+        };
+        String[] expected = {
+            "class Test {",
+            "  /**",
+            "   * Returns nothing.",
+            "   *",
+            "   * @param x the x",
+            "   */",
+            "  void f(int x) {}",
+            "",
+            "  /** Closed and repeated. */",
+            "  void g() {}",
+            "}",
+        };
+        doFormatTest(input, expected);
+    }
+
+    @Test
+    void keepTrailingParagraphTagWithAttributes() {
+        String[] input = {
+            "/**", //
+            " * Ends with an anchor.",
+            " *",
+            " * <p id=\"end\">",
+            " */",
+            "class Test {}",
+        };
+        doFormatTest(input, input);
+    }
+
+    @Test
     void inferParagraphTags() {
         String[] input = {
             "/**",

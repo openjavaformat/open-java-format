@@ -18,7 +18,7 @@ run = "act push --job build --env JAVA_HOME=/opt/hostedtoolcache/Java_Temurin-Ho
 
 [tasks."ci:native"]
 description = "Run the linux-aarch64 native job locally in Docker"
-run = "act push --job native --matrix platform:linux-aarch64"
+run = "act push --job native --matrix runner:ubuntu-24.04-arm"
 
 # ---- GitHub Actions secrets ----
 # Read from 1Password at apply time; nothing secret is stored in the repo. Requires gh

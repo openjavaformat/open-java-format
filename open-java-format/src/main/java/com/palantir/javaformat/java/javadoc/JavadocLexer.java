@@ -80,8 +80,8 @@ final class JavadocLexer {
     /**
      * Strips the margin from every continuation line: the {@code *} prefix (with the space after it) from lines that
      * have one, and the comment's own indentation from lines that do not. What remains of a bare line's indentation is
-     * relative to the comment, as on {@code *} lines after their {@code * }, so a {@code <pre>{@code} block written
-     * without the {@code *} margin keeps its shape for {@link #deindentPreCodeBlocks}.
+     * relative to the comment, as on {@code *} lines after their {@code * }, so a <code>&lt;pre&gt;&#123;@code</code>
+     * block written without the {@code *} margin keeps its shape for {@link #deindentPreCodeBlocks}.
      *
      * <p>The indentation stripped from bare lines is the smaller of the shortest {@code *} prefix and the shortest
      * indentation of a bare line, so a bare line is never cut into and lines of both kinds stay aligned with each
@@ -173,7 +173,8 @@ final class JavadocLexer {
         result = joinAdjacentLiteralsAndAdjacentWhitespace(result);
         result = inferParagraphTags(result);
         result = optionalizeSpacesAfterLinks(result);
-        return deindentPreCodeBlocks(result);
+        result = deindentPreCodeBlocks(result);
+        return removeTrailingParagraphTags(result);
     }
 
     private Token readToken() throws LexException {
@@ -574,6 +575,35 @@ final class JavadocLexer {
         }
     }
 
+    /**
+     * Remove the {@code <p>} tags at the end of the comment, and the whitespace and {@code </p>} tags among them.
+     * Nothing follows such a tag, but the writer would still put it on a line of its own after a blank one.
+     *
+     * <p>A {@code <p>} with attributes stays: its {@code id} may be the target of a link.
+     */
+    private static List<Token> removeTrailingParagraphTags(List<Token> input) {
+        // The last token is always END_JAVADOC, and the scan stops at BEGIN_JAVADOC at the latest.
+        int end = input.size() - 1;
+        int cut = end;
+        for (int i = end - 1; i >= 0; i--) {
+            Token token = input.get(i);
+            if (token.getType() == PARAGRAPH_OPEN_TAG
+                    && BARE_PARAGRAPH_OPEN_PATTERN.matcher(token.getValue()).matches()) {
+                cut = i;
+            } else if (token.getType() != WHITESPACE && token.getType() != PARAGRAPH_CLOSE_TAG) {
+                break;
+            }
+        }
+        if (cut == end) {
+            return input;
+        }
+        var output = new ArrayList<Token>(input.subList(0, cut));
+        output.add(input.get(end));
+        return List.copyOf(output);
+    }
+
+    private static final Pattern BARE_PARAGRAPH_OPEN_PATTERN = compile("<p\\s*/?\\s*>", CASE_INSENSITIVE);
+
     private static final CharMatcher NEWLINE = CharMatcher.is('\n');
 
     private static boolean hasMultipleNewlines(String s) {
@@ -617,15 +647,15 @@ final class JavadocLexer {
     private static final Pattern BR_PATTERN = openTagPattern("br");
     private static final Pattern SNIPPET_TAG_OPEN_PATTERN = compile("^[{]@snippet\\b");
     private static final Pattern INLINE_TAG_OPEN_PATTERN = compile("^[{]@\\w*");
-    /*
-     * We exclude < so that we don't swallow following HTML tags. This lets us fix up "foo<p>" (~400
-     * hits in Google-internal code). We will join unnecessarily split "words" (like "foo<b>bar</b>")
-     * in a later step. There's a similar story for braces. I'm not sure I actually need to exclude @
-     * or *. TODO(cpovirk): Try removing them.
+    /**
+     * We exclude {@code <} so that we don't swallow following HTML tags. This lets us fix up {@code foo<p>} (~400
+     * hits in Google-internal code). We will join unnecessarily split "words" (like {@code foo<b>bar</b>}) in a later
+     * step. There's a similar story for braces. I'm not sure I actually need to exclude {@code @} or {@code *}.
+     * TODO(cpovirk): Try removing them.
      *
-     * Thanks to the "rejoin" step in joinAdjacentLiteralsAndAdjacentWhitespace(), we could get away
-     * with matching only one character here. That would eliminate the need for the regex entirely.
-     * That might be faster or slower than what we do now.
+     * <p>Thanks to the "rejoin" step in {@link #joinAdjacentLiteralsAndAdjacentWhitespace}, we could get away with
+     * matching only one character here. That would eliminate the need for the regex entirely. That might be faster or
+     * slower than what we do now.
      */
     private static final Pattern LITERAL_PATTERN = compile("^.[^ \t\n@<{}*]*", DOTALL);
 

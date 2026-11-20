@@ -42,7 +42,9 @@ final class CharStream {
         return true;
     }
 
-    /*
+    /**
+     * Like {@link #tryConsume}, but for a match of the pattern at the start of the remaining input.
+     *
      * @param pattern the pattern to search for, which must be anchored to match only at position 0
      */
     boolean tryConsumeRegex(Pattern pattern) {
