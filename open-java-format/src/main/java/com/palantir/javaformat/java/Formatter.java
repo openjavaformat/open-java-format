@@ -308,7 +308,9 @@ public final class Formatter {
         input = ImportOrderer.reorderImports(input, options.style());
         input = RemoveUnusedImports.removeUnusedImports(input);
         String formatted = formatSource(input);
-        return StringWrapper.wrap(options.maxLineLength(), formatted, this);
+        return formatted.equals(input)
+                ? StringWrapper.wrapFormatted(options.maxLineLength(), formatted, this)
+                : StringWrapper.wrap(options.maxLineLength(), formatted, this);
     }
 
     /**

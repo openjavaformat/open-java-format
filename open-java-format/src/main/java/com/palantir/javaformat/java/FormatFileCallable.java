@@ -83,9 +83,12 @@ class FormatFileCallable implements Callable<String> {
 
     private String formatFile(Formatter formatter) throws FormatterException {
         String formatted = formatter.formatSource(input, characterRanges(input).asRanges());
+        boolean unchanged = formatted.equals(input);
         formatted = fixImports(formatted);
         if (parameters.reflowLongStrings()) {
-            formatted = StringWrapper.wrap(options.maxLineLength(), formatted, formatter);
+            formatted = unchanged && formatted.equals(input)
+                    ? StringWrapper.wrapFormatted(options.maxLineLength(), formatted, formatter)
+                    : StringWrapper.wrap(options.maxLineLength(), formatted, formatter);
         }
         return formatted;
     }

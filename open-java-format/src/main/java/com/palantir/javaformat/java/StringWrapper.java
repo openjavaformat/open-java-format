@@ -74,7 +74,18 @@ public final class StringWrapper {
      * adjacent string literals that share a line.
      */
     static String wrap(final int columnLimit, String input, Formatter formatter) throws FormatterException {
-        return wrap(columnLimit, new Source(input, null), formatter).text();
+        return wrap(columnLimit, new Source(input, null), formatter, false).text();
+    }
+
+    /**
+     * Reflows, as {@link #wrap(int, String, Formatter)} does, a file that formatting leaves as it is: one the
+     * formatter has returned unchanged. Formatting the lines of its strings would change nothing either, so the first
+     * round does not. The output of formatting is not enough: formatting it again can still lay out a chain of
+     * {@code +} another way.
+     */
+    static String wrapFormatted(final int columnLimit, String formatted, Formatter formatter)
+            throws FormatterException {
+        return wrap(columnLimit, new Source(formatted, null), formatter, true).text();
     }
 
     /**
@@ -84,19 +95,23 @@ public final class StringWrapper {
      */
     static String wrap(final int columnLimit, String input, RangeSet<Integer> characterRanges, Formatter formatter)
             throws FormatterException {
-        return wrap(columnLimit, new Source(input, characterRanges), formatter).text();
+        return wrap(columnLimit, new Source(input, characterRanges), formatter, false)
+                .text();
     }
 
-    private static Source wrap(final int columnLimit, Source input, Formatter formatter) throws FormatterException {
-        Source result = wrapOnce(columnLimit, input, formatter);
+    private static Source wrap(final int columnLimit, Source input, Formatter formatter, boolean formatted)
+            throws FormatterException {
+        Source result = wrapOnce(columnLimit, input, formatter, formatted);
         for (int round = 1; round < MAX_ROUNDS && !result.text().equals(input.text()); round++) {
             input = result;
-            result = wrapOnce(columnLimit, input, formatter);
+            // A round may reflow again what its second pass formatted, so what it leaves is not always formatted.
+            result = wrapOnce(columnLimit, input, formatter, false);
         }
         return result;
     }
 
-    private static Source wrapOnce(final int columnLimit, Source input, Formatter formatter) throws FormatterException {
+    private static Source wrapOnce(final int columnLimit, Source input, Formatter formatter, boolean formatted)
+            throws FormatterException {
         if (!needWrapping(columnLimit, input.text())) {
             // fast path
             return input;
@@ -110,13 +125,25 @@ public final class StringWrapper {
             // needWrapping is an over-approximation, so there may be nothing to do after all.
             return input;
         }
-        Source firstPass = input.format(formatter, replacements.asMapOfRanges().keySet());
 
-        if (!firstPass.text().equals(input.text())) {
-            // If formatting the replacement ranges resulted in a change, recalculate the replacements on
-            // the updated input.
-            input = firstPass;
-            replacements = input.reflowReplacements(columnLimit, continuationIndent);
+        // Whether formatting the replacement ranges leaves the input as it is.
+        var rangesFormatted = formatted;
+        if (!rangesFormatted) {
+            Source firstPass =
+                    input.format(formatter, replacements.asMapOfRanges().keySet());
+            if (firstPass.text().equals(input.text())) {
+                rangesFormatted = true;
+            } else {
+                // If formatting the replacement ranges resulted in a change, recalculate the replacements on
+                // the updated input.
+                input = firstPass;
+                replacements = input.reflowReplacements(columnLimit, continuationIndent);
+            }
+        }
+        if (rangesFormatted && input.unchangedBy(replacements)) {
+            // Nothing to change, such as text blocks that are indented already: the second pass would format the same
+            // ranges of the same text again, and the check below would compare the text with itself.
+            return input;
         }
 
         Source result = input.apply(replacements);
@@ -174,6 +201,15 @@ public final class StringWrapper {
         Source format(Formatter formatter, Collection<Range<Integer>> rangesToFormat) throws FormatterException {
             List<Replacement> replacements = formatter.getFormatReplacements(text, rangesToFormat);
             return new Source(Utils.applyReplacements(text, replacements), moved(replacements));
+        }
+
+        /** Whether every replacement is the text it replaces. */
+        boolean unchangedBy(TreeRangeMap<Integer, String> replacements) {
+            return replacements.asMapOfRanges().entrySet().stream()
+                    .allMatch(entry -> text.substring(
+                                    entry.getKey().lowerEndpoint(),
+                                    entry.getKey().upperEndpoint())
+                            .equals(entry.getValue()));
         }
 
         Source apply(TreeRangeMap<Integer, String> replacements) {
@@ -1056,6 +1092,14 @@ public final class StringWrapper {
     }
 
     /**
+     * Whether a line may hold a string literal past the column limit: it is longer than the limit and has a quote on
+     * it. A long line without one, such as a comment with a URL or an import, holds no literal to reflow.
+     */
+    private static boolean mayHaveLongLiteral(int columnLimit, String line) {
+        return line.length() > columnLimit && line.indexOf('"') != -1;
+    }
+
+    /**
      * Whether a line may hold two adjacent string literals to join: a {@code +} with a quote right before and after
      * it, blanks aside. A cheap over-approximation that keeps the fast paths fast; the {@link Reflower} decides what
      * is joined.
@@ -1094,15 +1138,15 @@ public final class StringWrapper {
     }
 
     /**
-     * Returns true if any lines in the given Java source exceed the column limit, contain text blocks or may hold
-     * adjacent string literals to join. Keep this method and {@code linesNeedWrapping} in line.
+     * Returns true if any lines in the given Java source may hold string literals past the column limit, contain text
+     * blocks or may hold adjacent string literals to join. Keep this method and {@code linesNeedWrapping} in line.
      * */
     private static boolean needWrapping(int columnLimit, String input) {
         // TODO(cushon): consider adding Newlines.lineIterable?
         Iterator<String> it = Newlines.lineIterator(input);
         while (it.hasNext()) {
             String line = it.next();
-            if (line.length() > columnLimit
+            if (mayHaveLongLiteral(columnLimit, line)
                     || line.contains(TEXT_BLOCK_DELIMITER)
                     // Literals joined into a line that fits leave no over-long line to set off the wrapping.
                     || mayHaveJoinableLiterals(line)) {
@@ -1113,9 +1157,10 @@ public final class StringWrapper {
     }
 
     /**
-     * Returns true if the lines containing the {@code initialRangesToChange} in the given Java source exceed the
-     * column limit, contain text blocks or may hold adjacent string literals to join. Used by the Intellij plugin to
-     * check if we need to run StringWrapper.wrap. Keep this method and {@code needWrapping} in line.
+     * Returns true if the lines containing the {@code initialRangesToChange} in the given Java source may hold string
+     * literals past the column limit, contain text blocks or may hold adjacent string literals to join. Used by the
+     * Intellij plugin to check if we need to run StringWrapper.wrap. Keep this method and {@code needWrapping} in
+     * line.
      * */
     public static boolean linesNeedWrapping(int columnLimit, String input, RangeSet<Integer> initialRangesToChange) {
         // TODO(cushon): consider adding Newlines.lineIterable?
@@ -1125,7 +1170,7 @@ public final class StringWrapper {
         boolean insideTextBlock = false;
         while (it.hasNext()) {
             String line = it.next();
-            if (line.length() > columnLimit || mayHaveJoinableLiterals(line)) {
+            if (mayHaveLongLiteral(columnLimit, line) || mayHaveJoinableLiterals(line)) {
                 linesToChange.add(Range.closedOpen(i, i + 1));
             }
             if (!insideTextBlock && line.contains(TEXT_BLOCK_DELIMITER)) {
