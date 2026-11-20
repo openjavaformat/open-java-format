@@ -16,6 +16,7 @@ package com.palantir.javaformat.java;
 
 import static com.google.common.truth.Truth.assertThat;
 import static com.palantir.javaformat.java.JavaFormatterOptions.Style;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Iterables;
@@ -127,6 +128,82 @@ final class StringWrapperTest {
     }
 
     @Test
+    void stopsAReflowThatWouldMoveACastToTheFirstPiece() {
+        // From google-java-format#1533: in `(Object) "a" + "b"` the cast takes only "a".
+        String input = """
+            class T {
+              Object o =
+                  (Object)
+                      "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt";
+            }
+            """;
+
+        FormatterException e =
+                assertThrows(FormatterException.class, () -> StringWrapper.wrap(100, input, Formatter.create()));
+
+        assertThat(e).hasMessageThat().contains("Something has gone terribly wrong");
+    }
+
+    @Test
+    void stopsAReflowThatWouldMoveAnInnerClassCreationToTheLastPiece() {
+        // From google-java-format#1533: in `"a" + "b".new Inner()` the creation takes only "b".
+        String input = """
+            class T {
+              Object o =
+                  "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt"
+                      .new Inner();
+            }
+            """;
+
+        FormatterException e =
+                assertThrows(FormatterException.class, () -> StringWrapper.wrap(100, input, Formatter.create()));
+
+        assertThat(e).hasMessageThat().contains("Something has gone terribly wrong");
+    }
+
+    @Test
+    void longLinesWithoutAQuoteNeedNoWrapping() {
+        String comment = """
+            class T {
+              // https://example.com/one/long/incredibly/unbroken/path/moving/from/topic/to/topic/so/that/no/one/had/a/chance
+            }
+            """;
+        String literal = """
+            class T {
+              String s = "https://example.com/one/long/incredibly/unbroken/path/moving/from/topic/to/topic/so/that/no/one";
+            }
+            """;
+
+        assertThat(StringWrapper.linesNeedWrapping(100, comment, wholeFile(comment)))
+                .isFalse();
+        assertThat(StringWrapper.linesNeedWrapping(100, literal, wholeFile(literal)))
+                .isTrue();
+    }
+
+    @Test
+    void wrapsAFileThatFormattingLeavesAsItIsAsItWrapsAnyOther() throws Exception {
+        // wrapFormatted leaves out formatting the lines of the strings first, which changes nothing in such a file.
+        Formatter formatter = Formatter.create();
+        String formatted = formatter.formatSource("""
+            class T {
+              String s = "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance";
+              String t = \"""
+                    a text block
+                  \""";
+              void f() {
+                foo("one long incredibly unbroken sentence moving from topic to topic so that no one had a chance", t);
+              }
+            }
+            """);
+        assertThat(formatter.formatSource(formatted)).isEqualTo(formatted);
+
+        String output = StringWrapper.wrapFormatted(100, formatted, formatter);
+
+        assertThat(output).isNotEqualTo(formatted);
+        assertThat(output).isEqualTo(StringWrapper.wrap(100, formatted, formatter));
+    }
+
+    @Test
     void movesRangesAlongWithTheReplacements() {
         // Characters 4 to 8 become two, and two are inserted at 12.
         List<Replacement> replacements = List.of(Replacement.create(4, 8, "ab"), Replacement.create(12, 12, "cd"));
@@ -170,6 +247,10 @@ final class StringWrapperTest {
             return concatenation(plus.getLeftOperand()) + concatenation(plus.getRightOperand());
         }
         return (String) ((LiteralTree) expression).getValue();
+    }
+
+    private static RangeSet<Integer> wholeFile(String input) {
+        return TreeRangeSet.create(List.of(Range.closedOpen(0, input.length())));
     }
 
     private static String lines(String... line) {
