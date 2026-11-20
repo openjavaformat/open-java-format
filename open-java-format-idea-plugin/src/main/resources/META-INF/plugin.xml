@@ -22,6 +22,8 @@
   <extensions defaultExtensionNs="com.intellij">
     <formattingService
             implementation="com.palantir.javaformat.intellij.PalantirJavaFormatFormattingService"/>
+    <codeStyleSettingsModifier
+            implementation="com.palantir.javaformat.intellij.PalantirJavaFormatCodeStyleSettingsModifier"/>
     <projectConfigurable parentId="tools"
                          instance="com.palantir.javaformat.intellij.PalantirJavaFormatConfigurable"
                          id="open-java-format.settings"

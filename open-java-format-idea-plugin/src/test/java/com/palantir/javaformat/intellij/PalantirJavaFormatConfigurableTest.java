@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static com.google.common.collect.MoreCollectors.onlyElement;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.intellij.application.options.CodeStyle;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.ui.ComboBox;
@@ -121,6 +122,24 @@ final class PalantirJavaFormatConfigurableTest {
         });
 
         assertThat(settings.isEnabled()).isTrue();
+    }
+
+    @Test
+    void refreshesTheCodeStyleOfOpenFilesWhenOpenJavaFormatIsSwitchedOnOrOff() throws Throwable {
+        // The import settings of each file are cached, and the plugin sets them while it is on.
+        var tracker = CodeStyle.getSettings(fixture.getProject()).getModificationTracker();
+        var countBefore = tracker.getModificationCount();
+
+        EdtTestUtil.runInEdtAndWait(() -> {
+            configurable.reset();
+            configurable.apply();
+            assertThat(tracker.getModificationCount()).isEqualTo(countBefore);
+
+            findCheckBox("Enable open-java-format").setSelected(false);
+            configurable.apply();
+        });
+
+        assertThat(tracker.getModificationCount()).isGreaterThan(countBefore);
     }
 
     @Test
