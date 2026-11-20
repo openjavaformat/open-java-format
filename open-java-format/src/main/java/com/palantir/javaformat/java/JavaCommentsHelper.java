@@ -102,16 +102,17 @@ public final class JavaCommentsHelper implements CommentsHelper {
         return builder.toString();
     }
 
-    // Wraps and re-indents line comments.
+    // Wraps and re-indents line comments. A line that ends where the comment was wrapped can end in a Unicode space
+    // such as U+00A0, which String.trim() keeps and the next run's trimTrailingFrom drops, so it goes here already.
     private String indentLineComments(List<String> lines, int column0) {
         lines = wrapLineComments(lines, column0);
         StringBuilder builder = new StringBuilder();
-        builder.append(lines.get(0).trim());
+        builder.append(CharMatcher.whitespace().trimFrom(lines.get(0)));
         String indentString = " ".repeat(column0);
         for (int i = 1; i < lines.size(); ++i) {
             builder.append(lineSeparator)
                     .append(indentString)
-                    .append(lines.get(i).trim());
+                    .append(CharMatcher.whitespace().trimFrom(lines.get(i)));
         }
         return builder.toString();
     }
@@ -167,7 +168,10 @@ public final class JavaCommentsHelper implements CommentsHelper {
         return matcher.lookingAt() && (matcher.group(1) != null || JBANG_DIRECTIVE_NAMES.contains(matcher.group(2)));
     }
 
-    private static final Pattern LINE_COMMENT_MISSING_SPACE_PREFIX = Pattern.compile("^(//+)[^\\s/]");
+    // With UNICODE_CHARACTER_CLASS, \s also matches a Unicode space such as U+00A0 or U+3000, which is a space
+    // already. Without it a wrap at U+3000 left a line starting `//` and that space, which the next run padded.
+    private static final Pattern LINE_COMMENT_MISSING_SPACE_PREFIX =
+            Pattern.compile("^(//+)[^\\s/]", Pattern.UNICODE_CHARACTER_CLASS);
 
     // Preserve special `//noinspection` and `//$NON-NLS-x$` comments used by IDEs, which cannot
     // contain leading spaces.
@@ -175,7 +179,8 @@ public final class JavaCommentsHelper implements CommentsHelper {
             Pattern.compile("^//+(noinspection|\\$NON-NLS-\\d+\\$)");
 
     /**
-     * Adds the missing space after the slashes of a line comment: {@code //foo} becomes {@code // foo}. The IDE markers
+     * Adds the missing space after the slashes of a line comment: {@code //foo} becomes {@code // foo}. Any Unicode
+     * space counts as one, so a no-break space after the slashes is kept as it is. The IDE markers
      * {@code //noinspection} and {@code //$NON-NLS-n$} stay as written, since their tools recognise them only without
      * the space. {@link com.palantir.javaformat.doc.Comment#computeFlat()} applies the same rule to a comment that is
      * written flat, for which {@link #rewrite} is not called.
@@ -231,8 +236,7 @@ public final class JavaCommentsHelper implements CommentsHelper {
             while (line.length() + column0 > options.maxLineLength()) {
                 int idx = options.maxLineLength() - column0;
                 // only break on whitespace characters, and ignore the leading `// `. Not on a no-break space
-                // such as U+00A0: the new line would start with `//` and that space, which the next run takes
-                // for a missing space and pads, and then the comment never settles.
+                // such as U+00A0, which is there to keep the words on either side of it on one line.
                 while (idx >= prefix.length()
                         && !CharMatcher.breakingWhitespace().matches(line.charAt(idx))) {
                     idx--;
