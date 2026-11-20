@@ -38,6 +38,7 @@ tasks.withType(JavaCompile).configureEach {
         error('RefactorSwitch')
         error('SameNameButDifferent')
         error('StringConcatToTextBlock')
+        error('UnrecognisedJavadocTag')
         error('UnusedVariable')
         disable('IsInstanceLambdaUsage')
         disable('LexicographicalAnnotationAttributeListing')

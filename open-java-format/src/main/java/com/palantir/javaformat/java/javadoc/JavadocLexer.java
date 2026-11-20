@@ -80,8 +80,8 @@ final class JavadocLexer {
     /**
      * Strips the margin from every continuation line: the {@code *} prefix (with the space after it) from lines that
      * have one, and the comment's own indentation from lines that do not. What remains of a bare line's indentation is
-     * relative to the comment, as on {@code *} lines after their {@code * }, so a {@code <pre>{@code} block written
-     * without the {@code *} margin keeps its shape for {@link #deindentPreCodeBlocks}.
+     * relative to the comment, as on {@code *} lines after their {@code * }, so a <code>&lt;pre&gt;&#123;@code</code>
+     * block written without the {@code *} margin keeps its shape for {@link #deindentPreCodeBlocks}.
      *
      * <p>The indentation stripped from bare lines is the smaller of the shortest {@code *} prefix and the shortest
      * indentation of a bare line, so a bare line is never cut into and lines of both kinds stay aligned with each
