@@ -27,6 +27,10 @@ class Notifications {
         return "open-java-format failed. Does " + filename + " have syntax errors?";
     }
 
+    static String untrustedProjectMessage() {
+        return "open-java-format requires a trusted project to load the external formatter classpath.";
+    }
+
     static String formatterFailedMessage(String filename) {
         return "open-java-format could not run the formatter on " + filename + ". The details are in idea.log.";
     }
