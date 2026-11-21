@@ -24,6 +24,7 @@ import com.intellij.formatting.FormattingContext;
 import com.intellij.formatting.service.AsyncFormattingRequest;
 import com.intellij.formatting.service.CoreFormattingService;
 import com.intellij.formatting.service.FormattingService;
+import com.intellij.ide.impl.TrustedProjects;
 import com.intellij.lang.ImportOptimizer;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.util.TextRange;
@@ -164,6 +165,25 @@ final class PalantirJavaFormatImportOptimizerTest {
         run(new OptimizeImportsProcessor(file.getProject(), file));
 
         assertThat(delegatingFormatter.optimizerInvoked).isFalse();
+    }
+
+    @Test
+    void optimize_imports_in_an_untrusted_project_changes_nothing_and_says_why_in_the_hint() {
+        PsiFile file = createPsiFile(UNOPTIMIZED);
+        TrustedProjects.setTrusted(fixture.getProject(), false);
+        try {
+            var processor = new OptimizeImportsProcessor(file.getProject(), file);
+            processor.setCollectInfo(true);
+
+            run(processor);
+
+            assertThat(file.getText()).isEqualTo(UNOPTIMIZED);
+            assertThat(requireNonNull(processor.getInfoCollector()).getOptimizeImportsNotification())
+                    .isEqualTo(Notifications.untrustedProjectMessage());
+        } finally {
+            // The light project outlives the test.
+            TrustedProjects.setTrusted(fixture.getProject(), true);
+        }
     }
 
     private String commandLineOutput(String input) throws Exception {

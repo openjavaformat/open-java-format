@@ -16,6 +16,7 @@ package com.palantir.javaformat.intellij;
 
 import com.intellij.formatting.service.FormattingNotificationService;
 import com.intellij.lang.ImportOptimizer;
+import com.intellij.lang.ImportOptimizer.CollectingInfoRunnable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.progress.ProcessCanceledException;
@@ -34,6 +35,18 @@ import com.palantir.javaformat.java.FormatterException;
  */
 final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
     private static final Logger logger = Logger.getInstance(PalantirJavaFormatImportOptimizer.class);
+
+    // Changes nothing. An explicit Optimize Imports shows the message in its hint, instead of "No unused imports
+    // found"; on the fly nothing shows it.
+    private static final CollectingInfoRunnable UNTRUSTED_PROJECT = new CollectingInfoRunnable() {
+        @Override
+        public void run() {}
+
+        @Override
+        public String getUserNotificationInfo() {
+            return Notifications.untrustedProjectMessage();
+        }
+    };
 
     private final PalantirJavaFormatFormattingService formattingService;
 
@@ -58,10 +71,8 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
             return EmptyRunnable.getInstance();
         }
         if (!PalantirJavaFormatFormattingService.isTrusted(project)) {
-            logger.warn("open-java-format: skipping optimizing imports for untrusted project: " + project.getName());
-            reportError(
-                    project, Notifications.GENERIC_ERROR_NOTIFICATION_GROUP, Notifications.untrustedProjectMessage());
-            return EmptyRunnable.getInstance();
+            // Safe mode is a normal state, and on the fly this runs on every highlighting pass: no warning, no balloon.
+            return UNTRUSTED_PROJECT;
         }
         var formatter = formattingService.getFormatter(project);
         if (formatter.isEmpty()) {
