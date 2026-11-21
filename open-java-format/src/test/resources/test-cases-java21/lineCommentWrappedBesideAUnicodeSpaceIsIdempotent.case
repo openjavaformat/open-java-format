@@ -1,0 +1,21 @@
+# A line comment wrapped next to a Unicode space comes out of the first run as it does out of every later one.
+# The line that ends at the break loses the no-break space (U+00A0) before it, and the line that starts at an
+# ideographic space (U+3000) keeps it after the slashes, without a regular space in front of it (#249).
+----------
+class T {
+  // The importer reads the whole export file into memory before it checks the row count, so keep each export small.  Splitting a larger one first is cheaper than retrying it.
+  int rows;
+
+  // 設定ファイルが見つからないときは既定値で起動します。　既定値はこのクラスの定数にまとめてあります。　値を変えるときは、テストの期待値も合わせて更新してください。　古い形式のファイルは読み込み時に新しい形式へ変換されます。　変換に失敗したファイルはそのまま残し、エラーをログに出します。
+  int defaults;
+}
+----------
+class T {
+    // The importer reads the whole export file into memory before it checks the row count, so keep each export small.
+    // Splitting a larger one first is cheaper than retrying it.
+    int rows;
+
+    // 設定ファイルが見つからないときは既定値で起動します。　既定値はこのクラスの定数にまとめてあります。　値を変えるときは、テストの期待値も合わせて更新してください。　古い形式のファイルは読み込み時に新しい形式へ変換されます。
+    //　変換に失敗したファイルはそのまま残し、エラーをログに出します。
+    int defaults;
+}

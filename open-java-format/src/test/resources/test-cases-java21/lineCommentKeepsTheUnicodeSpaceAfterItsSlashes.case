@@ -1,0 +1,18 @@
+# A Unicode space right after the slashes, such as a no-break space (U+00A0) or an ideographic space (U+3000),
+# is the space the comment needs, so it does not get a regular one in front of it (#249).
+----------
+class T {
+  // non-breaking space after the prefix
+  /// non-breaking space after a markdown prefix
+  //　ideographic space after the prefix
+  //foo
+  void m() {}
+}
+----------
+class T {
+    // non-breaking space after the prefix
+    /// non-breaking space after a markdown prefix
+    //　ideographic space after the prefix
+    // foo
+    void m() {}
+}
