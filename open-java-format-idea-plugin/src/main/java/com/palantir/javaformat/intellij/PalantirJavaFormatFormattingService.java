@@ -88,9 +88,9 @@ class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService
     }
 
     static boolean isTrusted(Project project) {
-        // The marketplace verifier reports this class as experimental, and newer IDEs also deprecate it. It stays:
-        // its replacement, com.intellij.ide.trustedProjects.TrustedProjects, is @ApiStatus.Internal — a worse thing
-        // for a plugin to call.
+        // TrustedProjects.isTrusted is @ApiStatus.Experimental, and deprecated since 2025.1. Its replacement,
+        // com.intellij.ide.trustedProjects.TrustedProjects.isProjectTrusted, is public only from 2025.1, and this
+        // plugin still supports 2024.2: switch to it when sinceBuild reaches 251.
         return TrustedProjects.isTrusted(project);
     }
 
