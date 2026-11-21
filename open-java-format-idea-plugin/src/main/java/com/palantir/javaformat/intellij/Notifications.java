@@ -28,7 +28,7 @@ class Notifications {
     }
 
     static String untrustedProjectMessage() {
-        return "open-java-format requires a trusted project to load the external formatter classpath.";
+        return "open-java-format requires a trusted project to run its formatter.";
     }
 
     static String formatterFailedMessage(String filename) {
