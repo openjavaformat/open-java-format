@@ -22,17 +22,25 @@ import com.intellij.openapi.options.BaseConfigurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.options.SearchableConfigurable;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.psi.codeStyle.CodeStyleSettingsManager;
+import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.DocumentAdapter;
+import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.components.ActionLink;
+import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBTextArea;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.FormBuilder;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
 import com.palantir.javaformat.intellij.EmbeddedNativeImage.Status;
+import com.palantir.javaformat.intellij.FormatterJdk.Unusable;
+import com.palantir.javaformat.intellij.FormatterJdk.Usable;
+import com.palantir.javaformat.intellij.FormatterSelection.Fallback;
 import com.palantir.javaformat.intellij.PalantirJavaFormatSettings.EnabledState;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -41,12 +49,18 @@ import java.awt.event.ComponentEvent;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Optional;
+import java.util.function.Supplier;
 import javax.swing.Box;
+import javax.swing.ButtonGroup;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 import javax.swing.JTextArea;
 import javax.swing.event.DocumentEvent;
 import org.jetbrains.annotations.Nls;
@@ -56,9 +70,16 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
 
     private final Project project;
     private final EmbeddedNativeImage embeddedNativeImage;
+    private final Supplier<Optional<String>> inProcessUnavailable;
     private final JPanel panel;
     private final JCheckBox enable;
-    private final JCheckBox useNativeImage;
+    private final JPanel modes;
+    private final JRadioButton inProcess;
+    private final JLabel inProcessNote;
+    private final JRadioButton separateJvm;
+    private final JdkChoices jdks = new JdkChoices();
+    private final JPanel jdkOptions;
+    private final JRadioButton nativeImage;
     private final JPanel nativeImageOptions;
     private final JLabel embeddedStatus;
     private final ActionLink embeddedAction;
@@ -71,14 +92,27 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
     private Disposable uiDisposable;
 
     public PalantirJavaFormatConfigurable(Project project) {
-        this(project, EmbeddedNativeImage.getInstance());
+        this(project, EmbeddedNativeImage.getInstance(), InProcessFormatters.IDE::unavailable);
     }
 
-    PalantirJavaFormatConfigurable(Project project, EmbeddedNativeImage embeddedNativeImage) {
+    /** inProcessUnavailable: why the formatter cannot run in the IDE's own JVM, if it cannot. */
+    PalantirJavaFormatConfigurable(
+            Project project, EmbeddedNativeImage embeddedNativeImage, Supplier<Optional<String>> inProcessUnavailable) {
         this.project = project;
         this.embeddedNativeImage = embeddedNativeImage;
+        this.inProcessUnavailable = inProcessUnavailable;
         this.enable = new JCheckBox("Enable open-java-format");
-        this.useNativeImage = new JCheckBox("Use native binary");
+        this.inProcess = new JRadioButton("In the IDE process");
+        this.inProcessNote = new JBLabel();
+        inProcessNote.setForeground(UIUtil.getContextHelpForeground());
+        this.separateJvm = new JRadioButton("In a separate JVM");
+        this.nativeImage = new JRadioButton("Native binary");
+        var mode = new ButtonGroup();
+        mode.add(inProcess);
+        mode.add(separateJvm);
+        mode.add(nativeImage);
+        var jdk = new ComboBox<>(jdks);
+        jdk.setRenderer(new JdkChoiceRenderer());
         this.embeddedStatus = new JLabel();
         this.embeddedAction = new ActionLink();
         embeddedAction.addActionListener(event -> embeddedNativeImage.download(project, pluginVersion()));
@@ -95,10 +129,21 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
         statusRow.add(embeddedStatus);
         statusRow.add(Box.createHorizontalStrut(JBUI.scale(6)));
         statusRow.add(embeddedAction);
-        this.nativeImageOptions = FormBuilder.createFormBuilder()
-                .setFormLeftIndent(JBUI.scale(20))
+        this.jdkOptions = underItsMode().addLabeledComponent("JDK", jdk).getPanel();
+        this.nativeImageOptions = underItsMode()
                 .addComponent(statusRow)
                 .addLabeledComponent("Binary", nativeImagePath)
+                .getPanel();
+        // The options of every mode stay on the page, those of the modes not chosen greyed: hidden, they would move
+        // the modes under them each time another is chosen.
+        this.modes = FormBuilder.createFormBuilder()
+                .addComponent(new JBLabel("Run the formatter"))
+                .addComponent(inProcess)
+                .addComponent(underItsMode().addComponent(inProcessNote).getPanel())
+                .addComponent(separateJvm)
+                .addComponent(jdkOptions)
+                .addComponent(nativeImage)
+                .addComponent(nativeImageOptions)
                 .getPanel();
         // Filling its own form vertically: only then does the form put the label above the text, rather than beside
         // the middle of a wrapped path.
@@ -107,9 +152,12 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
                 .addLabeledComponentFillVertically("Active formatter", activeFormatter)
                 .getPanel();
 
-        // The page shows what runs once it is applied, so it follows every box and the path as they change.
+        // The page shows what runs once it is applied, so it follows every choice and the path as they change.
         enable.addItemListener(event -> showPage());
-        useNativeImage.addItemListener(event -> showPage());
+        inProcess.addItemListener(event -> showPage());
+        separateJvm.addItemListener(event -> showPage());
+        nativeImage.addItemListener(event -> showPage());
+        jdk.addItemListener(event -> showActiveFormatter());
         nativeImagePath.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(DocumentEvent event) {
@@ -122,8 +170,7 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
         // above null: the page rendered nothing and reset() threw the moment it was opened.
         this.panel = FormBuilder.createFormBuilder()
                 .addComponent(enable)
-                .addComponent(useNativeImage)
-                .addComponent(nativeImageOptions)
+                .addComponent(modes)
                 .addComponent(activeFormatterRow)
                 // Takes the rest of the page, so the rows stay at the top whichever of them are hidden.
                 .addComponentFillVertically(new JPanel(), 0)
@@ -166,8 +213,10 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
     @Override
     public void apply() throws ConfigurationException {
         PalantirJavaFormatSettings settings = PalantirJavaFormatSettings.getInstance(project);
+        var mode = selectedMode();
         var path = enteredNativeImagePath();
-        if (useNativeImage.isSelected()) {
+        // Only of what the page shows: switched off, it has nothing on it to put right.
+        if (enable.isSelected() && mode == FormatterMode.NATIVE) {
             if (path.isPresent() && !(Files.isRegularFile(path.get()) && Files.isExecutable(path.get()))) {
                 throw new ConfigurationException(path.get() + " is not an executable file");
             }
@@ -175,10 +224,17 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
                 throw new ConfigurationException("Download the embedded version or choose a binary");
             }
         }
+        // A JDK that stopped being usable since it was chosen: the list lets no other such one be chosen.
+        if (enable.isSelected()
+                && mode == FormatterMode.JVM
+                && FormatterJdks.resolve(project, selectedJdk()) instanceof Unusable unusable) {
+            throw new ConfigurationException("Choose another JDK: " + unusable.reason());
+        }
         var wasEnabled = settings.isEnabled();
         settings.setEnabled(
                 enable.isSelected() ? EnabledState.ENABLED : PalantirJavaFormatSettings.disabledState(project));
-        settings.setUseNativeImage(useNativeImage.isSelected());
+        settings.setFormatterMode(mode);
+        settings.setFormatterJdk(selectedJdk());
         settings.setNativeImagePath(path);
         if (settings.isEnabled() != wasEnabled) {
             // The Java import settings of each file are cached, and PalantirJavaFormatCodeStyleSettingsModifier sets
@@ -191,7 +247,12 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
     public void reset() {
         PalantirJavaFormatSettings settings = PalantirJavaFormatSettings.getInstance(project);
         enable.setSelected(settings.isEnabled());
-        useNativeImage.setSelected(settings.useNativeImage());
+        switch (settings.getFormatterMode()) {
+            case IN_PROCESS -> inProcess.setSelected(true);
+            case JVM -> separateJvm.setSelected(true);
+            case NATIVE -> nativeImage.setSelected(true);
+        }
+        showJdks(settings.getFormatterJdk());
         nativeImagePath.setText(
                 settings.getNativeImagePath().map(Path::toString).orElse(""));
         showPage();
@@ -207,7 +268,8 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
             return true;
         }
         return enable.isSelected() != settings.isEnabled()
-                || useNativeImage.isSelected() != settings.useNativeImage()
+                || selectedMode() != settings.getFormatterMode()
+                || !selectedJdk().equals(settings.getFormatterJdk())
                 || !path.equals(settings.getNativeImagePath());
     }
 
@@ -222,7 +284,7 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
     record StatusLine(String text, Optional<String> action) {}
 
     /**
-     * The line under Use native binary, and the link next to it, which downloads the plugin's version. There is a link
+     * The line under Native binary, and the link next to it, which downloads the plugin's version. There is a link
      * only when there is something to download.
      */
     static StatusLine statusLine(Status status) {
@@ -248,9 +310,18 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
     }
 
     private void showPage() {
-        useNativeImage.setVisible(enable.isSelected());
-        nativeImageOptions.setVisible(enable.isSelected() && useNativeImage.isSelected());
+        modes.setVisible(enable.isSelected());
         activeFormatterRow.setVisible(enable.isSelected());
+        var unavailable = inProcessUnavailable.get();
+        // Left selected when the settings have it and it cannot run here: the page shows what is stored, why it does
+        // not run, and under Active formatter what runs instead.
+        inProcess.setEnabled(unavailable.isEmpty());
+        inProcessNote.setText(unavailable
+                .map(reason -> "Not available: " + reason + ".")
+                .orElseGet(() -> "Fastest: nothing to start. The IDE's own Java "
+                        + Runtime.version().feature() + " parses the code."));
+        UIUtil.setEnabled(jdkOptions, separateJvm.isSelected(), true);
+        UIUtil.setEnabled(nativeImageOptions, nativeImage.isSelected(), true);
         showEmbeddedNativeImage();
     }
 
@@ -264,12 +335,43 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
     }
 
     /**
-     * The formatter the page would run once applied, chosen as FormatterProvider chooses it: the path typed in Binary,
-     * else the embedded binary, else the Java-based formatter.
+     * The JDKs to choose from, as they are now: the IDE's can change between two visits of the page. stored: what the
+     * settings have, listed even when the IDE no longer has a JDK of that name.
      */
+    private void showJdks(FormatterJdk stored) {
+        var choices = new ArrayList<>(FormatterJdks.choices());
+        if (!choices.contains(stored)) {
+            choices.add(stored);
+        }
+        jdks.removeAllElements();
+        for (var choice : choices) {
+            var jdkChoice = new JdkChoice(
+                    choice,
+                    FormatterJdks.label(project, choice),
+                    FormatterJdks.resolve(project, choice) instanceof Usable);
+            jdks.addElement(jdkChoice);
+            if (choice.equals(stored)) {
+                jdks.show(jdkChoice);
+            }
+        }
+    }
+
+    private FormatterMode selectedMode() {
+        if (inProcess.isSelected()) {
+            return FormatterMode.IN_PROCESS;
+        }
+        return nativeImage.isSelected() ? FormatterMode.NATIVE : FormatterMode.JVM;
+    }
+
+    private FormatterJdk selectedJdk() {
+        return jdks.getSelectedItem() instanceof JdkChoice choice ? choice.jdk() : new FormatterJdk.IdeRuntime();
+    }
+
+    /** The formatter the page would run once applied, chosen as FormatterProvider chooses it. */
     private void showActiveFormatter() {
         var pending = new PalantirJavaFormatSettings();
-        pending.setUseNativeImage(useNativeImage.isSelected());
+        pending.setFormatterMode(selectedMode());
+        pending.setFormatterJdk(selectedJdk());
         try {
             pending.setNativeImagePath(enteredNativeImagePath());
         } catch (ConfigurationException e) {
@@ -278,16 +380,35 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
             return;
         }
         activeFormatter.setText(
-                switch (FormatterSelection.of(pending, embeddedNativeImage::installedPath)) {
-                    case FormatterSelection.NativeImage nativeImage ->
-                        nativeImage.path().toString();
-                    case FormatterSelection.JavaBased javaBased
-                    when !javaBased.nativeImageMissing() -> "Java-based formatter";
-                    case FormatterSelection.JavaBased missing ->
+                switch (FormatterSelection.of(
+                        pending,
+                        FormatterSelection.in(project, inProcessUnavailable, embeddedNativeImage::installedPath))) {
+                    case FormatterSelection.InProcess inProcessFormatter ->
+                        "The IDE process (Java " + System.getProperty("java.version") + ")";
+                    case FormatterSelection.NativeImage nativeImageFormatter ->
+                        nativeImageFormatter.path().toString();
+                    case FormatterSelection.SeparateJvm jvm
+                    when jvm.fallbacks().contains(new Fallback.NativeImageMissing()) ->
                         embeddedNativeImage.status(pluginVersion()) instanceof Status.NoImageForPlatform
                                 ? "Choose a native binary: none is published for this platform"
                                 : "Need to download version " + pluginVersion() + " from Maven Central";
+                    case FormatterSelection.SeparateJvm jvm -> separateJvmText(jvm);
                 });
+    }
+
+    /** The java that runs, and under it why it is not what the page asks for, when it is not. */
+    static String separateJvmText(FormatterSelection.SeparateJvm jvm) {
+        var lines = new ArrayList<String>();
+        lines.add(jvm.java() + " (Java " + jvm.javaVersion() + ")");
+        for (var fallback : jvm.fallbacks()) {
+            switch (fallback) {
+                case Fallback.InProcessUnavailable unavailable ->
+                    lines.add("A JVM of its own: the IDE process is not available.");
+                case Fallback.JdkUnusable unusable -> lines.add("The IDE's runtime: " + unusable.reason() + ".");
+                case Fallback.NativeImageMissing missing -> lines.add("A JVM of its own: there is no native binary.");
+            }
+        }
+        return String.join("\n", lines);
     }
 
     private String pluginVersion() {
@@ -339,4 +460,44 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
         return text;
     }
 
+    /** The options of a mode, indented under its radio button. */
+    private static FormBuilder underItsMode() {
+        return FormBuilder.createFormBuilder().setFormLeftIndent(JBUI.scale(20));
+    }
+
+    /** usable: whether the formatter can run on it, which only Java 21 or later that is on this machine can. */
+    private record JdkChoice(FormatterJdk jdk, FormatterJdks.Label label, boolean usable) {}
+
+    /** Lets a JDK be chosen only if the formatter can run on it. The others stay in the list, greyed. */
+    private static final class JdkChoices extends DefaultComboBoxModel<JdkChoice> {
+        @Override
+        public void setSelectedItem(@Nullable Object choice) {
+            if (choice instanceof JdkChoice jdkChoice && jdkChoice.usable()) {
+                super.setSelectedItem(choice);
+            }
+        }
+
+        /** What the settings have, usable or not. */
+        void show(JdkChoice stored) {
+            super.setSelectedItem(stored);
+        }
+    }
+
+    private static final class JdkChoiceRenderer extends ColoredListCellRenderer<JdkChoice> {
+        @Override
+        protected void customizeCellRenderer(
+                JList<? extends JdkChoice> list,
+                @Nullable JdkChoice choice,
+                int index,
+                boolean selected,
+                boolean focus) {
+            if (choice == null) {
+                return;
+            }
+            append(
+                    choice.label().name(),
+                    choice.usable() ? SimpleTextAttributes.REGULAR_ATTRIBUTES : SimpleTextAttributes.GRAYED_ATTRIBUTES);
+            append("  " + choice.label().detail(), SimpleTextAttributes.GRAYED_ATTRIBUTES);
+        }
+    }
 }

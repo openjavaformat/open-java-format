@@ -88,13 +88,32 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
         return state.implementationClassPath;
     }
 
-    /** Whether the native binary formats this project rather than the Java-based formatter. */
-    boolean useNativeImage() {
-        return state.useNativeImage;
+    /**
+     * How the formatter runs. A file written before there was a choice says only whether the native binary runs: it
+     * goes on running, and every other project moves from a JVM of its own into the IDE's.
+     */
+    FormatterMode getFormatterMode() {
+        for (var mode : FormatterMode.values()) {
+            if (mode.name().equals(state.formatterMode)) {
+                return mode;
+            }
+        }
+        return state.useNativeImage ? FormatterMode.NATIVE : FormatterMode.IN_PROCESS;
     }
 
-    void setUseNativeImage(boolean useNativeImage) {
-        state.useNativeImage = useNativeImage;
+    void setFormatterMode(FormatterMode mode) {
+        state.formatterMode = mode.name();
+        // All that a plugin from before the choice reads, in a file shared with one.
+        state.useNativeImage = mode == FormatterMode.NATIVE;
+    }
+
+    /** The JDK of the formatter's own JVM, for when it runs in one. */
+    FormatterJdk getFormatterJdk() {
+        return FormatterJdk.parse(state.formatterJdk);
+    }
+
+    void setFormatterJdk(FormatterJdk jdk) {
+        state.formatterJdk = jdk.stored();
     }
 
     /** A native binary of the user's own, run instead of the embedded one. */
@@ -162,6 +181,12 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
         public boolean useNativeImage = false;
 
         @Nullable
+        public String formatterMode;
+
+        @Nullable
+        public String formatterJdk;
+
+        @Nullable
         public String nativeImagePath;
 
         public void setImplementationClassPath(@Nullable List<String> value) {
@@ -205,6 +230,10 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
                     + implementationClassPath
                     + ", useNativeImage="
                     + useNativeImage
+                    + ", formatterMode="
+                    + formatterMode
+                    + ", formatterJdk="
+                    + formatterJdk
                     + ", nativeImagePath="
                     + nativeImagePath
                     + '}';

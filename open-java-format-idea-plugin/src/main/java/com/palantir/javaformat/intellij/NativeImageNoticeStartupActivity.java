@@ -78,7 +78,7 @@ public final class NativeImageNoticeStartupActivity implements StartupActivity.D
     static Optional<Notice> notice(
             PalantirJavaFormatSettings settings, Status status, @Nullable String ignoredVersion) {
         if (!settings.isEnabled()
-                || !settings.useNativeImage()
+                || settings.getFormatterMode() != FormatterMode.NATIVE
                 || settings.getNativeImagePath().isPresent()) {
             return Optional.empty();
         }

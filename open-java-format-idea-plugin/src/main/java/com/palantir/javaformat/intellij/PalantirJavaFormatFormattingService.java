@@ -52,8 +52,8 @@ import org.jspecify.annotations.Nullable;
 
 class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService implements PluginAware {
     private static final Logger logger = Logger.getInstance(PalantirJavaFormatFormattingService.class);
-    private final FormatterProvider formatterProvider =
-            new FormatterProvider(() -> EmbeddedNativeImage.getInstance().installedPath());
+    private final FormatterProvider formatterProvider = new FormatterProvider(
+            () -> EmbeddedNativeImage.getInstance().installedPath(), InProcessFormatters.IDE::unavailable);
     private final ImportOptimizer importOptimizer = new PalantirJavaFormatImportOptimizer(this);
 
     // The platform sets this right after creating the service from plugin.xml: the descriptor of the plugin that

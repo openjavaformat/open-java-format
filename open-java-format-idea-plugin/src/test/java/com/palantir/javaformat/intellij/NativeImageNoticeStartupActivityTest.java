@@ -39,7 +39,7 @@ final class NativeImageNoticeStartupActivityTest {
     @BeforeEach
     void setUp() {
         settings.setEnabled(true);
-        settings.setUseNativeImage(true);
+        settings.setFormatterMode(FormatterMode.NATIVE);
     }
 
     @Test
@@ -67,16 +67,16 @@ final class NativeImageNoticeStartupActivityTest {
     void staysQuietWhenTheEmbeddedBinaryDoesNotRun() {
         var custom = new PalantirJavaFormatSettings();
         custom.setEnabled(true);
-        custom.setUseNativeImage(true);
+        custom.setFormatterMode(FormatterMode.NATIVE);
         custom.setNativeImagePath(Optional.of(Path.of("/opt/open-java-format")));
-        var javaBased = new PalantirJavaFormatSettings();
-        javaBased.setEnabled(true);
+        var inProcess = new PalantirJavaFormatSettings();
+        inProcess.setEnabled(true);
         var disabled = new PalantirJavaFormatSettings();
-        disabled.setUseNativeImage(true);
+        disabled.setFormatterMode(FormatterMode.NATIVE);
 
         assertThat(NativeImageNoticeStartupActivity.notice(custom, OUTDATED, null))
                 .isEmpty();
-        assertThat(NativeImageNoticeStartupActivity.notice(javaBased, OUTDATED, null))
+        assertThat(NativeImageNoticeStartupActivity.notice(inProcess, OUTDATED, null))
                 .isEmpty();
         assertThat(NativeImageNoticeStartupActivity.notice(disabled, OUTDATED, null))
                 .isEmpty();

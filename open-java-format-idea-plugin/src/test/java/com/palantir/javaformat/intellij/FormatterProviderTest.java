@@ -54,11 +54,51 @@ final class FormatterProviderTest {
     }
 
     @Test
+    void formatsInsideTheIdeUnlessTheSettingsSayOtherwise() {
+        assertThat(new FormatterProvider(Optional::empty, Optional::empty).get(fixture.getProject(), settings))
+                .get()
+                .isInstanceOf(InProcessFormatterService.class);
+    }
+
+    @Test
+    void startsAJvmWhereTheIdeGivesNoAccessToJavac() {
+        var provider = new FormatterProvider(Optional::empty, () -> Optional.of("the IDE opens nothing"));
+
+        assertThat(provider.get(fixture.getProject(), settings))
+                .get()
+                .isInstanceOf(BootstrappingFormatterService.class)
+                .extracting("jdkPath")
+                .isEqualTo(FormatterJdks.ideRuntime().java());
+    }
+
+    @Test
+    void startsTheJvmOnTheJdkTheUserChose() {
+        // The formatter is cached: one created for a JDK must not outlive the choice of another.
+        var home = Path.of(System.getProperty("java.home"));
+        TestJdks.register("moved-here", home, "Eclipse Temurin 25", fixture.getTestRootDisposable());
+        settings.setFormatterMode(FormatterMode.JVM);
+        var provider = new FormatterProvider(Optional::empty, Optional::empty);
+
+        assertThat(provider.get(fixture.getProject(), settings))
+                .get()
+                .extracting("jdkMajorVersion")
+                .isEqualTo(Runtime.version().feature());
+
+        settings.setFormatterJdk(new FormatterJdk.Named("moved-here"));
+
+        assertThat(provider.get(fixture.getProject(), settings))
+                .get()
+                .isInstanceOf(BootstrappingFormatterService.class)
+                .extracting("jdkPath", "jdkMajorVersion")
+                .containsExactly(home.resolve("bin").resolve("java"), 25);
+    }
+
+    @Test
     void runsTheBinaryTheUserChose() {
-        settings.setUseNativeImage(true);
+        settings.setFormatterMode(FormatterMode.NATIVE);
         settings.setNativeImagePath(Optional.of(Path.of("/opt/open-java-format")));
 
-        assertThat(new FormatterProvider(Optional::empty).get(fixture.getProject(), settings))
+        assertThat(new FormatterProvider(Optional::empty, Optional::empty).get(fixture.getProject(), settings))
                 .get()
                 .isInstanceOf(NativeImageFormatterService.class);
     }
@@ -66,9 +106,9 @@ final class FormatterProviderTest {
     @Test
     void switchesToTheEmbeddedBinaryOnceItIsDownloaded() {
         // The formatter is cached: one created before the download must not outlive it.
-        settings.setUseNativeImage(true);
+        settings.setFormatterMode(FormatterMode.NATIVE);
         var embedded = new AtomicReference<Optional<Path>>(Optional.empty());
-        var provider = new FormatterProvider(embedded::get);
+        var provider = new FormatterProvider(embedded::get, Optional::empty);
 
         assertThat(provider.get(fixture.getProject(), settings))
                 .get()
