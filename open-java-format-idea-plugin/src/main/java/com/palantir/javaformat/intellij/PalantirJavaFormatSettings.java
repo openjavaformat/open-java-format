@@ -67,6 +67,15 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
         state.enabled = enabled;
     }
 
+    /**
+     * The state that switches the plugin off. The default settings (inherited by new projects) are either 'enabled' or
+     * 'show notification'. There's no way to default new projects to disabled. If someone wants that, we can add
+     * another checkbox, I suppose.
+     */
+    static EnabledState disabledState(Project project) {
+        return project.isDefault() ? EnabledState.UNKNOWN : EnabledState.DISABLED;
+    }
+
     boolean isUninitialized() {
         return state.enabled.equals(EnabledState.UNKNOWN);
     }

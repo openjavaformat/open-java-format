@@ -25,6 +25,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.psi.codeStyle.CodeStyleSettingsManager;
 import com.intellij.ui.DocumentAdapter;
 import com.intellij.ui.components.ActionLink;
 import com.intellij.ui.components.JBTextArea;
@@ -174,16 +175,16 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
                 throw new ConfigurationException("Download the embedded version or choose a binary");
             }
         }
-        settings.setEnabled(enable.isSelected() ? EnabledState.ENABLED : getDisabledState());
+        var wasEnabled = settings.isEnabled();
+        settings.setEnabled(
+                enable.isSelected() ? EnabledState.ENABLED : PalantirJavaFormatSettings.disabledState(project));
         settings.setUseNativeImage(useNativeImage.isSelected());
         settings.setNativeImagePath(path);
-    }
-
-    private EnabledState getDisabledState() {
-        // The default settings (inherited by new projects) are either 'enabled' or
-        // 'show notification'. There's no way to default new projects to disabled. If someone wants
-        // that, we can add another checkbox, I suppose.
-        return project.isDefault() ? EnabledState.UNKNOWN : EnabledState.DISABLED;
+        if (settings.isEnabled() != wasEnabled) {
+            // The Java import settings of each file are cached, and PalantirJavaFormatCodeStyleSettingsModifier sets
+            // them while the plugin is enabled.
+            CodeStyleSettingsManager.getInstance(project).notifyCodeStyleSettingsChanged();
+        }
     }
 
     @Override
