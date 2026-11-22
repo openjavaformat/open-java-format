@@ -1,0 +1,29 @@
+# A long literal stays whole under a cast, as the enclosing expression of a qualified .new and as the qualifier of a
+# method reference, as it does as the expression of a member select: these bind tighter than +, so each would take
+# only one piece of the reflowed literal, as in (Object) "a" + "b". A literal in parentheses, or under a +, is still
+# reflowed.
+----------
+class T {
+    Object o = (Object) "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt or to say anything";
+    Object p = "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt or to say anything".new Inner();
+    java.util.function.IntSupplier s = "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt or to say anything"::length;
+    Object q = (Object) ("one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt or to say anything");
+    String fine = "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt or to say anything";
+}
+----------
+class T {
+    Object o = (Object)
+            "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt or to say anything";
+    Object p =
+            "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt or to say anything"
+            .new Inner();
+    java.util.function.IntSupplier s =
+            "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt or to say anything"
+                    ::length;
+    Object q =
+            (Object) ("one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to"
+                    + " interrupt or to say anything");
+    String fine =
+            "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt"
+                    + " or to say anything";
+}

@@ -16,7 +16,6 @@ package com.palantir.javaformat.java;
 
 import static com.google.common.truth.Truth.assertThat;
 import static com.palantir.javaformat.java.JavaFormatterOptions.Style;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Iterables;
@@ -128,8 +127,8 @@ final class StringWrapperTest {
     }
 
     @Test
-    void stopsAReflowThatWouldMoveACastToTheFirstPiece() {
-        // From google-java-format#1533: in `(Object) "a" + "b"` the cast takes only "a".
+    void stopsAReflowThatWouldMoveACastToTheFirstPiece() throws Exception {
+        // From google-java-format#1533: in `(Object) "a" + "b"` the cast takes only "a", so the literal stays whole.
         String input = """
             class T {
               Object o =
@@ -138,15 +137,13 @@ final class StringWrapperTest {
             }
             """;
 
-        FormatterException e =
-                assertThrows(FormatterException.class, () -> StringWrapper.wrap(100, input, Formatter.create()));
-
-        assertThat(e).hasMessageThat().contains("Something has gone terribly wrong");
+        assertThat(StringWrapper.wrap(100, input, Formatter.create())).isEqualTo(input);
     }
 
     @Test
-    void stopsAReflowThatWouldMoveAnInnerClassCreationToTheLastPiece() {
-        // From google-java-format#1533: in `"a" + "b".new Inner()` the creation takes only "b".
+    void stopsAReflowThatWouldMoveAnInnerClassCreationToTheLastPiece() throws Exception {
+        // From google-java-format#1533: in `"a" + "b".new Inner()` the creation takes only "b", so the literal stays
+        // whole.
         String input = """
             class T {
               Object o =
@@ -155,10 +152,21 @@ final class StringWrapperTest {
             }
             """;
 
-        FormatterException e =
-                assertThrows(FormatterException.class, () -> StringWrapper.wrap(100, input, Formatter.create()));
+        assertThat(StringWrapper.wrap(100, input, Formatter.create())).isEqualTo(input);
+    }
 
-        assertThat(e).hasMessageThat().contains("Something has gone terribly wrong");
+    @Test
+    void stopsAReflowThatWouldMoveAMethodReferenceToTheLastPiece() throws Exception {
+        // In `"a" + "b"::length` the method reference takes only "b", so the literal stays whole.
+        String input = """
+            class T {
+              java.util.function.IntSupplier s =
+                  "one long incredibly unbroken sentence moving from topic to topic so that no one had a chance to interrupt"
+                      ::length;
+            }
+            """;
+
+        assertThat(StringWrapper.wrap(100, input, Formatter.create())).isEqualTo(input);
     }
 
     @Test

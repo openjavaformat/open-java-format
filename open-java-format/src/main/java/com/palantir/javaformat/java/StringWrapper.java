@@ -28,10 +28,13 @@ import com.palantir.javaformat.Newlines;
 import com.palantir.javaformat.Utils;
 import com.sun.source.tree.BinaryTree;
 import com.sun.source.tree.LiteralTree;
+import com.sun.source.tree.MemberReferenceTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.NewClassTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.Tree.Kind;
+import com.sun.source.tree.TypeCastTree;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.TreePathScanner;
 import com.sun.tools.javac.tree.JCTree;
@@ -437,9 +440,7 @@ public final class StringWrapper {
                     textBlocks.add(getCurrentPath());
                     return null;
                 }
-                Tree parent = getCurrentPath().getParentPath().getLeaf();
-                if (parent instanceof MemberSelectTree memberSelectTree
-                        && memberSelectTree.getExpression().equals(literalTree)) {
+                if (bindsTighterThanPlus(getCurrentPath().getParentPath().getLeaf(), literalTree)) {
                     return null;
                 }
                 int endPosition = getEndPosition(unit, literalTree);
@@ -453,6 +454,22 @@ public final class StringWrapper {
                 longStringLiterals.add(getCurrentPath());
                 return null;
             }
+        }
+
+        /**
+         * Whether the parent of a literal applies to it more tightly than {@code +} does: as a member select
+         * ({@code "…".length()}), a cast, a qualified {@code .new} or a method reference. Reflowed into
+         * {@code "a" + "b"}, the literal would leave that parent only one of its pieces, as in
+         * {@code (Object) "a" + "b"}, so it stays whole.
+         */
+        private static boolean bindsTighterThanPlus(Tree parent, LiteralTree literal) {
+            return (parent instanceof MemberSelectTree select
+                            && select.getExpression().equals(literal))
+                    || (parent instanceof TypeCastTree cast
+                            && cast.getExpression().equals(literal))
+                    || (parent instanceof NewClassTree newClass && literal.equals(newClass.getEnclosingExpression()))
+                    || (parent instanceof MemberReferenceTree reference
+                            && reference.getQualifierExpression().equals(literal));
         }
 
         private void indentTextBlocks(TreeRangeMap<Integer, String> replacements, List<TreePath> textBlocks) {
