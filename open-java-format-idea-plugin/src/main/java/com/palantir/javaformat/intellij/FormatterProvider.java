@@ -94,8 +94,8 @@ final class FormatterProvider {
         return implementationClasspath.stream().map(Path::of).toList();
     }
 
-    private static List<Path> getBundledImplementationUrls() {
-        // Load from the jars bundled with the plugin.
+    /** The jars of the formatter bundled with the plugin, in the directory impl next to the plugin's own lib. */
+    static List<Path> getBundledImplementationUrls() {
         Path implDir = ofNullable(FormattingService.EP_NAME.findExtension(PalantirJavaFormatFormattingService.class))
                 .flatMap(PalantirJavaFormatFormattingService::getPluginDescriptor)
                 .map(PluginDescriptor::getPluginPath)
