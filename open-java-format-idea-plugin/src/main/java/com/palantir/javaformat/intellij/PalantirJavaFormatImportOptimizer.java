@@ -27,6 +27,7 @@ import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 import com.palantir.javaformat.intellij.PalantirJavaFormatFormattingService.PendingFormat;
 import com.palantir.javaformat.java.FormatterException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Optimizes imports as the command line fixes them, with {@code FormatterService.fixImports}: the unused ones removed,
@@ -34,7 +35,7 @@ import com.palantir.javaformat.java.FormatterException;
  * imports, since {@link PalantirJavaFormatFormattingService} has {@code OPTIMIZE_IMPORTS}.
  */
 final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
-    private static final Logger logger = Logger.getInstance(PalantirJavaFormatImportOptimizer.class);
+    private final Logger logger = Logger.getInstance(PalantirJavaFormatImportOptimizer.class);
 
     // Changes nothing. An explicit Optimize Imports shows the message in its hint, instead of "No unused imports
     // found"; on the fly nothing shows it.
@@ -67,11 +68,16 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
     public Runnable processFile(PsiFile file) {
         Project project = file.getProject();
         Document document = PsiDocumentManager.getInstance(project).getDocument(file);
-        if (document == null || leftToPendingFormat(document)) {
+        if (document == null) {
+            debug(file, "skipped, the file has no document");
+            return EmptyRunnable.getInstance();
+        }
+        if (leftToPendingFormat(document, file)) {
             return EmptyRunnable.getInstance();
         }
         if (!PalantirJavaFormatFormattingService.isTrusted(project)) {
             // Safe mode is a normal state, and on the fly this runs on every highlighting pass: no warning, no balloon.
+            debug(file, "skipped, the project is not trusted");
             return UNTRUSTED_PROJECT;
         }
         var formatter = formattingService.getFormatter(project);
@@ -86,7 +92,17 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
         String text = document.getText();
         String fixedText;
         try {
+            var start = System.nanoTime();
             fixedText = formatter.get().fixImports(text);
+            if (logger.isDebugEnabled()) {
+                debug(
+                        file,
+                        String.format(
+                                "fixImports ran in %s ms, length=%s, text changed: %s",
+                                TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),
+                                text.length(),
+                                !fixedText.equals(text)));
+            }
         } catch (FormatterException e) {
             // A syntax error in the file, not a fault of the plugin: an error would go to its error reports.
             logger.warn(String.format("Failed to optimize imports of file %s", file.getName()), e);
@@ -110,8 +126,11 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
         return () -> {
             // The document can have changed since: typed into, or given the text of a formatting request. Or a request
             // can have started formatting it meanwhile, which takes the imports over.
-            if (StringUtil.equals(document.getImmutableCharSequence(), text) && !leftToPendingFormat(document)) {
+            if (!StringUtil.equals(document.getImmutableCharSequence(), text)) {
+                debug(file, "dropped the fixed imports, the document changed meanwhile");
+            } else if (!leftToPendingFormat(document, file)) {
                 document.setText(fixedText);
+                debug(file, "applied the fixed imports");
             }
         };
     }
@@ -120,9 +139,29 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
      * Whether a formatting request is pending on the document: one that is still formatting fixes the imports itself,
      * and one whose text is not applied yet would lose it if the document changed now.
      */
-    private static boolean leftToPendingFormat(Document document) {
+    private boolean leftToPendingFormat(Document document, PsiFile file) {
         PendingFormat pendingFormat = PendingFormat.of(document);
-        return pendingFormat != null && (pendingFormat.handOverImports() || pendingFormat.isUnapplied());
+        if (pendingFormat == null) {
+            return false;
+        }
+        if (pendingFormat.handOverImports()) {
+            debug(file, "handed over to the formatting request in progress, which fixes them after formatting");
+            return true;
+        }
+        if (pendingFormat.isUnapplied()) {
+            debug(file, "skipped, a formatting request has finished and its text is not applied yet");
+            return true;
+        }
+        return false;
+    }
+
+    private void debug(PsiFile file, String message) {
+        if (logger.isDebugEnabled()) {
+            var virtualFile = file.getVirtualFile();
+            logger.debug(String.format(
+                    "Optimizing imports of file=%s: %s",
+                    virtualFile == null ? file.getName() : virtualFile.getPath(), message));
+        }
     }
 
     private static void reportError(Project project, String title, String message) {

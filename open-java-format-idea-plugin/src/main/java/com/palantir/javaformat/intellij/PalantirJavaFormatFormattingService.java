@@ -47,11 +47,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jspecify.annotations.Nullable;
 
 class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService implements PluginAware {
-    private static final Logger logger = Logger.getInstance(PalantirJavaFormatFormattingService.class);
+    private final Logger logger = Logger.getInstance(PalantirJavaFormatFormattingService.class);
     private final FormatterProvider formatterProvider = new FormatterProvider(
             () -> EmbeddedNativeImage.getInstance().installedPath(), InProcessFormatters.IDE::unavailable);
     private final ImportOptimizer importOptimizer = new PalantirJavaFormatImportOptimizer(this);
@@ -210,7 +211,7 @@ class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService
         }
     }
 
-    private static final class PalantirJavaFormatFormattingTask implements FormattingTask {
+    private final class PalantirJavaFormatFormattingTask implements FormattingTask {
         private final AsyncFormattingRequest request;
         private final Optional<FormatterService> formatterService;
         private final PendingFormat pendingFormat;
@@ -249,25 +250,32 @@ class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService
                 if (logger.isDebugEnabled()) {
                     logger.debug(String.format(
                             "Received request to format file=%s, length=%s with ranges=%s",
-                            ofNullable(request.getIOFile())
-                                    .map(file -> file.toPath().toString())
-                                    .orElse("null"),
-                            preFormatText.length(),
-                            request.getFormattingRanges()));
+                            filePath(request), preFormatText.length(), request.getFormattingRanges()));
                 }
 
+                var start = System.nanoTime();
                 // Note: I attempted to implement this using getFormatReplacements and elide an update when
                 // there were no replacements. There is a bug in the underlying formatter where it _always_
                 // returns a change. Thus we must perform a content aware diff / branching.
                 String formattedText = applyReplacements(
                         preFormatText, formatterService.get().getFormatReplacements(preFormatText, toRanges(request)));
-                if (pendingFormat.finishFormatting()) {
+                var fixesImports = pendingFormat.finishFormatting();
+                if (fixesImports) {
                     formattedText = formatterService.get().fixImports(formattedText);
+                }
+                var changed = !preFormatText.equals(formattedText);
+                if (logger.isDebugEnabled()) {
+                    logger.debug(String.format(
+                            "Formatted file=%s in %s ms, imports fixed too: %s, text changed: %s",
+                            filePath(request),
+                            TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),
+                            fixesImports,
+                            changed));
                 }
 
                 // The Javadoc of this API says that you should set it to null when the document is unchanged
                 // We should not be trying to format a document that is already formatted
-                if (preFormatText.equals(formattedText)) {
+                if (!changed) {
                     request.onTextReady(null);
                     return false;
                 }
@@ -297,6 +305,12 @@ class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService
                                 request.getContext().getContainingFile().getName()));
             }
             return false;
+        }
+
+        private static String filePath(AsyncFormattingRequest request) {
+            return ofNullable(request.getIOFile())
+                    .map(file -> file.toPath().toString())
+                    .orElse("null");
         }
 
         static String applyReplacements(String input, Collection<Replacement> replacementsCollection) {
