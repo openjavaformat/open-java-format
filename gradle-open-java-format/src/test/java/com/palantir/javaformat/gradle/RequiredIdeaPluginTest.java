@@ -58,6 +58,6 @@ final class RequiredIdeaPluginTest {
                 .extracting(BuildTask::getOutcome)
                 .isEqualTo(TaskOutcome.SUCCESS);
         assertThat(project.readFile(".idea/externalDependencies.xml"))
-                .contains("<plugin id=\"open-java-format\" min-version=\"2.57.0\"/>");
+                .contains("<plugin id=\"open-java-format\" min-version=\"2.57.0\" />");
     }
 }
