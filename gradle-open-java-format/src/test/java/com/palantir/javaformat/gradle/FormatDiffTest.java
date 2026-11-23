@@ -30,16 +30,18 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+/**
+ * Runs formatDiff through git with each formatter, the native binary among them, so it runs only in CI's native jobs.
+ * {@link FormatChangedLinesTest} formats a diff written out by hand, in every build.
+ */
 final class FormatDiffTest {
 
     private static final File CLASSPATH_FILE = new File("build/impl.classpath");
@@ -47,24 +49,6 @@ final class FormatDiffTest {
 
     @TempDir
     Path repo;
-
-    @Test
-    void parsing_git_diff_output_works() throws IOException {
-        // A Windows checkout gives the fixture CRLF line endings, while git prints a diff with LF.
-        String example1 = Files.readString(
-                        Paths.get("src/test/resources/com/palantir/javaformat/java/FormatDiffCliTest/example1.patch"))
-                .replace("\r\n", "\n");
-
-        List<String> strings = FormatDiff.parseGitDiffOutput(example1)
-                .map(FormatDiff.SingleFileDiff::toString)
-                .toList();
-        assertThat(strings)
-                .containsExactly(
-                        "SingleFileDiff{path=build.gradle, lineRanges=[[24..25), [29..30)]}",
-                        // The path is a Path, which prints with backslashes on Windows.
-                        "SingleFileDiff{path=" + Path.of("tracing/src/test/java/com/palantir/tracing/TracersTest.java")
-                                + ", lineRanges=[[659..660), [675..676)]}");
-    }
 
     @ParameterizedTest
     @MethodSource("getFormatters")
@@ -87,41 +71,6 @@ final class FormatDiffTest {
 
         assertThat(reformatMe).hasContent("class ReformatMe {}");
         assertThat(dontTouchMe).hasContent("                                 class DontTouchMe {}");
-    }
-
-    @ParameterizedTest
-    @MethodSource("getFormatters")
-    void reflows_the_long_string_of_a_changed_line(FormatterService formatterService)
-            throws IOException, InterruptedException {
-        initRepo();
-        Path longString = repo.resolve("LongString.java");
-        Files.writeString(longString, """
-            class LongString {
-                String outside = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat sed.";
-            }
-            """);
-        runCommandInRepo("git", "add", ".");
-        runCommandInRepo("git", "commit", "-m", "A class");
-
-        Files.writeString(longString, """
-            class LongString {
-                String outside = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat sed.";
-
-                String changed = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna.";
-            }
-            """);
-
-        FormatDiff.formatDiff(repo, formatterService);
-
-        assertThat(longString).hasContent("""
-            class LongString {
-                String outside = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat sed.";
-
-                String changed =
-                        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et"
-                                + " dolore magna.";
-            }
-            """);
     }
 
     private void initRepo() throws IOException, InterruptedException {

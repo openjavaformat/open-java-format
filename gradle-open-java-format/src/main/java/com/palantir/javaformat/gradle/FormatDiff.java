@@ -16,7 +16,6 @@
 
 package com.palantir.javaformat.gradle;
 
-import static com.google.common.base.Preconditions.checkState;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Comparator.comparing;
 import static java.util.regex.Pattern.MULTILINE;
@@ -31,7 +30,6 @@ import com.google.common.collect.TreeRangeSet;
 import com.palantir.javaformat.java.FormatterException;
 import com.palantir.javaformat.java.FormatterService;
 import com.palantir.javaformat.java.Replacement;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,7 +38,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -58,12 +55,15 @@ final class FormatDiff {
 
     public static void formatDiff(Path dirToFormat, FormatterService formatter)
             throws IOException, InterruptedException {
-        String gitOutput = gitDiff(dirToFormat);
-        Path gitTopLevelDir = gitTopLevelDir(dirToFormat);
+        formatChangedLines(GitDiff.of(dirToFormat), formatter);
+    }
 
-        parseGitDiffOutput(gitOutput)
+    /** Formats the lines the diff changed in the Java files it names, those of them that still exist. */
+    @VisibleForTesting
+    static void formatChangedLines(GitDiff gitDiff, FormatterService formatter) {
+        parseGitDiffOutput(gitDiff.output())
                 .filter(diff -> diff.path.toString().endsWith(".java"))
-                .map(diff -> new SingleFileDiff(gitTopLevelDir.resolve(diff.path), diff.lineRanges))
+                .map(diff -> new SingleFileDiff(gitDiff.topLevelDir().resolve(diff.path), diff.lineRanges))
                 .filter(diff -> Files.exists(diff.path))
                 .forEach(diff -> format(formatter, diff));
     }
@@ -117,31 +117,6 @@ final class FormatDiff {
             System.err.println("Failed to format file " + diff.path);
             e.printStackTrace(System.err);
         }
-    }
-
-    private static String gitDiff(Path dir) throws IOException, InterruptedException {
-        // TODO(dfox): this does nothing if working dir is clean - maybe use HEAD^ to format prev commit?
-        return gitCommand(
-                dir, "git", "diff", "-U0", "HEAD", dir.toAbsolutePath().toString());
-    }
-
-    private static Path gitTopLevelDir(Path dir) throws IOException, InterruptedException {
-        return Paths.get(gitCommand(dir, "git", "rev-parse", "--show-toplevel"));
-    }
-
-    private static String gitCommand(Path dir, String... args) throws IOException, InterruptedException {
-        Process process =
-                new ProcessBuilder().command(args).directory(dir.toFile()).start();
-
-        checkState(process.waitFor(30, TimeUnit.SECONDS), "git diff took too long to terminate");
-        if (process.exitValue() != 0) {
-            throw new RuntimeException("Expected return code of 0 but got " + process.exitValue()
-                    + "\n stdout: " + new String(process.getInputStream().readAllBytes(), UTF_8)
-                    + "\n stderr: " + new String(process.getErrorStream().readAllBytes(), UTF_8));
-        }
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        process.getInputStream().transferTo(baos);
-        return new String(baos.toByteArray(), UTF_8).trim();
     }
 
     private static String applyReplacements(String input, Collection<Replacement> replacementsCollection) {
