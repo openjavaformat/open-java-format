@@ -234,7 +234,7 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
         settings.setEnabled(
                 enable.isSelected() ? EnabledState.ENABLED : PalantirJavaFormatSettings.disabledState(project));
         settings.setFormatterMode(mode);
-        settings.setFormatterJdk(selectedJdk());
+        settings.setJvmJdk(selectedJdk());
         settings.setNativeImagePath(path);
         if (settings.isEnabled() != wasEnabled) {
             // The Java import settings of each file are cached, and PalantirJavaFormatCodeStyleSettingsModifier sets
@@ -252,7 +252,7 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
             case JVM -> separateJvm.setSelected(true);
             case NATIVE -> nativeImage.setSelected(true);
         }
-        showJdks(settings.getFormatterJdk());
+        showJdks(settings.getJvmJdk());
         nativeImagePath.setText(
                 settings.getNativeImagePath().map(Path::toString).orElse(""));
         showPage();
@@ -269,7 +269,7 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
         }
         return enable.isSelected() != settings.isEnabled()
                 || selectedMode() != settings.getFormatterMode()
-                || !selectedJdk().equals(settings.getFormatterJdk())
+                || !selectedJdk().equals(settings.getJvmJdk())
                 || !path.equals(settings.getNativeImagePath());
     }
 
@@ -371,7 +371,7 @@ class PalantirJavaFormatConfigurable extends BaseConfigurable implements Searcha
     private void showActiveFormatter() {
         var pending = new PalantirJavaFormatSettings();
         pending.setFormatterMode(selectedMode());
-        pending.setFormatterJdk(selectedJdk());
+        pending.setJvmJdk(selectedJdk());
         try {
             pending.setNativeImagePath(enteredNativeImagePath());
         } catch (ConfigurationException e) {

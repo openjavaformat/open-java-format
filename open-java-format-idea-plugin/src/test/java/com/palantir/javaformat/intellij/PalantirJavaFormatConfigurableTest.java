@@ -208,7 +208,7 @@ final class PalantirJavaFormatConfigurableTest {
     void readsAndWritesTheJdk() throws Throwable {
         TestJdks.running("this-jdk", untilTheTestEnds);
         settings.setFormatterMode(FormatterMode.JVM);
-        settings.setFormatterJdk(new FormatterJdk.Named("this-jdk"));
+        settings.setJvmJdk(new FormatterJdk.Named("this-jdk"));
 
         EdtTestUtil.runInEdtAndWait(() -> {
             configurable.reset();
@@ -225,14 +225,14 @@ final class PalantirJavaFormatConfigurableTest {
             configurable.apply();
         });
 
-        assertThat(settings.getFormatterJdk()).isEqualTo(new FormatterJdk.IdeRuntime());
+        assertThat(settings.getJvmJdk()).isEqualTo(new FormatterJdk.IdeRuntime());
     }
 
     @Test
     void refusesAJdkThatNoLongerRunsTheFormatter() throws Throwable {
         // Chosen when the IDE had it. The page shows what the settings have, and what runs instead.
         settings.setFormatterMode(FormatterMode.JVM);
-        settings.setFormatterJdk(new FormatterJdk.Named("gone"));
+        settings.setJvmJdk(new FormatterJdk.Named("gone"));
         var ideRuntime = FormatterJdks.ideRuntime();
 
         EdtTestUtil.runInEdtAndWait(() -> {
@@ -316,7 +316,7 @@ final class PalantirJavaFormatConfigurableTest {
     void asksNothingOfTheChoicesOnceOpenJavaFormatIsSwitchedOff() throws Throwable {
         // They are not on the page then, so there is nothing on it to put right.
         settings.setFormatterMode(FormatterMode.JVM);
-        settings.setFormatterJdk(new FormatterJdk.Named("gone"));
+        settings.setJvmJdk(new FormatterJdk.Named("gone"));
 
         EdtTestUtil.runInEdtAndWait(() -> {
             configurable.reset();

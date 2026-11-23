@@ -63,4 +63,5 @@ IntelliJ IDEA starts its JVM with `--add-opens=java.base/java.lang=ALL-UNNAMED`:
 - A formatter bug that throws no `Error`, such as one that never returns, now happens inside the IDE.
 - A formatter from a build is loaded into the IDE's JVM where it used to be run by a JVM of its own. Both happen only in a trusted project.
 - A formatter from a build that needs a newer Guava than the plugin's can fail to link inside the IDE. It then runs in a separate JVM, on its own jars alone, and so does every other project's formatter until the IDE restarts: one failure switches the IDE process off for the session.
-- A project whose `.idea/open-java-format.xml` is shared keeps `useNativeImage` in it beside the new `formatterMode`, for plugins from before the modes.
+- `formatterMode` alone says how a project formats, as `in-process`, `jvm` or `native`, and a setting of one mode has that mode at the start of its name: `jvmJdk`, `nativeImagePath`. A mode added later, such as a daemon with a JDK of its own, then has settings no other mode reads.
+- `useNativeImage`, which a file from before the modes has, is read once, as the native mode, and not written again. A plugin from before the modes that reads a file written since finds no `useNativeImage`, and formats in a JVM of its own.

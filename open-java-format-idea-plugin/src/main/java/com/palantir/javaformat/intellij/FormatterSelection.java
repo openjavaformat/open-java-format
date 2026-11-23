@@ -73,7 +73,7 @@ sealed interface FormatterSelection {
     private static SeparateJvm separateJvm(
             PalantirJavaFormatSettings settings, Environment environment, Fallback... fromAnotherMode) {
         var fallbacks = new ArrayList<>(List.of(fromAnotherMode));
-        var jvm = switch (environment.resolve(settings.getFormatterJdk())) {
+        var jvm = switch (environment.resolve(settings.getJvmJdk())) {
             case Usable usable -> usable;
             case Unusable unusable -> {
                 fallbacks.add(new Fallback.JdkUnusable(unusable.reason()));

@@ -65,7 +65,7 @@ final class FormatterSelectionTest {
     @Test
     void runsTheJvmOnTheJdkTheUserChose() {
         settings.setFormatterMode(FormatterMode.JVM);
-        settings.setFormatterJdk(new FormatterJdk.Named("temurin-25"));
+        settings.setJvmJdk(new FormatterJdk.Named("temurin-25"));
         machine.jdk = JDK_25;
 
         assertThat(FormatterSelection.of(settings, machine)).isEqualTo(new SeparateJvm(JDK_25.java(), 25, List.of()));
@@ -74,7 +74,7 @@ final class FormatterSelectionTest {
     @Test
     void runsTheJvmOnTheIdesRuntimeWhenTheChosenJdkCannotRunTheFormatter() {
         settings.setFormatterMode(FormatterMode.JVM);
-        settings.setFormatterJdk(new FormatterJdk.ProjectSdk());
+        settings.setJvmJdk(new FormatterJdk.ProjectSdk());
         machine.jdk = new Unusable(TOO_OLD);
 
         assertThat(FormatterSelection.of(settings, machine))
@@ -84,7 +84,7 @@ final class FormatterSelectionTest {
     @Test
     void usesTheChosenJdkWhenAnotherModeFallsBackToAJvm() {
         // The JDK is kept whichever mode is on, and it is the JVM to fall back to.
-        settings.setFormatterJdk(new FormatterJdk.Named("temurin-25"));
+        settings.setJvmJdk(new FormatterJdk.Named("temurin-25"));
         machine.jdk = JDK_25;
         machine.inProcessUnavailable = Optional.of(NO_JAVAC);
 
@@ -94,7 +94,7 @@ final class FormatterSelectionTest {
 
     @Test
     void saysEveryThingThatIsMissing() {
-        settings.setFormatterJdk(new FormatterJdk.Named("temurin-17"));
+        settings.setJvmJdk(new FormatterJdk.Named("temurin-17"));
         machine.jdk = new Unusable(TOO_OLD);
         machine.inProcessUnavailable = Optional.of(NO_JAVAC);
 

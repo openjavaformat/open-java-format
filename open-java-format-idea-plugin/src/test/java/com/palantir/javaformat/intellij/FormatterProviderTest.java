@@ -84,7 +84,7 @@ final class FormatterProviderTest {
                 .extracting("jdkMajorVersion")
                 .isEqualTo(Runtime.version().feature());
 
-        settings.setFormatterJdk(new FormatterJdk.Named("moved-here"));
+        settings.setJvmJdk(new FormatterJdk.Named("moved-here"));
 
         assertThat(provider.get(fixture.getProject(), settings))
                 .get()

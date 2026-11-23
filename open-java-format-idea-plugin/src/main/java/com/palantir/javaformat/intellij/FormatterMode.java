@@ -14,12 +14,32 @@
 
 package com.palantir.javaformat.intellij;
 
-/** How a project asks for the formatter to run. The names are what .idea/open-java-format.xml holds. */
+import java.util.Arrays;
+import java.util.Optional;
+import org.jspecify.annotations.Nullable;
+
+/** How a project asks for the formatter to run. */
 enum FormatterMode {
     /** Loaded into the IDE's own JVM: nothing to start for a file. */
-    IN_PROCESS,
+    IN_PROCESS("in-process"),
     /** In a JVM started for each call, on the JDK the settings name. */
-    JVM,
+    JVM("jvm"),
     /** As the native binary, started for each call. */
-    NATIVE
+    NATIVE("native");
+
+    private final String text;
+
+    FormatterMode(String text) {
+        this.text = text;
+    }
+
+    /** What .idea/open-java-format.xml holds for the mode, whatever the constant is called here. */
+    String text() {
+        return text;
+    }
+
+    /** The mode a file names: none for a file that names none, or one that only a later plugin has. */
+    static Optional<FormatterMode> of(@Nullable String text) {
+        return Arrays.stream(values()).filter(mode -> mode.text.equals(text)).findFirst();
+    }
 }
