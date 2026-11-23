@@ -121,12 +121,4 @@ final class InProcessFormatters {
             throw new UncheckedIOException("Cannot turn " + jar + " into a URL", e);
         }
     }
-
-    /** A jar as it was when the formatter was loaded from it: rebuilt in place, it changes size or time. */
-    private record Jar(Path path, long length, long lastModified) {
-        static Jar of(Path path) {
-            var file = path.toFile();
-            return new Jar(path, file.length(), file.lastModified());
-        }
-    }
 }

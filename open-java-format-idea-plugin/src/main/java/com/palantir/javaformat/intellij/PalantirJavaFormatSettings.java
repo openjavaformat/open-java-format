@@ -22,17 +22,12 @@ import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
 import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.openapi.project.Project;
-import com.palantir.javaformat.java.FormatterService;
 import org.jspecify.annotations.Nullable;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
-import java.util.jar.JarFile;
-import java.util.stream.Stream;
 
 import static java.util.Optional.ofNullable;
 
@@ -144,26 +139,11 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
                 .map(PluginDescriptor::getVersion);
     }
 
+    /** The version of the formatter on the implementation class path, if there is one and it states its version. */
     Optional<String> computeFormatterVersion() {
         return getImplementationClassPath()
-                .map(classpath -> classpath.stream()
-                        .flatMap(uri -> {
-                            try {
-                                JarFile jar = new JarFile(uri.getPath());
-                                // Identify the implementation jar by the service it produces.
-                                if (jar.getEntry("META-INF/services/" + FormatterService.class.getName()) != null) {
-                                    String implementationVersion = jar.getManifest()
-                                            .getMainAttributes()
-                                            .getValue("Implementation-Version");
-                                    return Stream.of(implementationVersion);
-                                }
-                                return Stream.empty();
-                            } catch (IOException e) {
-                                throw new UncheckedIOException(e);
-                            }
-                        })
-                        .findFirst()
-                        .orElseThrow(() -> new RuntimeException("Couldn't find implementation JAR")));
+                .flatMap(classpath -> FormatterVersions.IDE.of(
+                        classpath.stream().map(Path::of).toList()));
     }
 
     enum EnabledState {
