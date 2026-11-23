@@ -15,6 +15,8 @@
 package com.palantir.javaformat.gradle;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Comparator.reverseOrder;
+import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -31,10 +33,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -185,7 +185,7 @@ final class BundledFormatterTest {
 
     private static void delete(Path dir) throws IOException {
         try (Stream<Path> paths = Files.walk(dir)) {
-            for (var path : paths.sorted(Comparator.reverseOrder()).toList()) {
+            for (var path : paths.sorted(reverseOrder()).toList()) {
                 Files.delete(path);
             }
         }
@@ -202,7 +202,7 @@ final class BundledFormatterTest {
 
     private static byte[] resource(String name) {
         try (InputStream in = BundledFormatterTest.class.getClassLoader().getResourceAsStream(name)) {
-            return Objects.requireNonNull(in, name + " is not on the classpath").readAllBytes();
+            return requireNonNull(in, name + " is not on the classpath").readAllBytes();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

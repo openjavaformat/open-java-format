@@ -16,10 +16,11 @@
 
 package com.palantir.javaformat.gradle;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.palantir.javaformat.bootstrap.BootstrappingFormatterService;
 import com.palantir.javaformat.bootstrap.NativeImageFormatterService;
@@ -135,13 +136,13 @@ final class FormatDiffTest {
         Process process =
                 new ProcessBuilder().command(args).directory(repo.toFile()).start();
 
-        Preconditions.checkState(process.waitFor(10, TimeUnit.SECONDS), "git diff took too long to terminate");
+        checkState(process.waitFor(10, TimeUnit.SECONDS), "git diff took too long to terminate");
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         process.getErrorStream().transferTo(baos);
         String stderr = baos.toString(UTF_8);
 
-        Preconditions.checkState(process.exitValue() == 0, "Expected return code of 0: %s", stderr);
+        checkState(process.exitValue() == 0, "Expected return code of 0: %s", stderr);
     }
 
     private static Stream<FormatterService> getFormatters() throws IOException {
@@ -165,7 +166,7 @@ final class FormatDiffTest {
     }
 
     private static Path javaBinPath() {
-        String javaHome = Preconditions.checkNotNull(System.getProperty("java.home"), "java.home property not set");
+        String javaHome = checkNotNull(System.getProperty("java.home"), "java.home property not set");
         return Path.of(javaHome).resolve("bin").resolve("java" + (isWindows() ? ".exe" : ""));
     }
 
