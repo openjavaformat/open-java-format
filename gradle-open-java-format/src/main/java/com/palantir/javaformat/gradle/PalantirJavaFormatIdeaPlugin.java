@@ -30,7 +30,7 @@ public abstract class PalantirJavaFormatIdeaPlugin implements Plugin<Project> {
     @Override
     public void apply(Project rootProject) {
         Preconditions.checkState(
-                rootProject == rootProject.getRootProject(),
+                rootProject.equals(rootProject.getRootProject()),
                 "May only apply dev.openjavaformat.java-format-idea to the root project");
 
         rootProject.getPlugins().apply(PalantirJavaFormatProviderPlugin.class);

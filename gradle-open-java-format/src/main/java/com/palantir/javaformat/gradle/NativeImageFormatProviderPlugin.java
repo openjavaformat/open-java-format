@@ -34,7 +34,7 @@ public abstract class NativeImageFormatProviderPlugin implements Plugin<Project>
     @Override
     public void apply(Project rootProject) {
         Preconditions.checkState(
-                rootProject == rootProject.getRootProject(),
+                rootProject.equals(rootProject.getRootProject()),
                 "May only apply dev.openjavaformat.java-format-provider to the root project");
 
         Provider<NativePlatform> platform = NativePlatform.current(getProviderFactory());

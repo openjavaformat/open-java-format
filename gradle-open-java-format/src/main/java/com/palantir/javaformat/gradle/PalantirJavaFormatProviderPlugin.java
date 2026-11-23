@@ -28,7 +28,7 @@ public final class PalantirJavaFormatProviderPlugin implements Plugin<Project> {
     @Override
     public void apply(Project rootProject) {
         Preconditions.checkState(
-                rootProject == rootProject.getRootProject(),
+                rootProject.equals(rootProject.getRootProject()),
                 "May only apply dev.openjavaformat.java-format-provider to the root project");
 
         rootProject.getPluginManager().apply(NativeImageFormatProviderPlugin.class);
