@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
  * imports, since {@link PalantirJavaFormatFormattingService} has {@code OPTIMIZE_IMPORTS}.
  */
 final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
-    private static final Logger logger = Logger.getInstance(PalantirJavaFormatImportOptimizer.class);
+    private final Logger logger = Logger.getInstance(PalantirJavaFormatImportOptimizer.class);
 
     // Changes nothing. An explicit Optimize Imports shows the message in its hint, instead of "No unused imports
     // found"; on the fly nothing shows it.
@@ -139,7 +139,7 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
      * Whether a formatting request is pending on the document: one that is still formatting fixes the imports itself,
      * and one whose text is not applied yet would lose it if the document changed now.
      */
-    private static boolean leftToPendingFormat(Document document, PsiFile file) {
+    private boolean leftToPendingFormat(Document document, PsiFile file) {
         PendingFormat pendingFormat = PendingFormat.of(document);
         if (pendingFormat == null) {
             return false;
@@ -155,7 +155,7 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
         return false;
     }
 
-    private static void debug(PsiFile file, String message) {
+    private void debug(PsiFile file, String message) {
         if (logger.isDebugEnabled()) {
             var virtualFile = file.getVirtualFile();
             logger.debug(String.format(

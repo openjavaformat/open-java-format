@@ -52,7 +52,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.jspecify.annotations.Nullable;
 
 class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService implements PluginAware {
-    private static final Logger logger = Logger.getInstance(PalantirJavaFormatFormattingService.class);
+    private final Logger logger = Logger.getInstance(PalantirJavaFormatFormattingService.class);
     private final FormatterProvider formatterProvider = new FormatterProvider(
             () -> EmbeddedNativeImage.getInstance().installedPath(), InProcessFormatters.IDE::unavailable);
     private final ImportOptimizer importOptimizer = new PalantirJavaFormatImportOptimizer(this);
@@ -211,7 +211,7 @@ class PalantirJavaFormatFormattingService extends AsyncDocumentFormattingService
         }
     }
 
-    private static final class PalantirJavaFormatFormattingTask implements FormattingTask {
+    private final class PalantirJavaFormatFormattingTask implements FormattingTask {
         private final AsyncFormattingRequest request;
         private final Optional<FormatterService> formatterService;
         private final PendingFormat pendingFormat;

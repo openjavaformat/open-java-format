@@ -40,11 +40,11 @@ import java.util.stream.Stream;
 import static java.util.Optional.ofNullable;
 
 final class FormatterProvider {
-    private static final Logger log = Logger.getInstance(FormatterProvider.class);
+    private final Logger log = Logger.getInstance(FormatterProvider.class);
 
     // Cache to avoid resolving the formatter every time we want to format from IntelliJ
     private final LoadingCache<FormatterCacheKey, Optional<FormatterService>> implementationCache =
-            Caffeine.newBuilder().maximumSize(1).build(FormatterProvider::createFormatter);
+            Caffeine.newBuilder().maximumSize(1).build(this::createFormatter);
 
     private final Supplier<Optional<Path>> embeddedNativeImage;
     private final Supplier<Optional<String>> inProcessUnavailable;
@@ -69,7 +69,7 @@ final class FormatterProvider {
                         settings, FormatterSelection.in(project, inProcessUnavailable, embeddedNativeImage))));
     }
 
-    private static Optional<FormatterService> createFormatter(FormatterCacheKey cacheKey) {
+    private Optional<FormatterService> createFormatter(FormatterCacheKey cacheKey) {
         return Optional.of(
                 switch (cacheKey.selection()) {
                     case FormatterSelection.NativeImage nativeImage -> {
@@ -85,7 +85,7 @@ final class FormatterProvider {
                 });
     }
 
-    private static FormatterService inProcess(FormatterCacheKey cacheKey) {
+    private FormatterService inProcess(FormatterCacheKey cacheKey) {
         log.info("open-java-format: using in-process formatter (Java " + System.getProperty("java.version") + ") with "
                 + classpathName(cacheKey) + " classpath");
         // Loaded with the first file, in the background, and not here: this can be the UI thread. What cannot be
@@ -96,10 +96,10 @@ final class FormatterProvider {
                 InProcessFormatters.IDE,
                 classpath,
                 new BootstrappingFormatterService(ideRuntime.java(), ideRuntime.javaVersion(), classpath),
-                FormatterProvider::couldNotFormatInProcess);
+                this::couldNotFormatInProcess);
     }
 
-    private static void couldNotFormatInProcess(Throwable failure) {
+    private void couldNotFormatInProcess(Throwable failure) {
         var message = "open-java-format: cannot format inside the IDE, formatting in a JVM of its own";
         if (InProcessFormatters.IDE.unavailable().isPresent()) {
             // The formatter does not load or link in this IDE, which it should: an error, so that it goes to the
@@ -113,7 +113,7 @@ final class FormatterProvider {
     // The JVM gets the "--add-exports" it needs to reach javac. By default it is the IDE's own runtime rather than
     // the project SDK: every IDE this plugin supports runs on Java 21 or later, which the formatter needs, while a
     // project SDK can be any version.
-    private static FormatterService separateJvm(Path java, int javaVersion, FormatterCacheKey cacheKey) {
+    private FormatterService separateJvm(Path java, int javaVersion, FormatterCacheKey cacheKey) {
         log.info("open-java-format: using Java-based formatter on " + java + " (Java " + javaVersion + ") with "
                 + classpathName(cacheKey) + " classpath");
         return new BootstrappingFormatterService(java, javaVersion, implementationClasspath(cacheKey));
@@ -133,7 +133,7 @@ final class FormatterProvider {
                 };
     }
 
-    private static List<Path> implementationClasspath(FormatterCacheKey cacheKey) {
+    private List<Path> implementationClasspath(FormatterCacheKey cacheKey) {
         return getImplementationUrls(cacheKey.implementationClassPath(), cacheKey.useBundledImplementation());
     }
 
@@ -150,32 +150,27 @@ final class FormatterProvider {
 
     /** The jars of the formatter bundled with the plugin, in the directory impl next to the plugin's own lib. */
     static List<Path> getBundledImplementationUrls() {
-        Path implDir = ofNullable(FormattingService.EP_NAME.findExtension(PalantirJavaFormatFormattingService.class))
+        return listDirAsUrlsUnchecked(bundledImplementationDir());
+    }
+
+    private static Path bundledImplementationDir() {
+        return ofNullable(FormattingService.EP_NAME.findExtension(PalantirJavaFormatFormattingService.class))
                 .flatMap(PalantirJavaFormatFormattingService::getPluginDescriptor)
                 .map(PluginDescriptor::getPluginPath)
                 .orElseThrow(() -> new NoSuchElementException("The platform has not set the plugin descriptor"))
                 .resolve("impl");
-
-        log.debug("Using open-java-format implementation bundled with plugin: " + implDir);
-
-        return listDirAsUrlsUnchecked(implDir);
     }
 
-    private static List<Path> getImplementationUrls(
+    private List<Path> getImplementationUrls(
             Optional<List<URI>> implementationClassPath, boolean useBundledImplementation) {
-        if (useBundledImplementation) {
-            log.debug("Using open-java-format implementation bundled with plugin");
-            return getBundledImplementationUrls();
+        if (useBundledImplementation || implementationClassPath.isEmpty()) {
+            var implDir = bundledImplementationDir();
+            log.debug("Using open-java-format implementation bundled with plugin: " + implDir);
+            return listDirAsUrlsUnchecked(implDir);
         }
-        return implementationClassPath
-                .map(classpath -> {
-                    log.debug("Using open-java-format implementation defined by URIs: " + classpath);
-                    return getProvidedImplementationUrls(classpath);
-                })
-                .orElseGet(() -> {
-                    log.debug("Using open-java-format implementation bundled with plugin");
-                    return getBundledImplementationUrls();
-                });
+        var classpath = implementationClassPath.orElseThrow();
+        log.debug("Using open-java-format implementation defined by URIs: " + classpath);
+        return getProvidedImplementationUrls(classpath);
     }
 
     private static List<Path> listDirAsUrlsUnchecked(Path dir) {

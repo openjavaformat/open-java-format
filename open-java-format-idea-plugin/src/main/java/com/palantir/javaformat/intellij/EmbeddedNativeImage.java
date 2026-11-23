@@ -56,7 +56,7 @@ import org.jspecify.annotations.Nullable;
  */
 @Service(Service.Level.APP)
 final class EmbeddedNativeImage {
-    private static final Logger log = Logger.getInstance(EmbeddedNativeImage.class);
+    private final Logger log = Logger.getInstance(EmbeddedNativeImage.class);
 
     private static final String MAVEN_CENTRAL = "https://repo1.maven.org/maven2";
     private static final String TEMPORARY_PREFIX = "download-";

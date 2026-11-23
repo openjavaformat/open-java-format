@@ -38,7 +38,7 @@ import org.gradle.api.tasks.SourceSetContainer;
  * {@link com.palantir.javaformat.gradle.PalantirJavaFormatSpotlessPlugin} even if spotless is not on the classpath.
  */
 public abstract class SpotlessInterop implements Action<JavaExtension> {
-    private static final Logger logger = Logging.getLogger(SpotlessInterop.class);
+    private final Logger logger = Logging.getLogger(SpotlessInterop.class);
 
     // Generated source directories, which are not formatted: a file is in one when its path in the project directory
     // matches **/build/generated*/**, **/src/generated*/**, **/generated_*src/**, **/generated_*Src/** or
