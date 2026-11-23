@@ -15,8 +15,11 @@
 package com.palantir.javaformat.intellij;
 
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Range;
 import com.intellij.application.options.CodeStyle;
 import com.intellij.codeInsight.actions.OptimizeImportsProcessor;
 import com.intellij.codeInsight.actions.ReformatCodeProcessor;
@@ -26,7 +29,14 @@ import com.intellij.formatting.service.CoreFormattingService;
 import com.intellij.formatting.service.FormattingService;
 import com.intellij.ide.impl.TrustedProjects;
 import com.intellij.lang.ImportOptimizer;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.util.AbstractProgressIndicatorBase;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.EmptyRunnable;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
@@ -38,9 +48,16 @@ import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.JavaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.palantir.javaformat.intellij.PalantirJavaFormatSettings.StoredSettings;
+import com.palantir.javaformat.java.FormatterException;
+import com.palantir.javaformat.java.FormatterService;
+import com.palantir.javaformat.java.Replacement;
 import java.io.File;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -186,6 +203,76 @@ final class PalantirJavaFormatImportOptimizerTest {
         }
     }
 
+    @Test
+    void a_write_action_does_not_wait_for_the_formatter_to_fix_the_imports() throws Exception {
+        PsiFile file = createPsiFile(UNOPTIMIZED);
+        var formatter = new BlockingFormatterService();
+        delegatingFormatter.formatter = formatter;
+        var optimizer = delegatingFormatter.getImportOptimizers(file).iterator().next();
+        try {
+            // As the platform runs it on the fly: in a read action that gives way to a write action, then runs again.
+            var optimizing = ApplicationManager.getApplication()
+                    .executeOnPooledThread(() -> ReadAction.nonBlocking(() -> optimizer.processFile(file))
+                            .executeSynchronously());
+            assertThat(formatter.started.await(10, SECONDS)).isTrue();
+
+            // The write action of a keystroke, which is not to wait for the formatter to return.
+            ApplicationManager.getApplication()
+                    .executeOnPooledThread(() -> WriteAction.runAndWait(() -> {}))
+                    .get(10, SECONDS);
+
+            formatter.release.countDown();
+            assertThat(optimizing.get(10, SECONDS)).isNotSameAs(EmptyRunnable.getInstance());
+        } finally {
+            formatter.release.countDown();
+        }
+    }
+
+    @Test
+    void optimizing_the_same_text_again_waits_for_the_fix_already_running() throws Exception {
+        PsiFile file = createPsiFile(UNOPTIMIZED);
+        var formatter = new BlockingFormatterService();
+        delegatingFormatter.formatter = formatter;
+        var optimizer = delegatingFormatter.getImportOptimizers(file).iterator().next();
+        try {
+            var first = ApplicationManager.getApplication()
+                    .executeOnPooledThread(() -> ReadAction.compute(() -> optimizer.processFile(file)));
+            assertThat(formatter.started.await(10, SECONDS)).isTrue();
+
+            // Releases the formatter once the second call waits for it, by when it has found the first one running.
+            var releasing = new AbstractProgressIndicatorBase() {
+                @Override
+                public void checkCanceled() {
+                    if (StackWalker.getInstance()
+                            .walk(frames -> frames.anyMatch(
+                                    frame -> frame.getMethodName().equals("awaitWithCheckCanceled")))) {
+                        formatter.release.countDown();
+                    }
+                    super.checkCanceled();
+                }
+            };
+            var second = ApplicationManager.getApplication()
+                    .executeOnPooledThread(() -> ProgressManager.getInstance()
+                            .runProcess(() -> ReadAction.compute(() -> optimizer.processFile(file)), releasing));
+
+            assertThat(second.get(10, SECONDS)).isNotSameAs(EmptyRunnable.getInstance());
+            assertThat(first.get(10, SECONDS)).isNotSameAs(EmptyRunnable.getInstance());
+            assertThat(formatter.calls.get()).isEqualTo(1);
+        } finally {
+            formatter.release.countDown();
+        }
+    }
+
+    @Test
+    void optimize_imports_leaves_the_file_alone_when_the_formatter_fails_on_it() {
+        PsiFile file = createPsiFile(UNOPTIMIZED);
+        delegatingFormatter.formatter = new FailingFormatterService();
+
+        run(new OptimizeImportsProcessor(file.getProject(), file));
+
+        assertThat(file.getText()).isEqualTo(UNOPTIMIZED);
+    }
+
     private String commandLineOutput(String input) throws Exception {
         return delegatingFormatter
                 .getFormatter(fixture.getProject())
@@ -272,8 +359,55 @@ final class PalantirJavaFormatImportOptimizerTest {
         }
     }
 
+    /** Fixes the imports only once released, to stand for a formatter that takes its time. */
+    private static final class BlockingFormatterService extends UnsupportedFormatterService {
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+        private final AtomicInteger calls = new AtomicInteger();
+
+        @Override
+        public String fixImports(String input) {
+            calls.incrementAndGet();
+            started.countDown();
+            try {
+                if (!release.await(30, SECONDS)) {
+                    throw new IllegalStateException("Never released");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(e);
+            }
+            return "fixed";
+        }
+    }
+
+    /** Fails as a formatter of its own process does on a file it cannot parse. */
+    private static final class FailingFormatterService extends UnsupportedFormatterService {
+        @Override
+        public String fixImports(String input) throws FormatterException {
+            throw new FormatterException("cannot parse");
+        }
+    }
+
+    private abstract static class UnsupportedFormatterService implements FormatterService {
+        @Override
+        @SuppressForbidden(reason = "FormatterService, kept in the SPI for compatibility, returns ImmutableList")
+        public ImmutableList<Replacement> getFormatReplacements(String input, Collection<Range<Integer>> ranges) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public String formatSourceReflowStringsAndFixImports(String input) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
     private static final class DelegatingFormatter extends PalantirJavaFormatFormattingService {
         private boolean optimizerInvoked = false;
+
+        // The formatter the optimizer runs instead of the project's.
+        @Nullable
+        private FormatterService formatter;
 
         DelegatingFormatter() {
             this.setPluginDescriptor(
@@ -297,6 +431,11 @@ final class PalantirJavaFormatImportOptimizerTest {
                     return delegate.processFile(file);
                 }
             });
+        }
+
+        @Override
+        Optional<FormatterService> getFormatter(Project project) {
+            return formatter != null ? Optional.of(formatter) : super.getFormatter(project);
         }
 
         @Override

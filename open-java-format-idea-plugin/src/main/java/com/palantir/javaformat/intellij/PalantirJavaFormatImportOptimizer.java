@@ -20,13 +20,19 @@ import com.intellij.lang.ImportOptimizer.CollectingInfoRunnable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.progress.ProcessCanceledException;
+import com.intellij.openapi.progress.util.ProgressIndicatorUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.EmptyRunnable;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
+import com.intellij.util.concurrency.AppExecutorUtil;
 import com.palantir.javaformat.intellij.PalantirJavaFormatFormattingService.PendingFormat;
 import com.palantir.javaformat.java.FormatterException;
+import com.palantir.javaformat.java.FormatterService;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -51,6 +57,10 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
 
     private final PalantirJavaFormatFormattingService formattingService;
 
+    // The fixImports calls still running, by formatter and text. A read action that runs again after a write action,
+    // on the same text, waits for the call it started before instead of starting another: a JVM, in that mode.
+    private final Map<FixImportsCall, CompletableFuture<FixedImports>> running = new ConcurrentHashMap<>();
+
     PalantirJavaFormatImportOptimizer(PalantirJavaFormatFormattingService formattingService) {
         this.formattingService = formattingService;
     }
@@ -61,9 +71,8 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
     }
 
     // Called under a read action, in the background on most paths; the Runnable runs on the EDT under a write action.
-    // So the formatter runs here, and the Runnable only writes its text. EmptyRunnable tells the IDE that nothing
-    // changed. The formatter does not check for cancellation, so a write action waits for it: with "Optimize imports
-    // on the fly", typing waits (#253).
+    // So the formatter runs here, waited for in a way that a write action can interrupt, and the Runnable only writes
+    // its text. EmptyRunnable tells the IDE that nothing changed.
     @Override
     public Runnable processFile(PsiFile file) {
         Project project = file.getProject();
@@ -91,14 +100,14 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
 
         String text = document.getText();
         String fixedText;
+        var start = System.nanoTime();
         try {
-            var start = System.nanoTime();
-            fixedText = formatter.get().fixImports(text);
+            fixedText = fixImports(formatter.get(), text);
             if (logger.isDebugEnabled()) {
                 debug(
                         file,
                         String.format(
-                                "fixImports ran in %s ms, length=%s, text changed: %s",
+                                "waited %s ms for fixImports, length=%s, text changed: %s",
                                 TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),
                                 text.length(),
                                 !fixedText.equals(text)));
@@ -109,6 +118,13 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
             reportError(project, Notifications.PARSING_ERROR_TITLE, Notifications.parsingErrorMessage(file.getName()));
             return EmptyRunnable.getInstance();
         } catch (ProcessCanceledException e) {
+            if (logger.isDebugEnabled()) {
+                debug(
+                        file,
+                        String.format(
+                                "cancelled after waiting %s ms for fixImports, for a write action or by the user",
+                                TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)));
+            }
             throw e;
         } catch (RuntimeException e) {
             // As in the formatting task: an error, so that it goes to the plugin's error reports.
@@ -133,6 +149,54 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
                 debug(file, "applied the fixed imports");
             }
         };
+    }
+
+    /**
+     * The formatter's {@code fixImports}, on a pooled thread, so that a write action does not wait for it. The read
+     * action this runs in gives way to a write action only when it checks for cancellation, which the formatter never
+     * does: with "Optimize imports on the fly", every keystroke would wait for it (#253), in IntelliJ IDEA 2024.2 to
+     * 2025.1; from 2025.2 on the fly runs the IDE's own optimizer, not this one. Cancelled, this throws
+     * {@link ProcessCanceledException}, and a non-blocking read action, as on the fly, runs again after the write. The
+     * call already started runs to its end, for whoever asks for the same text meanwhile.
+     */
+    private String fixImports(FormatterService formatter, String text) throws FormatterException {
+        var fixing = running.computeIfAbsent(
+                new FixImportsCall(formatter, text),
+                key -> CompletableFuture.supplyAsync(
+                        () -> {
+                            try {
+                                return key.run();
+                            } finally {
+                                // Kept only while it runs. Should it end first, the map holds this back until
+                                // computeIfAbsent has put it in.
+                                running.remove(key);
+                            }
+                        },
+                        AppExecutorUtil.getAppExecutorService()));
+        return switch (ProgressIndicatorUtils.awaitWithCheckCanceled(fixing)) {
+            case FixedImports.Fixed fixed -> fixed.text();
+            case FixedImports.Failed failed -> throw failed.exception();
+        };
+    }
+
+    private record FixImportsCall(FormatterService formatter, String text) {
+        FixedImports run() {
+            try {
+                return new FixedImports.Fixed(formatter.fixImports(text));
+            } catch (FormatterException e) {
+                return new FixedImports.Failed(e);
+            }
+        }
+    }
+
+    /**
+     * What {@code fixImports} gives back from its thread: awaitWithCheckCanceled would wrap a {@link FormatterException}
+     * thrown there in a RuntimeException, which the optimizer takes for a fault of the plugin.
+     */
+    private sealed interface FixedImports {
+        record Fixed(String text) implements FixedImports {}
+
+        record Failed(FormatterException exception) implements FixedImports {}
     }
 
     /**
