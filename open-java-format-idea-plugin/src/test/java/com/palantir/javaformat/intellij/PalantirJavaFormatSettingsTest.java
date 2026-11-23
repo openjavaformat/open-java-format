@@ -52,14 +52,159 @@ final class PalantirJavaFormatSettingsTest {
     @Test
     void keepsTheNativeBinarySettings() throws Exception {
         var settings = new PalantirJavaFormatSettings();
-        settings.setUseNativeImage(true);
+        settings.setFormatterMode(FormatterMode.NATIVE);
         settings.setNativeImagePath(Optional.of(Path.of("/opt/open-java-format")));
 
-        var reloaded = new PalantirJavaFormatSettings();
-        reloaded.loadState(deserialize(JDOMUtil.write(XmlSerializer.serialize(settings.getState()))));
+        var reloaded = reload(settings);
 
-        assertThat(reloaded.useNativeImage()).isTrue();
+        assertThat(reloaded.getFormatterMode()).isEqualTo(FormatterMode.NATIVE);
         assertThat(reloaded.getNativeImagePath()).hasValue(Path.of("/opt/open-java-format"));
+    }
+
+    @Test
+    void switchesAFileFromBeforeTheModesToTheNativeBinaryItHadOn() throws Exception {
+        var settings = new PalantirJavaFormatSettings();
+        settings.loadState(deserialize("""
+            <component name="PalantirJavaFormatSettings">
+              <option name="enabled" value="true" />
+              <option name="useNativeImage" value="true" />
+            </component>
+            """));
+
+        assertThat(settings.getFormatterMode()).isEqualTo(FormatterMode.NATIVE);
+        // The mode says it from here on. useNativeImage is empty, and the IDE leaves an empty setting out of the file.
+        assertThat(settings.getState().formatterMode).isEqualTo("native");
+        assertThat(settings.getState().useNativeImage).isNull();
+        assertThat(reload(settings).getFormatterMode()).isEqualTo(FormatterMode.NATIVE);
+    }
+
+    @Test
+    void forgetsUseNativeImageOnceItIsRead() throws Exception {
+        // It decides the mode when the file is read, and no more after that: another mode chosen since stays chosen.
+        var settings = new PalantirJavaFormatSettings();
+        settings.loadState(deserialize("""
+            <component name="PalantirJavaFormatSettings">
+              <option name="useNativeImage" value="true" />
+            </component>
+            """));
+
+        settings.setFormatterMode(FormatterMode.JVM);
+
+        assertThat(settings.getFormatterMode()).isEqualTo(FormatterMode.JVM);
+        assertThat(reload(settings).getFormatterMode()).isEqualTo(FormatterMode.JVM);
+    }
+
+    @Test
+    void switchesToTheNativeBinaryWhateverModeStandsBesideUseNativeImage() throws Exception {
+        // The plugin never writes the two together, so a file with both was written to by a plugin from before the
+        // modes, which knows only useNativeImage.
+        var settings = new PalantirJavaFormatSettings();
+        settings.loadState(deserialize("""
+            <component name="PalantirJavaFormatSettings">
+              <option name="formatterMode" value="jvm" />
+              <option name="useNativeImage" value="true" />
+            </component>
+            """));
+
+        assertThat(settings.getFormatterMode()).isEqualTo(FormatterMode.NATIVE);
+    }
+
+    @Test
+    void movesAProjectThatFormattedInAJvmOfItsOwnIntoTheIde() throws Exception {
+        // Before there were modes, a project without the native binary started a JVM for every file.
+        var withoutTheNativeBinary = new PalantirJavaFormatSettings();
+        withoutTheNativeBinary.loadState(deserialize("""
+            <component name="PalantirJavaFormatSettings">
+              <option name="enabled" value="true" />
+            </component>
+            """));
+        var withTheNativeBinaryOff = new PalantirJavaFormatSettings();
+        withTheNativeBinaryOff.loadState(deserialize("""
+            <component name="PalantirJavaFormatSettings">
+              <option name="enabled" value="true" />
+              <option name="useNativeImage" value="false" />
+            </component>
+            """));
+
+        assertThat(withoutTheNativeBinary.getFormatterMode()).isEqualTo(FormatterMode.IN_PROCESS);
+        assertThat(withTheNativeBinaryOff.getFormatterMode()).isEqualTo(FormatterMode.IN_PROCESS);
+        assertThat(withTheNativeBinaryOff.getState().useNativeImage).isNull();
+        assertThat(new PalantirJavaFormatSettings().getFormatterMode()).isEqualTo(FormatterMode.IN_PROCESS);
+    }
+
+    @Test
+    void namesTheModeInOneSetting() {
+        // In words of the file's own, which stay when a constant is renamed.
+        var settings = new PalantirJavaFormatSettings();
+
+        settings.setFormatterMode(FormatterMode.IN_PROCESS);
+        assertThat(settings.getState().formatterMode).isEqualTo("in-process");
+        settings.setFormatterMode(FormatterMode.JVM);
+        assertThat(settings.getState().formatterMode).isEqualTo("jvm");
+        settings.setFormatterMode(FormatterMode.NATIVE);
+        assertThat(settings.getState().formatterMode).isEqualTo("native");
+
+        // And in no other: useNativeImage is only ever read.
+        assertThat(settings.getState().useNativeImage).isNull();
+    }
+
+    @Test
+    void keepsTheModeAndTheJdk() throws Exception {
+        var settings = new PalantirJavaFormatSettings();
+        settings.setFormatterMode(FormatterMode.JVM);
+        settings.setJvmJdk(new FormatterJdk.Named("temurin-25"));
+
+        var reloaded = reload(settings);
+
+        assertThat(reloaded.getFormatterMode()).isEqualTo(FormatterMode.JVM);
+        assertThat(reloaded.getJvmJdk()).isEqualTo(new FormatterJdk.Named("temurin-25"));
+    }
+
+    @Test
+    void namesTheSettingsOfAModeAfterIt() {
+        // A mode added later, such as a daemon with a JDK of its own, then has settings no other mode reads.
+        var settings = new PalantirJavaFormatSettings();
+        settings.setJvmJdk(new FormatterJdk.Named("temurin-25"));
+        settings.setNativeImagePath(Optional.of(Path.of("/opt/open-java-format")));
+
+        assertThat(JDOMUtil.write(XmlSerializer.serialize(settings.getState())))
+                .contains(
+                        "<option name=\"jvmJdk\" value=\"temurin-25\" />",
+                        "<option name=\"nativeImagePath\" value=\"/opt/open-java-format\" />");
+    }
+
+    @Test
+    void keepsTheProjectSdkAsTheJdk() throws Exception {
+        var settings = new PalantirJavaFormatSettings();
+        settings.setJvmJdk(new FormatterJdk.ProjectSdk());
+
+        assertThat(reload(settings).getJvmJdk()).isEqualTo(new FormatterJdk.ProjectSdk());
+    }
+
+    @Test
+    void runsTheJvmOnTheIdesRuntimeUnlessAJdkIsStored() throws Exception {
+        var settings = new PalantirJavaFormatSettings();
+        assertThat(settings.getJvmJdk()).isEqualTo(new FormatterJdk.IdeRuntime());
+
+        settings.setJvmJdk(new FormatterJdk.Named("temurin-25"));
+        settings.setJvmJdk(new FormatterJdk.IdeRuntime());
+
+        // It has no name to store: the file says nothing, as a file from before the choice of a JDK does.
+        assertThat(settings.getState().jvmJdk).isNull();
+        assertThat(reload(settings).getJvmJdk()).isEqualTo(new FormatterJdk.IdeRuntime());
+    }
+
+    @Test
+    void takesAModeItDoesNotKnowForNone() throws Exception {
+        // A later plugin can have modes that this one has not.
+        var settings = new PalantirJavaFormatSettings();
+        settings.loadState(deserialize("""
+            <component name="PalantirJavaFormatSettings">
+              <option name="formatterMode" value="daemon" />
+            </component>
+            """));
+
+        assertThat(settings.getFormatterMode()).isEqualTo(FormatterMode.IN_PROCESS);
     }
 
     @Test
@@ -86,7 +231,7 @@ final class PalantirJavaFormatSettingsTest {
             </component>
             """));
 
-        assertThat(settings.useNativeImage()).isFalse();
+        assertThat(settings.getFormatterMode()).isNotEqualTo(FormatterMode.NATIVE);
         assertThat(settings.getNativeImagePath()).isEmpty();
     }
 
@@ -98,6 +243,13 @@ final class PalantirJavaFormatSettingsTest {
         settings.loadState(state);
 
         assertThat(settings.getNativeImagePath()).isEmpty();
+    }
+
+    /** The settings as a project reads them back from the file they were written to. */
+    private static PalantirJavaFormatSettings reload(PalantirJavaFormatSettings settings) throws Exception {
+        var reloaded = new PalantirJavaFormatSettings();
+        reloaded.loadState(deserialize(JDOMUtil.write(XmlSerializer.serialize(settings.getState()))));
+        return reloaded;
     }
 
     private static StoredSettings deserialize(@Language("xml") String xml) throws Exception {

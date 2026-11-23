@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.intellij.application.options.CodeStyle;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.testFramework.EdtTestUtil;
@@ -31,6 +32,7 @@ import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.JavaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
+import com.intellij.ui.SimpleColoredComponent;
 import com.intellij.ui.components.ActionLink;
 import com.palantir.javaformat.intellij.EmbeddedNativeImage.Installed;
 import com.palantir.javaformat.intellij.EmbeddedNativeImage.Status;
@@ -44,9 +46,12 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JRadioButton;
 import javax.swing.JTextArea;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,10 +68,16 @@ final class PalantirJavaFormatConfigurableTest {
     @TempDir
     private Path dir;
 
+    private static final String IN_PROCESS = "In the IDE process";
+    private static final String SEPARATE_JVM = "In a separate JVM";
+    private static final String NATIVE = "Native binary";
+
     private JavaCodeInsightTestFixture fixture;
     private PalantirJavaFormatSettings settings;
+    private EmbeddedNativeImage embedded;
     private PalantirJavaFormatConfigurable configurable;
     private JComponent component;
+    private Disposable untilTheTestEnds;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -77,10 +88,12 @@ final class PalantirJavaFormatConfigurableTest {
         settings = PalantirJavaFormatSettings.getInstance(fixture.getProject());
         settings.loadState(new StoredSettings());
         settings.setEnabled(true);
+        untilTheTestEnds = fixture.getTestRootDisposable();
         // Nothing downloaded, and nowhere to download from.
-        var embedded = new EmbeddedNativeImage(
+        embedded = new EmbeddedNativeImage(
                 dir.resolve("native"), Optional.of(new NativePlatform("macos", "aarch64")), "http://127.0.0.1:1");
-        configurable = new PalantirJavaFormatConfigurable(fixture.getProject(), embedded);
+        // An IDE whose JVM lets the formatter reach javac.
+        configurable = new PalantirJavaFormatConfigurable(fixture.getProject(), embedded, Optional::empty);
         component = requireNonNull(configurable.createComponent());
     }
 
@@ -93,14 +106,153 @@ final class PalantirJavaFormatConfigurableTest {
     @Test
     void buildsAPanelWithItsControls() {
         assertThat(findCheckBox("Enable open-java-format")).isNotNull();
-        assertThat(findCheckBox("Use native binary")).isNotNull();
+        assertThat(findAll(component, JRadioButton.class))
+                .extracting(JRadioButton::getText)
+                .containsExactly(IN_PROCESS, SEPARATE_JVM, NATIVE);
         assertThat(findAll(component, TextFieldWithBrowseButton.class)).hasSize(1);
     }
 
     @Test
     void hasNoChoiceOfCodeStyle() {
-        // There is one style, so the page does not offer a list of them.
-        assertThat(findAll(component, ComboBox.class)).isEmpty();
+        // There is one style, so the page does not offer a list of them: its one list is of JDKs.
+        assertThat(findAll(component, ComboBox.class)).hasSize(1);
+    }
+
+    @Test
+    void runsTheFormatterInOneWayAtATime() throws Throwable {
+        EdtTestUtil.runInEdtAndWait(() -> {
+            configurable.reset();
+            assertThat(selectedModes()).containsExactly(IN_PROCESS);
+
+            findRadioButton(NATIVE).setSelected(true);
+            assertThat(selectedModes()).containsExactly(NATIVE);
+
+            findRadioButton(SEPARATE_JVM).setSelected(true);
+            assertThat(selectedModes()).containsExactly(SEPARATE_JVM);
+        });
+    }
+
+    @Test
+    void readsAndWritesTheMode() throws Throwable {
+        settings.setFormatterMode(FormatterMode.JVM);
+
+        EdtTestUtil.runInEdtAndWait(() -> {
+            configurable.reset();
+            assertThat(selectedModes()).containsExactly(SEPARATE_JVM);
+            assertThat(configurable.isModified()).isFalse();
+
+            findRadioButton(IN_PROCESS).setSelected(true);
+            assertThat(configurable.isModified()).isTrue();
+            configurable.apply();
+        });
+
+        assertThat(settings.getFormatterMode()).isEqualTo(FormatterMode.IN_PROCESS);
+    }
+
+    @Test
+    void greysTheIdeProcessOutWhereTheFormatterCannotReachJavac() throws Throwable {
+        openThePageOfAnIdeWithout("this IDE does not open java.lang to plugins");
+        var ideRuntime = FormatterJdks.ideRuntime();
+
+        EdtTestUtil.runInEdtAndWait(() -> {
+            configurable.reset();
+
+            // What the settings have stays selected, with the reason under it and what runs instead at the bottom.
+            assertThat(selectedModes()).containsExactly(IN_PROCESS);
+            assertThat(findRadioButton(IN_PROCESS).isEnabled()).isFalse();
+            assertThat(findAll(component, JLabel.class))
+                    .extracting(JLabel::getText)
+                    .contains("Not available: this IDE does not open java.lang to plugins.");
+            assertThat(activeFormatter().getText())
+                    .isEqualTo(
+                            "%s (Java %s)\nA JVM of its own: the IDE process is not available.",
+                            ideRuntime.java(), ideRuntime.javaVersion());
+            assertThat(configurable.isModified()).isFalse();
+        });
+    }
+
+    @Test
+    void saysWhatTheIdeProcessIsGoodFor() throws Throwable {
+        EdtTestUtil.runInEdtAndWait(() -> {
+            configurable.reset();
+
+            assertThat(findRadioButton(IN_PROCESS).isEnabled()).isTrue();
+            assertThat(findAll(component, JLabel.class))
+                    .extracting(JLabel::getText)
+                    .contains("Fastest: nothing to start. The IDE's own Java "
+                            + Runtime.version().feature() + " parses the code.");
+        });
+    }
+
+    @Test
+    void listsTheJdksThatCanRunTheFormatterAndGreysOutTheOthers() throws Throwable {
+        TestJdks.running("this-jdk", untilTheTestEnds);
+        TestJdks.register("temurin-17", dir, "Eclipse Temurin 17.0.9", untilTheTestEnds);
+
+        EdtTestUtil.runInEdtAndWait(() -> {
+            configurable.reset();
+            var jdk = jdk();
+            assertThat(jdkLabels()).startsWith("IDE runtime", "Project SDK").contains("this-jdk", "temurin-17");
+            assertThat(selectedJdkLabel()).isEqualTo("IDE runtime");
+
+            jdk.setSelectedIndex(jdkLabels().indexOf("this-jdk"));
+            assertThat(selectedJdkLabel()).isEqualTo("this-jdk");
+
+            // Java 17 does not run the formatter: it is listed, to say why it is no choice, and stays unchosen.
+            jdk.setSelectedIndex(jdkLabels().indexOf("temurin-17"));
+            assertThat(selectedJdkLabel()).isEqualTo("this-jdk");
+        });
+    }
+
+    @Test
+    void readsAndWritesTheJdk() throws Throwable {
+        TestJdks.running("this-jdk", untilTheTestEnds);
+        settings.setFormatterMode(FormatterMode.JVM);
+        settings.setJvmJdk(new FormatterJdk.Named("this-jdk"));
+
+        EdtTestUtil.runInEdtAndWait(() -> {
+            configurable.reset();
+            assertThat(selectedJdkLabel()).isEqualTo("this-jdk");
+            assertThat(configurable.isModified()).isFalse();
+            assertThat(activeFormatter().getText())
+                    .isEqualTo(
+                            "%s (Java %s)",
+                            Path.of(System.getProperty("java.home"), "bin", "java"),
+                            Runtime.version().feature());
+
+            jdk().setSelectedIndex(jdkLabels().indexOf("IDE runtime"));
+            assertThat(configurable.isModified()).isTrue();
+            configurable.apply();
+        });
+
+        assertThat(settings.getJvmJdk()).isEqualTo(new FormatterJdk.IdeRuntime());
+    }
+
+    @Test
+    void refusesAJdkThatNoLongerRunsTheFormatter() throws Throwable {
+        // Chosen when the IDE had it. The page shows what the settings have, and what runs instead.
+        settings.setFormatterMode(FormatterMode.JVM);
+        settings.setJvmJdk(new FormatterJdk.Named("gone"));
+        var ideRuntime = FormatterJdks.ideRuntime();
+
+        EdtTestUtil.runInEdtAndWait(() -> {
+            configurable.reset();
+            assertThat(selectedJdkLabel()).isEqualTo("gone");
+            assertThat(activeFormatter().getText())
+                    .isEqualTo(
+                            "%s (Java %s)\nThe IDE's runtime: there is no JDK named gone.",
+                            ideRuntime.java(), ideRuntime.javaVersion());
+
+            assertThatThrownBy(configurable::apply)
+                    .isInstanceOf(ConfigurationException.class)
+                    .hasMessage("Choose another JDK: there is no JDK named gone");
+
+            // Only the JVM needs it.
+            findRadioButton(IN_PROCESS).setSelected(true);
+            configurable.apply();
+        });
+
+        assertThat(settings.getFormatterMode()).isEqualTo(FormatterMode.IN_PROCESS);
     }
 
     @Test
@@ -161,54 +313,77 @@ final class PalantirJavaFormatConfigurableTest {
     }
 
     @Test
-    void showsTheNativeBinaryOnlyWhileOpenJavaFormatIsOn() throws Throwable {
+    void asksNothingOfTheChoicesOnceOpenJavaFormatIsSwitchedOff() throws Throwable {
+        // They are not on the page then, so there is nothing on it to put right.
+        settings.setFormatterMode(FormatterMode.JVM);
+        settings.setJvmJdk(new FormatterJdk.Named("gone"));
+
+        EdtTestUtil.runInEdtAndWait(() -> {
+            configurable.reset();
+            findCheckBox("Enable open-java-format").setSelected(false);
+            configurable.apply();
+
+            configurable.reset();
+            findRadioButton(NATIVE).setSelected(true);
+            configurable.apply();
+        });
+
+        assertThat(settings.isEnabled()).isFalse();
+        assertThat(settings.getFormatterMode()).isEqualTo(FormatterMode.NATIVE);
+    }
+
+    @Test
+    void showsTheWaysToRunTheFormatterOnlyWhileOpenJavaFormatIsOn() throws Throwable {
         EdtTestUtil.runInEdtAndWait(() -> {
             var enable = findCheckBox("Enable open-java-format");
-            var useNativeImage = findCheckBox("Use native binary");
+            var nativeImage = findRadioButton(NATIVE);
             var path = findAll(component, TextFieldWithBrowseButton.class).get(0);
-            settings.setUseNativeImage(true);
             configurable.reset();
-            assertThat(isDisplayed(useNativeImage)).isTrue();
+            assertThat(isDisplayed(nativeImage)).isTrue();
             assertThat(isDisplayed(path)).isTrue();
 
             enable.setSelected(false);
-            assertThat(isDisplayed(useNativeImage)).isFalse();
+            assertThat(isDisplayed(findRadioButton(IN_PROCESS))).isFalse();
+            assertThat(isDisplayed(nativeImage)).isFalse();
             assertThat(isDisplayed(path)).isFalse();
             assertThat(isDisplayed(activeFormatter())).isFalse();
 
             enable.setSelected(true);
-            assertThat(isDisplayed(useNativeImage)).isTrue();
+            assertThat(isDisplayed(nativeImage)).isTrue();
             assertThat(isDisplayed(path)).isTrue();
         });
     }
 
     @Test
     void showsTheActiveFormatterAsThePageStands() throws Throwable {
-        // What runs once the page is applied, so it follows the boxes and the path as they change.
+        // What runs once the page is applied, so it follows the choices and the path as they change.
         var pluginVersion = settings.getImplementationVersion().orElseThrow();
 
+        var ideRuntime = FormatterJdks.ideRuntime();
+
         EdtTestUtil.runInEdtAndWait(() -> {
-            var useNativeImage = findCheckBox("Use native binary");
             var path = findAll(component, TextFieldWithBrowseButton.class).get(0);
             configurable.reset();
-            assertThat(activeFormatter().getText()).isEqualTo("Java-based formatter");
+            assertThat(activeFormatter().getText())
+                    .isEqualTo("The IDE process (Java %s)", System.getProperty("java.version"));
 
-            useNativeImage.setSelected(true);
+            findRadioButton(NATIVE).setSelected(true);
             assertThat(activeFormatter().getText())
                     .isEqualTo("Need to download version %s from Maven Central", pluginVersion);
 
             path.setText("/opt/open-java-format");
             assertThat(activeFormatter().getText()).isEqualTo("/opt/open-java-format");
 
-            useNativeImage.setSelected(false);
-            assertThat(activeFormatter().getText()).isEqualTo("Java-based formatter");
+            findRadioButton(SEPARATE_JVM).setSelected(true);
+            assertThat(activeFormatter().getText())
+                    .isEqualTo("%s (Java %s)", ideRuntime.java(), ideRuntime.javaVersion());
         });
     }
 
     @Test
     void showsTheEmbeddedBinaryOnceItIsThere() throws Throwable {
         var binary = installByHand("21.0.1");
-        settings.setUseNativeImage(true);
+        settings.setFormatterMode(FormatterMode.NATIVE);
 
         EdtTestUtil.runInEdtAndWait(() -> {
             configurable.reset();
@@ -227,29 +402,35 @@ final class PalantirJavaFormatConfigurableTest {
     }
 
     @Test
-    void showsTheNativeOptionsOnlyWithTheNativeBinaryOn() throws Throwable {
+    void offersTheOptionsOfTheChosenWayOnly() throws Throwable {
+        // The others stay on the page, greyed: hidden, they would move the page about with every choice.
         EdtTestUtil.runInEdtAndWait(() -> {
-            var useNativeImage = findCheckBox("Use native binary");
             var path = findAll(component, TextFieldWithBrowseButton.class).get(0);
 
             configurable.reset();
-            assertThat(isDisplayed(path)).isFalse();
+            assertThat(path.isEnabled()).isFalse();
+            assertThat(jdk().isEnabled()).isFalse();
 
-            useNativeImage.setSelected(true);
-            assertThat(isDisplayed(path)).isTrue();
+            findRadioButton(NATIVE).setSelected(true);
+            assertThat(path.isEnabled()).isTrue();
+            assertThat(jdk().isEnabled()).isFalse();
+
+            findRadioButton(SEPARATE_JVM).setSelected(true);
+            assertThat(path.isEnabled()).isFalse();
+            assertThat(jdk().isEnabled()).isTrue();
         });
     }
 
     @Test
     void readsAndWritesTheNativeBinarySettings() throws Throwable {
         var binary = executable("open-java-format");
-        settings.setUseNativeImage(true);
+        settings.setFormatterMode(FormatterMode.NATIVE);
 
         EdtTestUtil.runInEdtAndWait(() -> {
             var path = findAll(component, TextFieldWithBrowseButton.class).get(0);
 
             configurable.reset();
-            assertThat(findCheckBox("Use native binary").isSelected()).isTrue();
+            assertThat(selectedModes()).containsExactly(NATIVE);
             assertThat(path.getText()).isEmpty();
             assertThat(configurable.isModified()).isFalse();
 
@@ -258,7 +439,7 @@ final class PalantirJavaFormatConfigurableTest {
             configurable.apply();
         });
 
-        assertThat(settings.useNativeImage()).isTrue();
+        assertThat(settings.getFormatterMode()).isEqualTo(FormatterMode.NATIVE);
         assertThat(settings.getNativeImagePath()).hasValue(binary);
     }
 
@@ -266,14 +447,14 @@ final class PalantirJavaFormatConfigurableTest {
     void refusesTheNativeBinaryWithoutABinary() throws Throwable {
         EdtTestUtil.runInEdtAndWait(() -> {
             configurable.reset();
-            findCheckBox("Use native binary").setSelected(true);
+            findRadioButton(NATIVE).setSelected(true);
 
             assertThatThrownBy(configurable::apply)
                     .isInstanceOf(ConfigurationException.class)
                     .hasMessage("Download the embedded version or choose a binary");
         });
 
-        assertThat(settings.useNativeImage()).isFalse();
+        assertThat(settings.getFormatterMode()).isNotEqualTo(FormatterMode.NATIVE);
     }
 
     @Test
@@ -282,7 +463,7 @@ final class PalantirJavaFormatConfigurableTest {
 
         EdtTestUtil.runInEdtAndWait(() -> {
             configurable.reset();
-            findCheckBox("Use native binary").setSelected(true);
+            findRadioButton(NATIVE).setSelected(true);
             findAll(component, TextFieldWithBrowseButton.class).get(0).setText(missing.toString());
 
             assertThatThrownBy(configurable::apply)
@@ -312,7 +493,7 @@ final class PalantirJavaFormatConfigurableTest {
         // the dialog, and a label would not let anyone copy it. A long path of one's own in Binary must not either.
         var path = Path.of("/Users/someone/Library/Caches/JetBrains/IntelliJIdea2026.2/open-java-format/native/"
                 + "21.0.1/".repeat(40) + "open-java-format-macos_aarch64");
-        settings.setUseNativeImage(true);
+        settings.setFormatterMode(FormatterMode.NATIVE);
         settings.setNativeImagePath(Optional.of(path));
 
         EdtTestUtil.runInEdtAndWait(() -> {
@@ -355,11 +536,59 @@ final class PalantirJavaFormatConfigurableTest {
                 });
     }
 
+    /** The page as an IDE shows it whose JVM does not let the formatter reach javac. */
+    private void openThePageOfAnIdeWithout(String javacAccess) {
+        configurable.disposeUIResources();
+        configurable =
+                new PalantirJavaFormatConfigurable(fixture.getProject(), embedded, () -> Optional.of(javacAccess));
+        component = requireNonNull(configurable.createComponent());
+    }
+
     private JCheckBox findCheckBox(String text) {
         return findAll(component, JCheckBox.class).stream()
                 .filter(checkBox -> checkBox.getText().equals(text))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    private JRadioButton findRadioButton(String text) {
+        return findAll(component, JRadioButton.class).stream()
+                .filter(radioButton -> radioButton.getText().equals(text))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private List<String> selectedModes() {
+        return findAll(component, JRadioButton.class).stream()
+                .filter(JRadioButton::isSelected)
+                .map(JRadioButton::getText)
+                .toList();
+    }
+
+    /** The page's one list. */
+    private ComboBox<?> jdk() {
+        return findAll(component, ComboBox.class).stream().collect(onlyElement());
+    }
+
+    /** The names in the list of JDKs, without what stands beside them in grey. */
+    private List<String> jdkLabels() {
+        var model = jdk().getModel();
+        return IntStream.range(0, model.getSize())
+                .mapToObj(index -> jdkLabel(model.getElementAt(index)))
+                .toList();
+    }
+
+    private String selectedJdkLabel() {
+        return jdkLabel(requireNonNull(jdk().getSelectedItem()));
+    }
+
+    /** As the list draws the JDK. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private String jdkLabel(Object choice) {
+        var jdk = (ComboBox) jdk();
+        var drawn = (SimpleColoredComponent)
+                jdk.getRenderer().getListCellRendererComponent(new JList<>(), choice, 0, false, false);
+        return drawn.getCharSequence(true).toString();
     }
 
     /** Whether the component and every container up to the page are visible. */

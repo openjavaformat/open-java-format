@@ -53,6 +53,12 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
     @Override
     public void loadState(StoredSettings state) {
         this.state = state;
+        // A file from before there were modes says only whether the native binary runs. It says so this once: the
+        // mode takes its place here, and the file is next written without it.
+        if (Boolean.TRUE.equals(state.useNativeImage)) {
+            state.formatterMode = FormatterMode.NATIVE.text();
+        }
+        state.useNativeImage = null;
     }
 
     boolean isEnabled() {
@@ -88,16 +94,28 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
         return state.implementationClassPath;
     }
 
-    /** Whether the native binary formats this project rather than the Java-based formatter. */
-    boolean useNativeImage() {
-        return state.useNativeImage;
+    /**
+     * How the formatter runs: the one setting that says so. A project that names no mode, or one that this plugin
+     * does not know, formats inside the IDE: until there were modes, such a project started a JVM for every file.
+     */
+    FormatterMode getFormatterMode() {
+        return FormatterMode.of(state.formatterMode).orElse(FormatterMode.IN_PROCESS);
     }
 
-    void setUseNativeImage(boolean useNativeImage) {
-        state.useNativeImage = useNativeImage;
+    void setFormatterMode(FormatterMode mode) {
+        state.formatterMode = mode.text();
     }
 
-    /** A native binary of the user's own, run instead of the embedded one. */
+    /** Of {@link FormatterMode#JVM}: the JDK that the formatter's own JVM runs on. */
+    FormatterJdk getJvmJdk() {
+        return FormatterJdk.parse(state.jvmJdk);
+    }
+
+    void setJvmJdk(FormatterJdk jdk) {
+        state.jvmJdk = jdk.stored();
+    }
+
+    /** Of {@link FormatterMode#NATIVE}: a native binary of the user's own, run instead of the embedded one. */
     Optional<Path> getNativeImagePath() {
         return Optional.ofNullable(state.nativeImagePath)
                 .filter(path -> !path.isBlank())
@@ -159,10 +177,25 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
         private EnabledState enabled = EnabledState.UNKNOWN;
         private Optional<List<URI>> implementationClassPath = Optional.empty();
 
-        public boolean useNativeImage = false;
+        /** The text of a {@link FormatterMode}. */
+        @Nullable
+        public String formatterMode;
+
+        // A setting of one mode has that mode at the start of its name, so that a mode added later, such as a daemon
+        // with a JDK of its own, has settings that cannot be taken for another mode's.
+
+        @Nullable
+        public String jvmJdk;
 
         @Nullable
         public String nativeImagePath;
+
+        /**
+         * What a file from before there were modes has for the mode. Read, and never written: loadState turns it into
+         * formatterMode and empties it, and an empty setting is left out of the file.
+         */
+        @Nullable
+        public Boolean useNativeImage;
 
         public void setImplementationClassPath(@Nullable List<String> value) {
             implementationClassPath = Optional.ofNullable(value)
@@ -203,8 +236,10 @@ public class PalantirJavaFormatSettings implements PersistentStateComponent<Pala
                     + enabled
                     + ", implementationClassPath="
                     + implementationClassPath
-                    + ", useNativeImage="
-                    + useNativeImage
+                    + ", formatterMode="
+                    + formatterMode
+                    + ", jvmJdk="
+                    + jvmJdk
                     + ", nativeImagePath="
                     + nativeImagePath
                     + '}';

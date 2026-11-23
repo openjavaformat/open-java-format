@@ -22,7 +22,6 @@ import com.intellij.formatting.service.FormattingService;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.SystemInfo;
 import com.palantir.javaformat.bootstrap.BootstrappingFormatterService;
 import com.palantir.javaformat.bootstrap.NativeImageFormatterService;
 import com.palantir.javaformat.java.FormatterService;
@@ -48,54 +47,109 @@ final class FormatterProvider {
             Caffeine.newBuilder().maximumSize(1).build(FormatterProvider::createFormatter);
 
     private final Supplier<Optional<Path>> embeddedNativeImage;
+    private final Supplier<Optional<String>> inProcessUnavailable;
 
-    /** embeddedNativeImage: the downloaded native binary, asked again on every format since a download can add it. */
-    FormatterProvider(Supplier<Optional<Path>> embeddedNativeImage) {
+    /**
+     * embeddedNativeImage: the downloaded native binary, asked again on every format since a download can add it.
+     * inProcessUnavailable: why the formatter cannot run in the IDE's own JVM, if it cannot.
+     */
+    FormatterProvider(Supplier<Optional<Path>> embeddedNativeImage, Supplier<Optional<String>> inProcessUnavailable) {
         this.embeddedNativeImage = embeddedNativeImage;
+        this.inProcessUnavailable = inProcessUnavailable;
     }
 
     Optional<FormatterService> get(Project project, PalantirJavaFormatSettings settings) {
-        // The selection, not the settings, is in the key: the formatter has to change when the binary appears.
+        // The selection, not the settings, is in the key: the formatter has to change when the binary appears, or
+        // the project SDK changes.
         return implementationCache.get(new FormatterCacheKey(
                 project,
                 settings.getImplementationClassPath(),
                 settings.injectedVersionIsOutdated(),
-                FormatterSelection.of(settings, embeddedNativeImage)));
+                FormatterSelection.of(
+                        settings, FormatterSelection.in(project, inProcessUnavailable, embeddedNativeImage))));
     }
 
     private static Optional<FormatterService> createFormatter(FormatterCacheKey cacheKey) {
-        if (cacheKey.selection() instanceof FormatterSelection.NativeImage nativeImage) {
-            log.info("open-java-format: using native binary, " + (nativeImage.embedded() ? "embedded: " : "custom: ")
-                    + nativeImage.path());
-            return Optional.of(new NativeImageFormatterService(nativeImage.path()));
-        }
-        if (cacheKey.selection() instanceof FormatterSelection.JavaBased javaBased && javaBased.nativeImageMissing()) {
-            log.warn("open-java-format: the native binary is switched on but not downloaded, formatting with the"
-                    + " Java-based formatter");
-        }
+        return Optional.of(
+                switch (cacheKey.selection()) {
+                    case FormatterSelection.NativeImage nativeImage -> {
+                        log.info("open-java-format: using native binary, "
+                                + (nativeImage.embedded() ? "embedded: " : "custom: ") + nativeImage.path());
+                        yield new NativeImageFormatterService(nativeImage.path());
+                    }
+                    case FormatterSelection.InProcess inProcess -> inProcess(cacheKey);
+                    case FormatterSelection.SeparateJvm separateJvm -> {
+                        separateJvm.fallbacks().forEach(fallback -> log.warn(fallbackMessage(fallback)));
+                        yield separateJvm(separateJvm.java(), separateJvm.javaVersion(), cacheKey);
+                    }
+                });
+    }
 
-        // The formatter runs in a JVM of its own, started with the "--add-exports" it needs to reach javac.
-        // That JVM is the IDE's own runtime, never the project SDK: every IDE this plugin supports runs on Java 21
-        // or later, which the formatter needs, while a project SDK can be any version.
-        int jdkMajorVersion = Runtime.version().feature();
-        Path jdkPath = Path.of(System.getProperty("java.home"), "bin", SystemInfo.isWindows ? "java.exe" : "java");
-        List<Path> implementationClasspath =
-                getImplementationUrls(cacheKey.implementationClassPath(), cacheKey.useBundledImplementation());
-        var classpath = cacheKey.useBundledImplementation()
+    private static FormatterService inProcess(FormatterCacheKey cacheKey) {
+        log.info("open-java-format: using in-process formatter (Java " + System.getProperty("java.version") + ") with "
+                + classpathName(cacheKey) + " classpath");
+        // Loaded with the first file, in the background, and not here: this can be the UI thread. What cannot be
+        // formatted inside the IDE goes to the JVM that always runs.
+        var ideRuntime = FormatterJdks.ideRuntime();
+        var classpath = implementationClasspath(cacheKey);
+        return new InProcessFormatterService(
+                InProcessFormatters.IDE,
+                classpath,
+                new BootstrappingFormatterService(ideRuntime.java(), ideRuntime.javaVersion(), classpath),
+                FormatterProvider::couldNotFormatInProcess);
+    }
+
+    private static void couldNotFormatInProcess(Throwable failure) {
+        var message = "open-java-format: cannot format inside the IDE, formatting in a JVM of its own";
+        if (InProcessFormatters.IDE.unavailable().isPresent()) {
+            // The formatter does not load or link in this IDE, which it should: an error, so that it goes to the
+            // plugin's error reports. Once, since from now on every file goes to a JVM of its own.
+            log.error(message, failure);
+        } else {
+            log.warn(message, failure);
+        }
+    }
+
+    // The JVM gets the "--add-exports" it needs to reach javac. By default it is the IDE's own runtime rather than
+    // the project SDK: every IDE this plugin supports runs on Java 21 or later, which the formatter needs, while a
+    // project SDK can be any version.
+    private static FormatterService separateJvm(Path java, int javaVersion, FormatterCacheKey cacheKey) {
+        log.info("open-java-format: using Java-based formatter on " + java + " (Java " + javaVersion + ") with "
+                + classpathName(cacheKey) + " classpath");
+        return new BootstrappingFormatterService(java, javaVersion, implementationClasspath(cacheKey));
+    }
+
+    private static String fallbackMessage(FormatterSelection.Fallback fallback) {
+        return "open-java-format: "
+                + switch (fallback) {
+                    case FormatterSelection.Fallback.InProcessUnavailable unavailable ->
+                        "cannot format inside the IDE (" + unavailable.reason() + "), formatting in a JVM of its own";
+                    case FormatterSelection.Fallback.NativeImageMissing missing ->
+                        "the native binary is switched on but not downloaded, formatting with the Java-based"
+                                + " formatter";
+                    case FormatterSelection.Fallback.JdkUnusable unusable ->
+                        "cannot run the formatter on the JDK of the settings (" + unusable.reason()
+                                + "), formatting on the IDE's runtime";
+                };
+    }
+
+    private static List<Path> implementationClasspath(FormatterCacheKey cacheKey) {
+        return getImplementationUrls(cacheKey.implementationClassPath(), cacheKey.useBundledImplementation());
+    }
+
+    private static String classpathName(FormatterCacheKey cacheKey) {
+        return cacheKey.useBundledImplementation()
                         || cacheKey.implementationClassPath().isEmpty()
                 ? "bundled"
                 : "build";
-        log.info("open-java-format: using Java-based formatter on " + jdkPath + " (Java " + jdkMajorVersion + ") with "
-                + classpath + " classpath");
-        return Optional.of(new BootstrappingFormatterService(jdkPath, jdkMajorVersion, implementationClasspath));
     }
 
     private static List<Path> getProvidedImplementationUrls(List<URI> implementationClasspath) {
         return implementationClasspath.stream().map(Path::of).toList();
     }
 
-    private static List<Path> getBundledImplementationUrls() {
-        // Load from the jars bundled with the plugin.
+    /** The jars of the formatter bundled with the plugin, in the directory impl next to the plugin's own lib. */
+    static List<Path> getBundledImplementationUrls() {
         Path implDir = ofNullable(FormattingService.EP_NAME.findExtension(PalantirJavaFormatFormattingService.class))
                 .flatMap(PalantirJavaFormatFormattingService::getPluginDescriptor)
                 .map(PluginDescriptor::getPluginPath)

@@ -16,61 +16,173 @@ package com.palantir.javaformat.intellij;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.palantir.javaformat.intellij.FormatterSelection.JavaBased;
+import com.palantir.javaformat.intellij.FormatterJdk.Resolved;
+import com.palantir.javaformat.intellij.FormatterJdk.Unusable;
+import com.palantir.javaformat.intellij.FormatterJdk.Usable;
+import com.palantir.javaformat.intellij.FormatterSelection.Fallback;
+import com.palantir.javaformat.intellij.FormatterSelection.InProcess;
 import com.palantir.javaformat.intellij.FormatterSelection.NativeImage;
+import com.palantir.javaformat.intellij.FormatterSelection.SeparateJvm;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 final class FormatterSelectionTest {
 
     private static final Path CUSTOM = Path.of("/opt/open-java-format");
     private static final Path EMBEDDED = Path.of("/ide/system/open-java-format/native/21.0.1/open-java-format");
+    private static final Usable IDE_RUNTIME = new Usable(Path.of("/ide/jbr/bin/java"), 21);
+    private static final Usable JDK_25 = new Usable(Path.of("/jdks/temurin-25/bin/java"), 25);
+    private static final String NO_JAVAC = "this IDE does not open java.lang to plugins";
+    private static final String TOO_OLD = "temurin-17 is Java 17, and the formatter needs Java 21 or later";
 
     private final PalantirJavaFormatSettings settings = new PalantirJavaFormatSettings();
+    private final Machine machine = new Machine();
+
+    @Test
+    void formatsInsideTheIdeUnlessTheSettingsSayOtherwise() {
+        assertThat(FormatterSelection.of(settings, machine)).isEqualTo(new InProcess());
+    }
+
+    @Test
+    void formatsInAJvmOfItsOwnWhereTheIdeGivesNoAccessToJavac() {
+        machine.inProcessUnavailable = Optional.of(NO_JAVAC);
+
+        assertThat(FormatterSelection.of(settings, machine))
+                .isEqualTo(
+                        new SeparateJvm(IDE_RUNTIME.java(), 21, List.of(new Fallback.InProcessUnavailable(NO_JAVAC))));
+    }
+
+    @Test
+    void runsTheJvmOnTheIdesRuntimeUnlessAJdkIsChosen() {
+        settings.setFormatterMode(FormatterMode.JVM);
+
+        assertThat(FormatterSelection.of(settings, machine))
+                .isEqualTo(new SeparateJvm(IDE_RUNTIME.java(), 21, List.of()));
+    }
+
+    @Test
+    void runsTheJvmOnTheJdkTheUserChose() {
+        settings.setFormatterMode(FormatterMode.JVM);
+        settings.setJvmJdk(new FormatterJdk.Named("temurin-25"));
+        machine.jdk = JDK_25;
+
+        assertThat(FormatterSelection.of(settings, machine)).isEqualTo(new SeparateJvm(JDK_25.java(), 25, List.of()));
+    }
+
+    @Test
+    void runsTheJvmOnTheIdesRuntimeWhenTheChosenJdkCannotRunTheFormatter() {
+        settings.setFormatterMode(FormatterMode.JVM);
+        settings.setJvmJdk(new FormatterJdk.ProjectSdk());
+        machine.jdk = new Unusable(TOO_OLD);
+
+        assertThat(FormatterSelection.of(settings, machine))
+                .isEqualTo(new SeparateJvm(IDE_RUNTIME.java(), 21, List.of(new Fallback.JdkUnusable(TOO_OLD))));
+    }
+
+    @Test
+    void usesTheChosenJdkWhenAnotherModeFallsBackToAJvm() {
+        // The JDK is kept whichever mode is on, and it is the JVM to fall back to.
+        settings.setJvmJdk(new FormatterJdk.Named("temurin-25"));
+        machine.jdk = JDK_25;
+        machine.inProcessUnavailable = Optional.of(NO_JAVAC);
+
+        assertThat(FormatterSelection.of(settings, machine))
+                .isEqualTo(new SeparateJvm(JDK_25.java(), 25, List.of(new Fallback.InProcessUnavailable(NO_JAVAC))));
+    }
+
+    @Test
+    void saysEveryThingThatIsMissing() {
+        settings.setJvmJdk(new FormatterJdk.Named("temurin-17"));
+        machine.jdk = new Unusable(TOO_OLD);
+        machine.inProcessUnavailable = Optional.of(NO_JAVAC);
+
+        assertThat(FormatterSelection.of(settings, machine))
+                .isEqualTo(new SeparateJvm(
+                        IDE_RUNTIME.java(),
+                        21,
+                        List.of(new Fallback.InProcessUnavailable(NO_JAVAC), new Fallback.JdkUnusable(TOO_OLD))));
+    }
 
     @Test
     void runsTheBinaryTheUserChose() {
-        settings.setUseNativeImage(true);
+        settings.setFormatterMode(FormatterMode.NATIVE);
         settings.setNativeImagePath(Optional.of(CUSTOM));
+        machine.embeddedNativeImage = Optional.of(EMBEDDED);
 
-        assertThat(FormatterSelection.of(settings, () -> Optional.of(EMBEDDED)))
-                .isEqualTo(new NativeImage(CUSTOM, false));
+        assertThat(FormatterSelection.of(settings, machine)).isEqualTo(new NativeImage(CUSTOM, false));
     }
 
     @Test
     void runsTheEmbeddedBinaryWithoutAPathOfTheUsersOwn() {
-        settings.setUseNativeImage(true);
+        settings.setFormatterMode(FormatterMode.NATIVE);
+        machine.embeddedNativeImage = Optional.of(EMBEDDED);
 
-        assertThat(FormatterSelection.of(settings, () -> Optional.of(EMBEDDED)))
-                .isEqualTo(new NativeImage(EMBEDDED, true));
+        assertThat(FormatterSelection.of(settings, machine)).isEqualTo(new NativeImage(EMBEDDED, true));
     }
 
     @Test
-    void fallsBackToTheJavaBasedFormatterWithoutABinary() {
-        settings.setUseNativeImage(true);
+    void fallsBackToAJvmWithoutABinary() {
+        settings.setFormatterMode(FormatterMode.NATIVE);
 
-        assertThat(FormatterSelection.of(settings, Optional::empty)).isEqualTo(new JavaBased(true));
+        assertThat(FormatterSelection.of(settings, machine))
+                .isEqualTo(new SeparateJvm(IDE_RUNTIME.java(), 21, List.of(new Fallback.NativeImageMissing())));
     }
 
     @Test
-    void runsTheJavaBasedFormatterUnlessTheNativeOneIsOn() {
+    void runsNoBinaryUnlessTheNativeFormatterIsOn() {
         settings.setNativeImagePath(Optional.of(CUSTOM));
+        machine.embeddedNativeImage = Optional.of(EMBEDDED);
 
-        assertThat(FormatterSelection.of(settings, () -> Optional.of(EMBEDDED))).isEqualTo(new JavaBased(false));
+        assertThat(FormatterSelection.of(settings, machine)).isEqualTo(new InProcess());
     }
 
     @Test
-    void looksForTheEmbeddedBinaryOnlyWhenItWouldRun() {
-        // It is asked for every file formatted, and most projects run the Java-based formatter.
-        Supplier<Optional<Path>> unasked = () -> {
-            throw new AssertionError("the embedded binary was looked for");
+    void looksOnlyForWhatWouldRun() {
+        // It is asked for every file formatted: the embedded binary lists a directory, a JDK is looked up in the IDE.
+        var unasked = new Machine() {
+            @Override
+            public Optional<Path> embeddedNativeImage() {
+                throw new AssertionError("the embedded binary was looked for");
+            }
+
+            @Override
+            public Resolved resolve(FormatterJdk chosen) {
+                throw new AssertionError("the JDK was looked for");
+            }
         };
         settings.setNativeImagePath(Optional.of(CUSTOM));
 
-        assertThat(FormatterSelection.of(settings, unasked)).isEqualTo(new JavaBased(false));
-        settings.setUseNativeImage(true);
+        assertThat(FormatterSelection.of(settings, unasked)).isEqualTo(new InProcess());
+        settings.setFormatterMode(FormatterMode.NATIVE);
         assertThat(FormatterSelection.of(settings, unasked)).isEqualTo(new NativeImage(CUSTOM, false));
+    }
+
+    /** An IDE whose JVM reaches javac, with no native binary downloaded, and one JDK besides its runtime. */
+    private static class Machine implements FormatterSelection.Environment {
+        Optional<String> inProcessUnavailable = Optional.empty();
+        Optional<Path> embeddedNativeImage = Optional.empty();
+        Resolved jdk = new Unusable("there is no such JDK");
+
+        @Override
+        public Optional<String> inProcessUnavailable() {
+            return inProcessUnavailable;
+        }
+
+        @Override
+        public Resolved resolve(FormatterJdk chosen) {
+            return chosen instanceof FormatterJdk.IdeRuntime ? IDE_RUNTIME : jdk;
+        }
+
+        @Override
+        public Usable ideRuntime() {
+            return IDE_RUNTIME;
+        }
+
+        @Override
+        public Optional<Path> embeddedNativeImage() {
+            return embeddedNativeImage;
+        }
     }
 }
