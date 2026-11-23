@@ -15,6 +15,7 @@
 package com.palantir.javaformat.intellij;
 
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -47,6 +48,8 @@ import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.JavaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
+import com.intellij.util.TimeoutUtil;
+import com.palantir.javaformat.intellij.PalantirJavaFormatImportOptimizer.WriteActionWaits;
 import com.palantir.javaformat.intellij.PalantirJavaFormatSettings.StoredSettings;
 import com.palantir.javaformat.java.FormatterException;
 import com.palantir.javaformat.java.FormatterService;
@@ -56,6 +59,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.Nullable;
@@ -261,6 +265,28 @@ final class PalantirJavaFormatImportOptimizerTest {
         } finally {
             formatter.release.countDown();
         }
+    }
+
+    @Test
+    void measures_how_long_a_write_action_waits_for_the_read_lock() throws Exception {
+        var waits = new CopyOnWriteArrayList<Long>();
+        // As though an optimization waited for the formatter all along.
+        ApplicationManager.getApplication()
+                .addApplicationListener(new WriteActionWaits(() -> 1, waits::add), fixture.getTestRootDisposable());
+        var reading = new CountDownLatch(1);
+        var reader = ApplicationManager.getApplication()
+                .executeOnPooledThread(() -> ReadAction.run(() -> {
+                    reading.countDown();
+                    TimeoutUtil.sleep(300);
+                }));
+        assertThat(reading.await(10, SECONDS)).isTrue();
+
+        ApplicationManager.getApplication()
+                .executeOnPooledThread(() -> WriteAction.runAndWait(() -> {}))
+                .get(10, SECONDS);
+        reader.get(10, SECONDS);
+
+        assertThat(waits).anySatisfy(wait -> assertThat(wait).isGreaterThan(MILLISECONDS.toNanos(200)));
     }
 
     @Test

@@ -17,6 +17,8 @@ package com.palantir.javaformat.intellij;
 import com.intellij.formatting.service.FormattingNotificationService;
 import com.intellij.lang.ImportOptimizer;
 import com.intellij.lang.ImportOptimizer.CollectingInfoRunnable;
+import com.intellij.openapi.application.ApplicationListener;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.progress.ProcessCanceledException;
@@ -34,6 +36,10 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntSupplier;
+import java.util.function.LongConsumer;
 
 /**
  * Optimizes imports as the command line fixes them, with {@code FormatterService.fixImports}: the unused ones removed,
@@ -61,6 +67,10 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
     // on the same text, waits for the call it started before instead of starting another: a JVM, in that mode.
     private final Map<FixImportsCall, CompletableFuture<FixedImports>> running = new ConcurrentHashMap<>();
 
+    // The calls of processFile that wait for fixImports inside their read action, which a write action waits for.
+    private final AtomicInteger waiting = new AtomicInteger();
+    private final AtomicBoolean watchingWriteActions = new AtomicBoolean();
+
     PalantirJavaFormatImportOptimizer(PalantirJavaFormatFormattingService formattingService) {
         this.formattingService = formattingService;
     }
@@ -76,6 +86,7 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
     @Override
     public Runnable processFile(PsiFile file) {
         Project project = file.getProject();
+        debug(file, "asked on thread " + Thread.currentThread().getName());
         Document document = PsiDocumentManager.getInstance(project).getDocument(file);
         if (document == null) {
             debug(file, "skipped, the file has no document");
@@ -102,7 +113,7 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
         String fixedText;
         var start = System.nanoTime();
         try {
-            fixedText = fixImports(formatter.get(), text);
+            fixedText = fixImports(file, formatter.get(), text);
             if (logger.isDebugEnabled()) {
                 debug(
                         file,
@@ -159,24 +170,34 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
      * {@link ProcessCanceledException}, and a non-blocking read action, as on the fly, runs again after the write. The
      * call already started runs to its end, for whoever asks for the same text meanwhile.
      */
-    private String fixImports(FormatterService formatter, String text) throws FormatterException {
-        var fixing = running.computeIfAbsent(
-                new FixImportsCall(formatter, text),
-                key -> CompletableFuture.supplyAsync(
-                        () -> {
-                            try {
-                                return key.run();
-                            } finally {
-                                // Kept only while it runs. Should it end first, the map holds this back until
-                                // computeIfAbsent has put it in.
-                                running.remove(key);
-                            }
-                        },
-                        AppExecutorUtil.getAppExecutorService()));
-        return switch (ProgressIndicatorUtils.awaitWithCheckCanceled(fixing)) {
-            case FixedImports.Fixed fixed -> fixed.text();
-            case FixedImports.Failed failed -> throw failed.exception();
-        };
+    private String fixImports(PsiFile file, FormatterService formatter, String text) throws FormatterException {
+        var call = new FixImportsCall(formatter, text);
+        var started = new AtomicBoolean();
+        var fixing = running.computeIfAbsent(call, key -> {
+            started.set(true);
+            return CompletableFuture.supplyAsync(
+                    () -> {
+                        try {
+                            return key.run();
+                        } finally {
+                            // Kept only while it runs. Should it end first, the map holds this back until
+                            // computeIfAbsent has put it in.
+                            running.remove(key);
+                        }
+                    },
+                    AppExecutorUtil.getAppExecutorService());
+        });
+        debug(file, started.get() ? "started fixImports" : "waits for the fixImports already running on the same text");
+        watchWriteActions();
+        waiting.incrementAndGet();
+        try {
+            return switch (ProgressIndicatorUtils.awaitWithCheckCanceled(fixing)) {
+                case FixedImports.Fixed fixed -> fixed.text();
+                case FixedImports.Failed failed -> throw failed.exception();
+            };
+        } finally {
+            waiting.decrementAndGet();
+        }
     }
 
     private record FixImportsCall(FormatterService formatter, String text) {
@@ -197,6 +218,59 @@ final class PalantirJavaFormatImportOptimizer implements ImportOptimizer {
         record Fixed(String text) implements FixedImports {}
 
         record Failed(FormatterException exception) implements FixedImports {}
+    }
+
+    /** With debug logging on, logs how long each write action waits for the read lock while imports are optimized. */
+    private void watchWriteActions() {
+        if (logger.isDebugEnabled() && watchingWriteActions.compareAndSet(false, true)) {
+            var application = ApplicationManager.getApplication();
+            // For as long as the IDE runs: the plugin needs a restart to unload.
+            application.addApplicationListener(
+                    new WriteActionWaits(waiting::get, wait -> {
+                        if (logger.isDebugEnabled()) {
+                            logger.debug(String.format(
+                                    "Optimizing imports: a write action waited %s ms for the read lock",
+                                    TimeUnit.NANOSECONDS.toMillis(wait)));
+                        }
+                    }),
+                    application);
+        }
+    }
+
+    /**
+     * Measures how long a write action waits for the read lock while an import optimization waits for fixImports:
+     * whether typing waits for the formatter (#253). Other read actions may hold the lock too, and their time counts
+     * as well.
+     */
+    static final class WriteActionWaits implements ApplicationListener {
+        private final IntSupplier waiting;
+        private final LongConsumer report;
+
+        // From beforeWriteActionStart to writeActionStarted, on the thread of the write action: one at a time.
+        private boolean measuring;
+        private long requested;
+
+        /** waiting: how many optimizations wait for fixImports. report: given the wait in nanoseconds. */
+        WriteActionWaits(IntSupplier waiting, LongConsumer report) {
+            this.waiting = waiting;
+            this.report = report;
+        }
+
+        @Override
+        public void beforeWriteActionStart(Object action) {
+            // A write action inside another holds the lock already.
+            measuring = waiting.getAsInt() > 0
+                    && !ApplicationManager.getApplication().isWriteAccessAllowed();
+            requested = System.nanoTime();
+        }
+
+        @Override
+        public void writeActionStarted(Object action) {
+            if (measuring) {
+                measuring = false;
+                report.accept(System.nanoTime() - requested);
+            }
+        }
     }
 
     /**
