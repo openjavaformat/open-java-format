@@ -14,6 +14,8 @@
 
 package com.palantir.javaformat.gradle;
 
+import static java.util.stream.Collectors.joining;
+
 import com.google.common.collect.Iterables;
 import com.palantir.javaformat.java.FormatterService;
 import java.io.File;
@@ -26,7 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.stream.Collectors;
 import org.gradle.api.GradleException;
 
 /**
@@ -111,7 +112,7 @@ public final class FormatterServiceLoader {
         }
         String addExports = JAVAC_PACKAGES.stream()
                 .map(javacPackage -> "--add-exports jdk.compiler/" + javacPackage + "=ALL-UNNAMED")
-                .collect(Collectors.joining(" "));
+                .collect(joining(" "));
         throw new GradleException("""
             open-java-format cannot run inside this Gradle JVM: module jdk.compiler does not export %s to it. \
             Set one of these in gradle.properties:

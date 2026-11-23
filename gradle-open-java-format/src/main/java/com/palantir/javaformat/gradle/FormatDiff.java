@@ -16,11 +16,12 @@
 
 package com.palantir.javaformat.gradle;
 
+import static com.google.common.base.Preconditions.checkState;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Comparator.comparing;
+import static java.util.regex.Pattern.MULTILINE;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Range;
@@ -49,11 +50,11 @@ final class FormatDiff {
     private static final Pattern SEPARATOR = Pattern.compile("diff --git");
 
     // "+++ b/witchcraft-example-stateless/src/main/java/com/palantir/witchcraftexample/WitchcraftExampleResource.java"
-    private static final Pattern FILENAME = Pattern.compile("^\\+\\+\\+ (.+?)/(?<filename>.+)\\n", Pattern.MULTILINE);
+    private static final Pattern FILENAME = Pattern.compile("^\\+\\+\\+ (.+?)/(?<filename>.+)\\n", MULTILINE);
 
     // "@@ -25,6 +26,19 @@ public final class WitchcraftExampleServer {"
     private static final Pattern HUNK =
-            Pattern.compile("^@@.*\\+(?<startLineOneIndexed>\\d+)(,(?<numLines>\\d+))?", Pattern.MULTILINE);
+            Pattern.compile("^@@.*\\+(?<startLineOneIndexed>\\d+)(,(?<numLines>\\d+))?", MULTILINE);
 
     public static void formatDiff(Path dirToFormat, FormatterService formatter)
             throws IOException, InterruptedException {
@@ -132,7 +133,7 @@ final class FormatDiff {
         Process process =
                 new ProcessBuilder().command(args).directory(dir.toFile()).start();
 
-        Preconditions.checkState(process.waitFor(30, TimeUnit.SECONDS), "git diff took too long to terminate");
+        checkState(process.waitFor(30, TimeUnit.SECONDS), "git diff took too long to terminate");
         if (process.exitValue() != 0) {
             throw new RuntimeException("Expected return code of 0 but got " + process.exitValue()
                     + "\n stdout: " + new String(process.getInputStream().readAllBytes(), UTF_8)

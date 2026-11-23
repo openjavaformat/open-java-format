@@ -16,8 +16,9 @@
 
 package com.palantir.javaformat.gradle;
 
-import com.google.common.base.Preconditions;
-import java.util.Collections;
+import static com.google.common.base.Preconditions.checkState;
+import static java.util.Collections.singletonList;
+
 import javax.inject.Inject;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -33,8 +34,8 @@ public abstract class NativeImageFormatProviderPlugin implements Plugin<Project>
 
     @Override
     public void apply(Project rootProject) {
-        Preconditions.checkState(
-                rootProject == rootProject.getRootProject(),
+        checkState(
+                rootProject.equals(rootProject.getRootProject()),
                 "May only apply dev.openjavaformat.java-format-provider to the root project");
 
         Provider<NativePlatform> platform = NativePlatform.current(getProviderFactory());
@@ -44,7 +45,7 @@ public abstract class NativeImageFormatProviderPlugin implements Plugin<Project>
             conf.setCanBeConsumed(false);
             conf.setCanBeResolved(true);
             conf.defaultDependencies(deps -> {
-                deps.addAllLater(platform.map(p -> Collections.singletonList(rootProject
+                deps.addAllLater(platform.map(p -> singletonList(rootProject
                         .getDependencies()
                         .create(String.format(
                                 "dev.openjavaformat:open-java-format-native:%s:%s@%s",

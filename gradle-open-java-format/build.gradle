@@ -3,7 +3,6 @@
 // GRADLE_PUBLISH_SECRET. It applies java-gradle-plugin and maven-publish itself, and once the signing
 // plugin is applied it signs what it uploads.
 apply plugin: 'com.gradle.plugin-publish'
-apply plugin: 'groovy'
 apply plugin: 'signing'
 apply plugin: 'open-java-format.publishing-conventions'
 

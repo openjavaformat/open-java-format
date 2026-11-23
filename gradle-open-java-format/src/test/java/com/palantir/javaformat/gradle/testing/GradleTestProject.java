@@ -17,6 +17,8 @@
 package com.palantir.javaformat.gradle.testing;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Comparator.reverseOrder;
+import static java.util.Objects.requireNonNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,10 +28,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -179,7 +179,7 @@ public final class GradleTestProject {
             return this;
         }
         try (Stream<Path> paths = Files.walk(target)) {
-            for (var path : paths.sorted(Comparator.reverseOrder()).toList()) {
+            for (var path : paths.sorted(reverseOrder()).toList()) {
                 Files.delete(path);
             }
         } catch (IOException e) {
@@ -228,7 +228,7 @@ public final class GradleTestProject {
     private static List<File> pluginClasspathWithoutSpotless() {
         Properties metadata = new Properties();
         try (InputStream in = GradleTestProject.class.getClassLoader().getResourceAsStream(PLUGIN_METADATA)) {
-            metadata.load(Objects.requireNonNull(in, PLUGIN_METADATA + " is not on the test classpath"));
+            metadata.load(requireNonNull(in, PLUGIN_METADATA + " is not on the test classpath"));
         } catch (IOException e) {
             throw new UncheckedIOException("Could not read " + PLUGIN_METADATA, e);
         }
