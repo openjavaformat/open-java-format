@@ -16,67 +16,66 @@
 
 package com.palantir.javaformat.gradle;
 
-import groovy.util.Node;
 import java.lang.module.ModuleDescriptor;
 import java.net.URI;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.w3c.dom.Element;
 
 final class ConfigureJavaFormatterXml {
 
-    static void configureJavaFormat(Node rootNode, List<URI> uris) {
+    static void configureJavaFormat(Element rootNode, List<URI> uris) {
         var settings = matchOrCreateChild(rootNode, "component", Map.of("name", "PalantirJavaFormatSettings"));
         // enable
-        attributes(matchOrCreateChild(settings, "option", Map.of("name", "enabled")))
-                .put("value", "true");
+        matchOrCreateChild(settings, "option", Map.of("name", "enabled")).setAttribute("value", "true");
         // configure classpath
         var classPath = matchOrCreateChild(settings, "option", Map.of("name", "implementationClassPath"));
         var listItems = matchOrCreateChild(classPath, "list", Map.of());
-        listItems.children().clear();
+        for (var child : XmlUtils.children(listItems)) {
+            listItems.removeChild(child);
+        }
         for (var uri : uris) {
-            listItems.appendNode("option", new LinkedHashMap<>(Map.of("value", uri.toString())));
+            appendChild(listItems, "option", Map.of("value", uri.toString()));
         }
         // Earlier versions wrote the native binary for openjavaformat.native.formatter=true. The IDE plugin has a
         // setting of its own for that now, useNativeImage, which is left alone, and no longer reads this option.
-        matchChild(settings, "option", Map.of("name", "nativeImageClassPath"))
-                .ifPresent(option -> option.parent().remove(option));
+        matchChild(settings, "option", Map.of("name", "nativeImageClassPath")).ifPresent(settings::removeChild);
     }
 
-    static void configureWorkspaceXml(Node rootNode) {
+    static void configureWorkspaceXml(Element rootNode) {
         configureFormatOnSave(rootNode);
         configureOptimizeOnSave(rootNode);
     }
 
     // Lists an IDEA plugin as required by the project, so IntelliJ offers to install or update it. The other
     // required plugins stay, and so does a higher min-version for this one, such as a developer's own choice.
-    static void configureExternalDependencies(Node rootNode, String pluginId, String minVersion) {
+    static void configureExternalDependencies(Element rootNode, String pluginId, String minVersion) {
         var externalDependencies = matchOrCreateChild(rootNode, "component", Map.of("name", "ExternalDependencies"));
         var plugin = matchOrCreateChild(externalDependencies, "plugin", Map.of("id", pluginId));
-        var existing = plugin.attribute("min-version");
+        // Empty when the plugin is listed without one.
+        var existing = plugin.getAttribute("min-version");
         var required = ModuleDescriptor.Version.parse(minVersion);
-        if (existing == null
-                || ModuleDescriptor.Version.parse(existing.toString()).compareTo(required) < 0) {
-            attributes(plugin).put("min-version", minVersion);
+        if (existing.isEmpty() || ModuleDescriptor.Version.parse(existing).compareTo(required) < 0) {
+            plugin.setAttribute("min-version", minVersion);
         }
     }
 
-    private static void configureFormatOnSave(Node rootNode) {
+    private static void configureFormatOnSave(Element rootNode) {
         configureOnSaveAction(matchOrCreateChild(rootNode, "component", Map.of("name", "FormatOnSaveOptions")));
     }
 
-    private static void configureOptimizeOnSave(Node rootNode) {
+    private static void configureOptimizeOnSave(Element rootNode) {
         configureOnSaveAction(matchOrCreateChild(rootNode, "component", Map.of("name", "OptimizeOnSaveOptions")));
     }
 
-    private static void configureOnSaveAction(Node onSaveOptions) {
+    private static void configureOnSaveAction(Element onSaveOptions) {
         // In IntelliJ <2023.3.7, the myRunOnSave option is default false.
         // In IntelliJ >=2023.3.7, it is default true, and if it is set to true IntelliJ will remove it from the XML
         //     the next time the file is saved or the actions on save options window is saved.
         // So to cover all cases, we always write it out and ensure it is true
-        var myRunOnSave = matchOrCreateChild(onSaveOptions, "option", Map.of("name", "myRunOnSave"));
-        attributes(myRunOnSave).put("value", "true");
+        matchOrCreateChild(onSaveOptions, "option", Map.of("name", "myRunOnSave"))
+                .setAttribute("value", "true");
 
         // In IntelliJ <2023.3.7, the myAllFileTypesSelected option is default true.
         // In IntelliJ >=2023.3.7, it is default false, and if it is set to false IntelliJ will remove it from the XML
@@ -91,33 +90,39 @@ final class ConfigureJavaFormatterXml {
         matchOrCreateChild(set, "option", Map.of("value", "JAVA"));
     }
 
-    private static Node matchOrCreateChild(Node base, String name, Map<String, String> attributes) {
+    private static Element matchOrCreateChild(Element base, String name, Map<String, String> attributes) {
         return matchOrCreateChild(base, name, attributes, Map.of());
     }
 
     // A new child gets the defaults too; an existing one is left as it is.
-    private static Node matchOrCreateChild(
-            Node base, String name, Map<String, String> attributes, Map<String, String> defaults) {
+    private static Element matchOrCreateChild(
+            Element base, String name, Map<String, String> attributes, Map<String, String> defaults) {
         return matchChild(base, name, attributes).orElseGet(() -> {
-            // The node keeps this map and the callers put values in it, so it has to be mutable.
-            var newAttributes = new LinkedHashMap<>(attributes);
-            newAttributes.putAll(defaults);
-            return base.appendNode(name, newAttributes);
+            var child = appendChild(base, name, attributes);
+            defaults.forEach(child::setAttribute);
+            return child;
         });
     }
 
-    private static Optional<Node> matchChild(Node base, String name, Map<String, String> attributes) {
-        // The children with that name, in a NodeList.
-        var children = (List<?>) base.get(name);
-        return children.stream()
-                .map(Node.class::cast)
-                .filter(child -> attributes(child).entrySet().containsAll(attributes.entrySet()))
+    private static Element appendChild(Element base, String name, Map<String, String> attributes) {
+        var child = base.getOwnerDocument().createElement(name);
+        attributes.forEach(child::setAttribute);
+        base.appendChild(child);
+        return child;
+    }
+
+    private static Optional<Element> matchChild(Element base, String name, Map<String, String> attributes) {
+        return XmlUtils.children(base).stream()
+                .filter(Element.class::isInstance)
+                .map(Element.class::cast)
+                .filter(child -> child.getTagName().equals(name) && hasAttributes(child, attributes))
                 .findFirst();
     }
 
-    // Node.attributes() is a raw Map.
-    private static Map<Object, Object> attributes(Node node) {
-        return node.attributes();
+    private static boolean hasAttributes(Element element, Map<String, String> attributes) {
+        return attributes.entrySet().stream()
+                .allMatch(attribute -> element.hasAttribute(attribute.getKey())
+                        && element.getAttribute(attribute.getKey()).equals(attribute.getValue()));
     }
 
     private ConfigureJavaFormatterXml() {}
