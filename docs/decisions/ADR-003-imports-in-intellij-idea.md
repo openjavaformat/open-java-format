@@ -1,7 +1,7 @@
 # ADR-003: In IntelliJ IDEA, Reformat leaves the imports, and Optimize imports is to become ours
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-11-14; revised 2026-11-24 for IntelliJ IDEA 2025.2 and later
