@@ -16,7 +16,8 @@
 
 package com.palantir.javaformat.gradle;
 
-import com.google.common.base.Preconditions;
+import static com.google.common.base.Preconditions.checkState;
+
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -27,7 +28,7 @@ public final class PalantirJavaFormatProviderPlugin implements Plugin<Project> {
 
     @Override
     public void apply(Project rootProject) {
-        Preconditions.checkState(
+        checkState(
                 rootProject.equals(rootProject.getRootProject()),
                 "May only apply dev.openjavaformat.java-format-provider to the root project");
 

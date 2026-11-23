@@ -14,12 +14,13 @@
 
 package com.palantir.javaformat.gradle;
 
+import static java.util.Comparator.reverseOrder;
+
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Comparator;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -88,7 +89,7 @@ final class AtomicCacheDirectory {
             return;
         }
         try (Stream<Path> paths = Files.walk(dir)) {
-            for (var path : paths.sorted(Comparator.reverseOrder()).toList()) {
+            for (var path : paths.sorted(reverseOrder()).toList()) {
                 Files.deleteIfExists(path);
             }
         }

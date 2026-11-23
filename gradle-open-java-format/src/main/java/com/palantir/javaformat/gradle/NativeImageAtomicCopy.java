@@ -14,6 +14,8 @@
 
 package com.palantir.javaformat.gradle;
 
+import static java.util.stream.Collectors.toUnmodifiableSet;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,7 +30,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -107,7 +108,7 @@ public final class NativeImageAtomicCopy {
                                         PosixFilePermission.OWNER_EXECUTE,
                                         PosixFilePermission.GROUP_EXECUTE,
                                         PosixFilePermission.OTHERS_EXECUTE))
-                        .collect(Collectors.toUnmodifiableSet()));
+                        .collect(toUnmodifiableSet()));
     }
 
     /** An image as it was when it was hashed: replaced in place, it changes size or time. */

@@ -16,7 +16,8 @@
 
 package com.palantir.javaformat.gradle;
 
-import com.google.common.base.Preconditions;
+import static com.google.common.base.Preconditions.checkState;
+
 import java.util.stream.Stream;
 import org.gradle.StartParameter;
 import org.gradle.api.Plugin;
@@ -29,7 +30,7 @@ public abstract class PalantirJavaFormatIdeaPlugin implements Plugin<Project> {
 
     @Override
     public void apply(Project rootProject) {
-        Preconditions.checkState(
+        checkState(
                 rootProject.equals(rootProject.getRootProject()),
                 "May only apply dev.openjavaformat.java-format-idea to the root project");
 
