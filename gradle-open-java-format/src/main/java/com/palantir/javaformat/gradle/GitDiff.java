@@ -14,11 +14,11 @@
 
 package com.palantir.javaformat.gradle;
 
-import static com.google.common.base.Preconditions.checkState;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import java.io.ByteArrayOutputStream;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -40,19 +40,49 @@ record GitDiff(Path topLevelDir, String output) {
         return new GitDiff(topLevelDir, output);
     }
 
-    /** Runs a command in a directory and returns what it printed, trimmed. */
-    private static String run(Path dir, Duration timeout, String... command) throws IOException, InterruptedException {
-        var process =
-                new ProcessBuilder().command(command).directory(dir.toFile()).start();
-
-        checkState(process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS), "git diff took too long to terminate");
-        if (process.exitValue() != 0) {
-            throw new RuntimeException("Expected return code of 0 but got " + process.exitValue()
-                    + "\n stdout: " + new String(process.getInputStream().readAllBytes(), UTF_8)
-                    + "\n stderr: " + new String(process.getErrorStream().readAllBytes(), UTF_8));
+    /**
+     * Runs a command in a directory and returns what it printed, trimmed. Both of its streams go to files: a pipe
+     * holds 64 KB on Linux and macOS, and a command that fills one waits for someone to read it, while this waits for
+     * the command to exit (#257).
+     */
+    @VisibleForTesting
+    static String run(Path dir, Duration timeout, String... command) throws IOException, InterruptedException {
+        var stdout = Files.createTempFile("open-java-format-", ".stdout");
+        var stderr = Files.createTempFile("open-java-format-", ".stderr");
+        try {
+            var process = new ProcessBuilder(command)
+                    .directory(dir.toFile())
+                    .redirectOutput(stdout.toFile())
+                    .redirectError(stderr.toFile())
+                    .start();
+            if (!process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
+                process.destroyForcibly();
+                throw new IllegalStateException("%s did not finish within %d seconds"
+                        .formatted(String.join(" ", command), timeout.toSeconds()));
+            }
+            if (process.exitValue() != 0) {
+                throw new IllegalStateException("%s exited with %d\n stdout: %s\n stderr: %s"
+                        .formatted(String.join(" ", command), process.exitValue(), read(stdout), read(stderr)));
+            }
+            return read(stdout).trim();
+        } finally {
+            delete(stdout);
+            delete(stderr);
         }
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        process.getInputStream().transferTo(baos);
-        return new String(baos.toByteArray(), UTF_8).trim();
+    }
+
+    // Not Files.readString, which throws on a byte that is not UTF-8: a diff holds the bytes of the files it is of.
+    private static String read(Path file) throws IOException {
+        return new String(Files.readAllBytes(file), UTF_8);
+    }
+
+    // A command killed on Windows can leave a child behind with the file open, as Git for Windows' git.exe, a launcher,
+    // does; failing to delete the file then would hide why the command was killed.
+    private static void delete(Path file) {
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException e) {
+            file.toFile().deleteOnExit();
+        }
     }
 }
