@@ -15,7 +15,7 @@ plugins {
 // release on the tag with what Maven Central does not carry — the runnable formatter jar, the Gradle
 // plugins' jar, the IntelliJ plugin zip, the Eclipse plugin jar, every platform's native binary as a
 // plain download and the WebAssembly module for openjavaformat.dev's playground — each file signed, plus a
-// checksum file.
+// checksum file. Its text is release-notes/<version>.md.
 //
 // Publishing is a run of its own: with JRELEASER_MAVENCENTRAL_DEPLOYMENT_ID set, JReleaser publishes that
 // deployment, which an earlier run uploaded and the Portal validated, and nothing is built. The ID has to
@@ -75,6 +75,10 @@ if (releaseTarget == 'github') {
     }
 }
 
+// A provider: the root project sets its version only after applying this plugin, and JReleaser reads the
+// file when its task runs.
+def releaseNotes = layout.projectDirectory.file(provider { "release-notes/${version}.md" })
+
 jreleaser {
     dependsOnAssemble = false
 
@@ -106,9 +110,12 @@ jreleaser {
             branch = '21.X.X'
             // Published by hand after a look.
             draft = true
-            changelog {
-                formatted = 'ALWAYS'
-                format = '- {{commitShortHash}} {{commitTitle}}'
+            // The text is release-notes/<version>.md as written; see release-notes/README.md. JReleaser fails
+            // when the file is missing.
+            if (releaseTarget == 'github') {
+                changelog {
+                    external.set(releaseNotes)
+                }
             }
         }
     }
