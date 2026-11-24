@@ -118,7 +118,7 @@ def wasmDifferentialTest = tasks.register('wasmDifferentialTest', Exec) {
                 wrapper.get(),
                 java21.get().executablePath.asFile.path,
                 allJar.get().archiveFile.get().asFile.path,
-                project(':open-java-format').file('src/test/resources/test-cases').path,
+                project(':open-java-format').file('src/test/resources/test-cases-java21').path,
                 layout.buildDirectory.dir('wasm-differential').get().asFile.path,
         ]
     } as CommandLineArgumentProvider)
