@@ -18,6 +18,7 @@ import static com.google.common.collect.Sets.immutableEnumSet;
 import static com.palantir.javaformat.java.javadoc.JavadocWriter.AutoIndent.AUTO_INDENT;
 import static com.palantir.javaformat.java.javadoc.JavadocWriter.AutoIndent.NO_AUTO_INDENT;
 import static com.palantir.javaformat.java.javadoc.JavadocWriter.RequestedWhitespace.BLANK_LINE;
+import static com.palantir.javaformat.java.javadoc.JavadocWriter.RequestedWhitespace.FORCED_BLANK_LINE;
 import static com.palantir.javaformat.java.javadoc.JavadocWriter.RequestedWhitespace.NEWLINE;
 import static com.palantir.javaformat.java.javadoc.JavadocWriter.RequestedWhitespace.NONE;
 import static com.palantir.javaformat.java.javadoc.JavadocWriter.RequestedWhitespace.WHITESPACE;
@@ -67,6 +68,16 @@ final class JavadocWriter {
      */
     void requestWhitespace() {
         requestWhitespace(WHITESPACE);
+    }
+
+    /**
+     * Requests a blank line that, unlike the ones other tokens request, is written inside lists and footer tags too.
+     * The lexer turns the blank line before a {@code <div>} into this request instead of inferring a {@code <p>}: a
+     * newline there would leave nothing to keep the {@code <div>} off the line before it when the output is formatted
+     * again.
+     */
+    void requestForcedBlankLine() {
+        requestWhitespace(FORCED_BLANK_LINE);
     }
 
     void writeBeginJavadoc() {
@@ -295,6 +306,8 @@ final class JavadocWriter {
         WHITESPACE,
         NEWLINE,
         BLANK_LINE,
+        /** A {@link #BLANK_LINE} that is written inside lists and footer tags too. */
+        FORCED_BLANK_LINE,
         ;
     }
 
@@ -317,7 +330,7 @@ final class JavadocWriter {
             requestedWhitespace = NEWLINE;
         }
 
-        if (requestedWhitespace == BLANK_LINE) {
+        if (requestedWhitespace == BLANK_LINE || requestedWhitespace == FORCED_BLANK_LINE) {
             writeBlankLine();
             requestedWhitespace = NONE;
         } else if (requestedWhitespace == NEWLINE) {
