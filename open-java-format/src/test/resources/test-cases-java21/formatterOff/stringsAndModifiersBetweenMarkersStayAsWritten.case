@@ -1,0 +1,22 @@
+# Between the markers long strings are not reflowed, adjacent literals not joined, text blocks not indented and
+# modifiers not reordered.
+----------
+class T {
+    // @formatter:off
+    final static String MESSAGE = "a string literal that is far too long for one line, so that the formatter would have to reflow it into pieces of a hundred and twenty columns";
+    String joined = "a " + "b";
+    String block = """
+            text
+            """;
+    // @formatter:on
+}
+----------
+class T {
+    // @formatter:off
+    final static String MESSAGE = "a string literal that is far too long for one line, so that the formatter would have to reflow it into pieces of a hundred and twenty columns";
+    String joined = "a " + "b";
+    String block = """
+            text
+            """;
+    // @formatter:on
+}

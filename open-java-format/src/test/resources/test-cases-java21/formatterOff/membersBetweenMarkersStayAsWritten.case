@@ -1,0 +1,19 @@
+# Members of a class between the markers, such as constants aligned by hand, stay as written.
+----------
+class T {
+    // @formatter:off
+    static final int ONE   = 1;
+    static final int TWO   = 2;
+    static final int THREE = 3;
+    // @formatter:on
+    static final int   FOUR   = 4;
+}
+----------
+class T {
+    // @formatter:off
+    static final int ONE   = 1;
+    static final int TWO   = 2;
+    static final int THREE = 3;
+    // @formatter:on
+    static final int FOUR = 4;
+}

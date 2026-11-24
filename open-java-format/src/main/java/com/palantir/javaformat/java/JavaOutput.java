@@ -351,6 +351,21 @@ public final class JavaOutput extends Output {
     }
 
     /**
+     * The token ranges that formatting the given ones rewrites: each widened, as {@link #getFormatReplacements} widens
+     * it, to the statements or members around it.
+     */
+    public RangeSet<Integer> expandToBreakableRegions(RangeSet<Integer> iRangeSet) {
+        RangeSet<Integer> expanded = TreeRangeSet.create();
+        for (var iRange : iRangeSet.asRanges()) {
+            var range = expandToBreakableRegions(iRange.canonical(DiscreteDomain.integers()));
+            if (!range.equals(EMPTY_RANGE)) {
+                expanded.add(range);
+            }
+        }
+        return expanded;
+    }
+
+    /**
      * Expand a token range to start and end on acceptable boundaries for re-formatting.
      *
      * @param iRange the {@link Range} of tokens
