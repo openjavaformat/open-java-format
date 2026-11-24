@@ -39,14 +39,11 @@ public abstract class Doc extends HasUniqueId {
 
     // The width, flat value and range, computed when first asked for, once the doc is complete. The width is NaN until
     // then, which computeWidth never returns.
-    @SuppressWarnings("Immutable") // Effectively immutable
     private float memoizedWidth = Float.NaN;
 
-    @SuppressWarnings("Immutable") // Effectively immutable
     @Nullable
     private String memoizedFlat;
 
-    @SuppressWarnings("Immutable") // Effectively immutable
     @Nullable
     private Range<Integer> memoizedRange;
 
