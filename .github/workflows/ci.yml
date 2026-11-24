@@ -173,10 +173,7 @@ jobs:
         runner:
           - ubuntu-latest
           - ubuntu-24.04-arm
-          # macOS arm64 is left out: GitHub's runners for it are scarce, and from 17 to 19 November 2026 it found
-          # none for 13 of the job's 21 pull-request runs, each failing after 15 minutes of waiting. The release
-          # still builds it.
-          # - macos-15
+          - macos-14
           - macos-15-intel
           - windows-latest
 
