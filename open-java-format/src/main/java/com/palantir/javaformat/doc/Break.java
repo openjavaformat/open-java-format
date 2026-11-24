@@ -17,7 +17,6 @@
 package com.palantir.javaformat.doc;
 
 import com.google.common.collect.Range;
-import com.google.errorprone.annotations.Immutable;
 import com.palantir.javaformat.CommentsHelper;
 import com.palantir.javaformat.Indent;
 import com.palantir.javaformat.Op;
@@ -27,7 +26,6 @@ import java.util.Optional;
 import org.immutables.value.Value;
 
 /** A leaf node in a {@link Doc} for an optional break. */
-@Immutable
 @Value.Immutable
 public abstract class Break extends Doc implements Op {
     public abstract FillMode fillMode();

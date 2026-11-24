@@ -16,7 +16,6 @@
 
 package com.palantir.javaformat.doc;
 
-import com.google.common.base.Suppliers;
 import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
 import com.palantir.javaformat.CommentsHelper;
@@ -24,6 +23,7 @@ import com.palantir.javaformat.Input;
 import com.palantir.javaformat.Op;
 import com.palantir.javaformat.OpsBuilder;
 import com.palantir.javaformat.Output;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@link com.palantir.javaformat.java.JavaInputAstVisitor JavaInputAstVisitor} outputs a sequence of {@link Op}s using
@@ -37,14 +37,15 @@ public abstract class Doc extends HasUniqueId {
     static final Range<Integer> EMPTY_RANGE = Range.closedOpen(-1, -1);
     static final DiscreteDomain<Integer> INTEGERS = DiscreteDomain.integers();
 
-    @SuppressWarnings("Immutable") // Effectively immutable
-    private final ImmutableSupplier<Float> memoizedWidth = Suppliers.memoize(this::computeWidth)::get;
+    // The width, flat value and range, computed when first asked for, once the doc is complete. The width is NaN until
+    // then, which computeWidth never returns.
+    private float memoizedWidth = Float.NaN;
 
-    @SuppressWarnings("Immutable") // Effectively immutable
-    private final ImmutableSupplier<String> memoizedFlat = Suppliers.memoize(this::computeFlat)::get;
+    @Nullable
+    private String memoizedFlat;
 
-    @SuppressWarnings("Immutable") // Effectively immutable
-    private final ImmutableSupplier<Range<Integer>> memoizedRange = Suppliers.memoize(this::computeRange)::get;
+    @Nullable
+    private Range<Integer> memoizedRange;
 
     /**
      * Return the width of a {@code Doc}, or {@code Float.POSITIVE_INFINITY} if it must be broken.
@@ -52,7 +53,10 @@ public abstract class Doc extends HasUniqueId {
      * @return the width
      */
     final float getWidth() {
-        return memoizedWidth.get();
+        if (Float.isNaN(memoizedWidth)) {
+            memoizedWidth = computeWidth();
+        }
+        return memoizedWidth;
     }
 
     /**
@@ -62,11 +66,17 @@ public abstract class Doc extends HasUniqueId {
      * @return the flat-string value
      */
     public final String getFlat() {
-        return memoizedFlat.get();
+        if (memoizedFlat == null) {
+            memoizedFlat = computeFlat();
+        }
+        return memoizedFlat;
     }
 
     final Range<Integer> range() {
-        return memoizedRange.get();
+        if (memoizedRange == null) {
+            memoizedRange = computeRange();
+        }
+        return memoizedRange;
     }
 
     /**

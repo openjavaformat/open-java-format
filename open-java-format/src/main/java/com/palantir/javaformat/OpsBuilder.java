@@ -19,8 +19,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ForwardingListMultimap;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Multimap;
+import com.google.common.collect.ListMultimap;
 import com.palantir.javaformat.Indent.Const;
 import com.palantir.javaformat.Input.Tok;
 import com.palantir.javaformat.doc.Break;
@@ -521,13 +522,32 @@ public final class OpsBuilder {
 
     public record OpsOutput(List<Op> ops, InputMetadata inputMetadata) {}
 
+    /**
+     * An {@link ArrayListMultimap} whose {@link #get} of a key without values returns {@link List#of()}. {@link #build}
+     * asks for the ops to insert at every op and most have none, and {@link ArrayListMultimap#get} would make a new
+     * empty list and a view of it for each. The list returned for such a key cannot be added to.
+     */
+    private static final class SparseListMultimap<K, V> extends ForwardingListMultimap<K, V> {
+        private final ArrayListMultimap<K, V> delegate = ArrayListMultimap.create();
+
+        @Override
+        protected ListMultimap<K, V> delegate() {
+            return delegate;
+        }
+
+        @Override
+        public List<V> get(K key) {
+            return delegate.containsKey(key) ? delegate.get(key) : List.of();
+        }
+    }
+
     /** Build a list of {@link Op}s from the {@code OpsBuilder}. */
     public OpsOutput build() {
         markForPartialFormat();
         // Rewrite the ops to insert comments.
-        Multimap<Integer, Op> tokOps = ArrayListMultimap.create();
+        var tokOps = new SparseListMultimap<Integer, Op>();
         // The room after a string literal for the NON-NLS markers written on its line, see Comment.makeNonNlsMarkers.
-        var reservations = ArrayListMultimap.<Integer, Op>create();
+        var reservations = new SparseListMultimap<Integer, Op>();
         var tokenOps = new HashMap<Input.Token, Integer>();
         Map<Integer, Input.Token> tokenByIndex = null;
         int opsN = ops.size();
