@@ -290,7 +290,7 @@ jobs:
           node-version: '24'
           package-manager-cache: false
 
-      # wasmTest: the native image's smoke test, then every test case's input against the runnable jar.
+      # wasmTest: the smoke test, then every Java 21 and Java 25 test case's input against the runnable jar.
       - name: Build and test the module
         run: ./gradlew -Pwasm=true :open-java-format-wasm:wasmTest :open-java-format-wasm:wasmZip
         env:

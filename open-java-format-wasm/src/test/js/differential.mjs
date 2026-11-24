@@ -14,14 +14,14 @@
 
 // The module against the runnable jar of the same build, on the input of every test case: both must give the same
 // bytes, or the same diagnostics. The jar formats all the inputs in one run with --replace, so the JVM starts once.
-// Usage: node differential.mjs <open-java-format.js> <java> <open-java-format-all.jar> <test-cases dir> <work dir>
+// Usage: node differential.mjs <open-java-format.js> <java> <open-java-format-all.jar> <work dir> <test-cases dir>...
 
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { load } from "./load.mjs";
 
-const [wrapperPath, java, jar, casesRoot, workDir] = process.argv.slice(2);
+const [wrapperPath, java, jar, workDir, ...casesRoots] = process.argv.slice(2);
 
 // As CaseFile.java reads a case: the input is what lies between the first two lines of six or more dashes.
 const SEPARATOR = /-{6,}(?:\r\n|\r|\n|$)/g;
@@ -38,16 +38,18 @@ function caseFiles(dir) {
         .sort();
 }
 
-// One .java file per case, named after it, so that the jar's diagnostics name the case too.
+// One .java file per case, named after its folder and itself, so that the jar's diagnostics name the case too.
 rmSync(workDir, { recursive: true, force: true });
-const inputs = caseFiles(casesRoot).map(caseFile => {
-    const name = relative(casesRoot, caseFile).replaceAll(/[\\/]/g, "__").replace(/\.case$/, ".java");
-    const path = join(workDir, name);
-    const input = inputOf(readFileSync(caseFile, "utf8"));
-    mkdirSync(workDir, { recursive: true });
-    writeFileSync(path, input);
-    return { name, path, input };
-});
+const inputs = casesRoots.flatMap(casesRoot =>
+    caseFiles(casesRoot).map(caseFile => {
+        const name = relative(dirname(casesRoot), caseFile).replaceAll(/[\\/]/g, "__").replace(/\.case$/, ".java");
+        const path = join(workDir, name);
+        const input = inputOf(readFileSync(caseFile, "utf8"));
+        mkdirSync(workDir, { recursive: true });
+        writeFileSync(path, input);
+        return { name, path, input };
+    }),
+);
 
 const jvm = spawnSync(java, ["-jar", jar, "--replace", ...inputs.map(input => input.path)], {
     encoding: "utf8",

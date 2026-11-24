@@ -105,8 +105,9 @@ def wasmSmokeTest = tasks.register('wasmSmokeTest', Exec) {
 }
 
 def allJar = project(':open-java-format').tasks.named('allJar', Jar)
-def java21 = javaToolchains.launcherFor { it.languageVersion.set(JavaLanguageVersion.of(21)) }
 
+// The jar runs on the JDK the module is built with, so that both parse with the same javac, and so on the cases for
+// Java 25 as well as those for 21. The ones for 28 need a newer javac than the module has.
 def wasmDifferentialTest = tasks.register('wasmDifferentialTest', Exec) {
     description = 'Formats every test case input with the module and with the runnable jar, and compares.'
     group = 'verification'
@@ -116,10 +117,11 @@ def wasmDifferentialTest = tasks.register('wasmDifferentialTest', Exec) {
     argumentProviders.add({
         [
                 wrapper.get(),
-                java21.get().executablePath.asFile.path,
+                javaToolchains.launcherFor(oracleGraalVm).get().executablePath.asFile.path,
                 allJar.get().archiveFile.get().asFile.path,
-                project(':open-java-format').file('src/test/resources/test-cases-java21').path,
                 layout.buildDirectory.dir('wasm-differential').get().asFile.path,
+                project(':open-java-format').file('src/test/resources/test-cases-java21').path,
+                project(':open-java-format').file('src/test/resources/test-cases-java25').path,
         ]
     } as CommandLineArgumentProvider)
 }

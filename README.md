@@ -164,8 +164,8 @@ unexecutable file.
 ### WebAssembly module
 
 The playground on openjavaformat.dev runs the formatter in the browser, compiled to WebAssembly by
-GraalVM's Web Image backend. Only the release workflow builds it, in its `wasm` job, and the zip goes
-on the GitHub release; `./gradlew build` leaves it out. Web Image ships in Oracle GraalVM only, so the
+GraalVM's Web Image backend. CI builds and tests it in its `wasm` job, the release workflow in its
+own, and the zip goes on the GitHub release; `./gradlew build` leaves it out. Web Image ships in Oracle GraalVM only, so the
 module needs Oracle GraalVM 25 behind `GRAALVM_HOME`, Binaryen 119 or later (`wasm-opt`) on the
 `PATH`, and Node.js 24 or later for the tests:
 
