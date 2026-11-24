@@ -20,7 +20,6 @@ import static com.google.common.collect.Iterables.getLast;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Suppliers;
 import com.google.common.collect.Range;
 import com.palantir.javaformat.BreakBehaviour;
 import com.palantir.javaformat.BreakBehaviour.BreakOnlyIfInnerLevelsThenFitOnOneLine;
@@ -60,12 +59,12 @@ public final class Level extends Doc {
 
     private final List<Doc> docs = new ArrayList<>(); // The elements of the level.
 
-    @SuppressWarnings("Immutable") // Effectively immutable
-    private final ImmutableSupplier<SplitsBreaks> memoizedSplitsBreaks =
-            Suppliers.memoize(() -> splitByBreaks(docs))::get;
+    /** See {@link #splitsBreaks()}; computed when first asked for, once the docs are all in. */
+    @Nullable
+    private SplitsBreaks memoizedSplitsBreaks;
 
-    @SuppressWarnings("Immutable") // Effectively immutable
-    private final ImmutableSupplier<Integer> memoizedMaxDepth = Suppliers.memoize(() -> computeMaxDepth(docs))::get;
+    /** See {@link #getMaxDepth()}; -1 until it is computed, when first asked for, once the docs are all in. */
+    private int memoizedMaxDepth = -1;
 
     /** See {@link #hasCommentByFirstWord()}; computed when first asked for, once the docs are all in. */
     @Nullable
@@ -144,12 +143,20 @@ public final class Level extends Doc {
                             "one line, comments laid out",
                             state,
                             explorationNode -> tryToLayOutLevelOnOneLine(
-                                    commentsHelper, maxWidth, state, memoizedSplitsBreaks.get(), explorationNode))
+                                    commentsHelper, maxWidth, state, splitsBreaks(), explorationNode))
                     .markAccepted();
         } else {
             newState = new BreakImpl(commentsHelper, maxWidth, state, childLevel).apply(getBreakBehaviour());
         }
         return childLevel.finishLevel(state.updateAfterLevel(newState));
+    }
+
+    /** The docs of this level split at its breaks. */
+    private SplitsBreaks splitsBreaks() {
+        if (memoizedSplitsBreaks == null) {
+            memoizedSplitsBreaks = splitByBreaks(docs);
+        }
+        return memoizedSplitsBreaks;
     }
 
     /** Whether this level or a level in it holds a comment that the layout counts by its first word only. */
@@ -397,8 +404,8 @@ public final class Level extends Doc {
         if (keepIndent) {
             newState = newState.withIndentIncrementedBy(getPlusIndent());
         }
-        return Optional.of(tryToLayOutLevelOnOneLine(
-                commentsHelper, maxWidth, newState, memoizedSplitsBreaks.get(), explorationNode));
+        return Optional.of(
+                tryToLayOutLevelOnOneLine(commentsHelper, maxWidth, newState, splitsBreaks(), explorationNode));
     }
 
     private Optional<State> tryBreakLastLevel(
@@ -679,7 +686,7 @@ public final class Level extends Doc {
     /** Compute breaks for a {@link Level} that spans multiple lines. */
     private State computeBroken(
             CommentsHelper commentsHelper, int maxWidth, State state, Obs.ExplorationNode explorationNode) {
-        SplitsBreaks splitsBreaks = memoizedSplitsBreaks.get();
+        SplitsBreaks splitsBreaks = splitsBreaks();
 
         if (!splitsBreaks.breaks().isEmpty()) {
             state = state.withBrokenLevel();
@@ -752,7 +759,7 @@ public final class Level extends Doc {
     }
 
     private void writeFilled(State state, Output output) {
-        SplitsBreaks splitsBreaks = memoizedSplitsBreaks.get();
+        SplitsBreaks splitsBreaks = splitsBreaks();
         // Handle first split.
         for (Doc doc : splitsBreaks.splits().get(0)) {
             doc.write(state, output);
@@ -811,7 +818,10 @@ public final class Level extends Doc {
      * Get the approximation of the maximum depth of nested levels in this level tree (memoized).
      */
     private int getMaxDepth() {
-        return memoizedMaxDepth.get();
+        if (memoizedMaxDepth == -1) {
+            memoizedMaxDepth = computeMaxDepth(docs);
+        }
+        return memoizedMaxDepth;
     }
 
     /**
