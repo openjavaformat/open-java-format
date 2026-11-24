@@ -83,6 +83,7 @@ public final class JavadocFormatter {
                 case HTML_COMMENT -> output.writeHtmlComment(token);
                 case BR_TAG -> output.writeBr(standardizeBrToken(token));
                 case WHITESPACE -> output.requestWhitespace();
+                case BLANK_LINE -> output.requestForcedBlankLine();
                 case FORCED_NEWLINE -> output.writeLineBreakNoAutoIndent();
                 case LITERAL, INLINE_TAG_OPEN, INLINE_TAG_CLOSE -> output.writeLiteral(token);
                 case PARAGRAPH_CLOSE_TAG, LIST_ITEM_CLOSE_TAG, OPTIONAL_LINE_BREAK -> {}

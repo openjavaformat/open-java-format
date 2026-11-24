@@ -19,6 +19,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.Iterators.peekingIterator;
 import static com.palantir.javaformat.java.javadoc.Token.Type.BEGIN_JAVADOC;
+import static com.palantir.javaformat.java.javadoc.Token.Type.BLANK_LINE;
 import static com.palantir.javaformat.java.javadoc.Token.Type.BLOCKQUOTE_CLOSE_TAG;
 import static com.palantir.javaformat.java.javadoc.Token.Type.BLOCKQUOTE_OPEN_TAG;
 import static com.palantir.javaformat.java.javadoc.Token.Type.BR_TAG;
@@ -422,6 +423,8 @@ final class JavadocLexer {
 
     /**
      * Where the input has two consecutive line breaks between literals, insert a {@code <p>} tag between the literals.
+     * Where the second literal starts a {@code <div>}, which a {@code <p>} cannot hold, turn the line breaks into a
+     * {@link Token.Type#BLANK_LINE} instead.
      *
      * <p>This method must be called after {@link #joinAdjacentLiteralsAndAdjacentWhitespace}, as it assumes that
      * adjacent whitespace tokens have already been joined.
@@ -435,9 +438,15 @@ final class JavadocLexer {
 
                 if (tokens.peek().getType() == WHITESPACE
                         && hasMultipleNewlines(tokens.peek().getValue())) {
-                    output.add(tokens.next());
+                    var whitespace = tokens.next();
+                    var next = tokens.peek();
 
-                    if (tokens.peek().getType() == LITERAL) {
+                    if (next.getType() != LITERAL) {
+                        output.add(whitespace);
+                    } else if (DIV_OPEN_PATTERN.matcher(next.getValue()).find()) {
+                        output.add(new Token(BLANK_LINE, whitespace.getValue()));
+                    } else {
+                        output.add(whitespace);
                         output.add(new Token(PARAGRAPH_OPEN_TAG, "<p>"));
                     }
                 }
@@ -645,6 +654,9 @@ final class JavadocLexer {
     private static final Pattern BLOCKQUOTE_OPEN_PATTERN = openTagPattern("blockquote");
     private static final Pattern BLOCKQUOTE_CLOSE_PATTERN = closeTagPattern("blockquote");
     private static final Pattern BR_PATTERN = openTagPattern("br");
+    // Tried on a literal, which ends at whitespace: "<div" alone when the tag has attributes. Unlike openTagPattern's
+    // \b, it does not match a custom element such as <div-custom>.
+    private static final Pattern DIV_OPEN_PATTERN = compile("^<div(?:[\\s/>]|$)", CASE_INSENSITIVE);
     private static final Pattern SNIPPET_TAG_OPEN_PATTERN = compile("^[{]@snippet\\b");
     private static final Pattern INLINE_TAG_OPEN_PATTERN = compile("^[{]@\\w*");
     /**

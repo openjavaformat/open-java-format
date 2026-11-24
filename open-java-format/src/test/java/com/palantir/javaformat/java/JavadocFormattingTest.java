@@ -1150,6 +1150,69 @@ final class JavadocFormattingTest {
     }
 
     @Test
+    void noParagraphTagInferredBeforeDiv() {
+        // A <p> cannot hold a <div>, so a blank line before one stays a blank line.
+        String[] input = {
+            "/**",
+            " * Intro.",
+            " *",
+            " * <span>Another paragraph.</span>",
+            " *",
+            " * <DIV class=\"notice\">Block content.</DIV>",
+            " *",
+            " * Following paragraph.",
+            " *",
+            " * <div>",
+            " *",
+            " * <div-custom>Custom element.</div-custom>",
+            " *",
+            " * <p><div>Explicit paragraph.</div>",
+            " *",
+            " * <ul>",
+            " * <li>Item.",
+            " *",
+            " * <div>In an item.</div>",
+            " * </ul>",
+            " *",
+            " * @param x Parameter.",
+            " *",
+            " * <div>In a block tag.</div>",
+            " */",
+            "class Test {}",
+        };
+        String[] expected = {
+            "/**",
+            " * Intro.",
+            " *",
+            " * <p><span>Another paragraph.</span>",
+            " *",
+            " * <DIV class=\"notice\">Block content.</DIV>",
+            " *",
+            " * <p>Following paragraph.",
+            " *",
+            " * <div>",
+            " *",
+            " * <p><div-custom>Custom element.</div-custom>",
+            " *",
+            " * <p><div>Explicit paragraph.</div>",
+            " *",
+            " * <ul>",
+            " *   <li>Item.",
+            " *",
+            " *       <div>In an item.</div>",
+            " * </ul>",
+            " *",
+            " * @param x Parameter.",
+            " *",
+            " *     <div>In a block tag.</div>",
+            " */",
+            "class Test {}",
+        };
+        doFormatTest(input, expected);
+        doFormatTest(expected, expected);
+    }
+
+    @Test
     void paragraphTagNewlines() throws Exception {
         String input = new String(
                 ByteStreams.toByteArray(getClass().getResourceAsStream("testjavadoc/B28750242.input")), UTF_8);

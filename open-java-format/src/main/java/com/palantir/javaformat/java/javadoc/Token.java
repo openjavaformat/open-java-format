@@ -70,6 +70,12 @@ final class Token {
          */
         WHITESPACE,
         /**
+         * Whitespace with a blank line in it, before a {@code <div>}. {@link JavadocLexer} infers no {@code <p>} there,
+         * since a {@code <p>} cannot hold a {@code <div>}, so {@link JavadocWriter} keeps the blank line instead, even
+         * in a list or footer tag.
+         */
+        BLANK_LINE,
+        /**
          * A newline in a {@code <pre>} or {@code <table>} section. We preserve user formatting in these sections,
          * including newlines.
          */
