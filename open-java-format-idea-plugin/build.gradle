@@ -84,6 +84,16 @@ dependencies {
     implementation libs.jspecify
 }
 
+// The change notes, which the Marketplace shows for the version and the IDE under What's New, are the
+// release notes, release-notes/<version>.md. The IDE does not render Markdown, so the release workflow
+// renders them to HTML and passes the file as -PchangeNotes=<file>; see .github/workflows/release.yml.
+// Every other build leaves plugin.xml without change notes.
+def changeNotesPath = providers.gradleProperty('changeNotes').getOrNull()
+def changeNotesFile = changeNotesPath == null ? null : rootProject.layout.projectDirectory.file(changeNotesPath)
+if (changeNotesFile != null && !changeNotesFile.asFile.isFile()) {
+    throw new GradleException("-PchangeNotes=${changeNotesPath}: no such file")
+}
+
 intellijPlatform {
     // Bytecode instrumentation (@NotNull assertions, GUI forms) needs the platform's
     // java-compiler-ant-tasks, whose version the plugin cannot derive from a non-installer
@@ -103,6 +113,9 @@ intellijPlatform {
         name = 'open-java-format'
         // No description here: patchPluginXml would overwrite the one in plugin.xml, which is the
         // marketplace listing and is written in HTML.
+        if (changeNotesFile != null) {
+            changeNotes = providers.fileContents(changeNotesFile).asText
+        }
         ideaVersion {
             sinceBuild = '242' // JBR 21: the first IDEs that can load this plugin's bytecode
             untilBuild = provider { null }
