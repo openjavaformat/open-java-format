@@ -192,7 +192,7 @@ mise run ci:native   # actually run the linux-aarch64 native job
 
 Two caveats:
 
-- **act cannot containerise macOS**, so the `macos-15-intel` leg has to be checked by building the
+- **act cannot containerise macOS**, so the `macos-26-intel` leg has to be checked by building the
   native image on a Mac.
 - **On an Apple Silicon host** the `ubuntu-24.04` container runs as arm64, so the job labelled
   `ubuntu-latest` produces an aarch64 binary locally. Fine for exercising the workflow, not a

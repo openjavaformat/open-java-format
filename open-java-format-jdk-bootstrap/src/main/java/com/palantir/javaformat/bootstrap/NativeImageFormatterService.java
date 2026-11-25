@@ -45,13 +45,15 @@ public class NativeImageFormatterService implements FormatterService {
     @Override
     @SuppressForbidden(reason = "FormatterService, kept in the SPI for compatibility, returns ImmutableList")
     public ImmutableList<Replacement> getFormatReplacements(String input, Collection<Range<Integer>> ranges) {
+        var characterRanges = RangeUtils.toStringRanges(ranges);
+        if (characterRanges.isEmpty()) {
+            // Nothing to format, as in process: without --character-ranges the command would format the whole file.
+            return ImmutableList.of();
+        }
         Optional<String> output = Optional.empty();
         try {
             FormatterNativeImageArgs command = new FormatterNativeImageArgs(
-                    nativeImagePath,
-                    /* fixImportsOnly= */ false,
-                    /* outputReplacements= */ true,
-                    ranges.stream().map(RangeUtils::toStringRange).toList());
+                    nativeImagePath, /* fixImportsOnly= */ false, /* outputReplacements= */ true, characterRanges);
 
             output = FormatterCommandRunner.runWithStdin(
                     command.toArgs(), input, Optional.ofNullable(nativeImagePath.getParent()));

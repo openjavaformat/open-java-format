@@ -82,13 +82,18 @@ public final class BootstrappingFormatterService implements FormatterService {
     @SuppressForbidden(reason = "FormatterService, kept in the SPI for compatibility, returns ImmutableList")
     private ImmutableList<Replacement> getFormatReplacementsInternal(String input, Collection<Range<Integer>> ranges)
             throws IOException {
+        var characterRanges = RangeUtils.toStringRanges(ranges);
+        if (characterRanges.isEmpty()) {
+            // Nothing to format, as in process: without --character-ranges the command would format the whole file.
+            return ImmutableList.of();
+        }
         FormatterCliArgs command = new FormatterCliArgs(
                 jdkPath,
                 jvmArgsForVersion(jdkMajorVersion),
                 implementationClassPath,
                 /* fixImportsOnly= */ false,
                 /* outputReplacements= */ true,
-                ranges.stream().map(RangeUtils::toStringRange).toList());
+                characterRanges);
 
         Optional<String> output =
                 FormatterCommandRunner.runWithStdin(command.toArgs(), input, Optional.ofNullable(jdkPath.getParent()));
