@@ -134,6 +134,44 @@ final class FormatterServicesTest {
         assertThat(Utils.applyReplacements(input, replacements)).isEqualTo(expectedOutput);
     }
 
+    @ParameterizedTest
+    @MethodSource("getFormatters")
+    void leaves_out_the_empty_ranges(FormatterService formatterService) throws FormatterException {
+        String input = """
+            class A {
+                int  a;
+                int  b;
+            }
+            """;
+        int a = input.indexOf("    int  a");
+        int b = input.indexOf("    int  b");
+
+        List<Replacement> replacements = formatterService.getFormatReplacements(
+                input,
+                List.of(
+                        Range.closedOpen(a, input.indexOf('\n', a)),
+                        Range.closedOpen(b, b),
+                        Range.closedOpen(input.length(), input.length())));
+
+        assertThat(Utils.applyReplacements(input, replacements)).isEqualTo("""
+            class A {
+                int a;
+                int  b;
+            }
+            """);
+    }
+
+    @ParameterizedTest
+    @MethodSource("getFormatters")
+    void formats_nothing_without_a_range_that_is_not_empty(FormatterService formatterService)
+            throws FormatterException {
+        String input = "class A {  int  a;  }\n";
+
+        assertThat(formatterService.getFormatReplacements(input, List.of(Range.closedOpen(10, 10))))
+                .isEmpty();
+        assertThat(formatterService.getFormatReplacements(input, List.of())).isEmpty();
+    }
+
     private static Stream<FormatterService> getFormatters() {
         return Stream.of(
                 new BootstrappingFormatterService(

@@ -17,7 +17,10 @@
 package com.palantir.javaformat.bootstrap;
 
 import com.google.common.collect.BoundType;
+import com.google.common.collect.DiscreteDomain;
 import com.google.common.collect.Range;
+import java.util.Collection;
+import java.util.List;
 
 public final class RangeUtils {
 
@@ -29,6 +32,19 @@ public final class RangeUtils {
             return String.valueOf(lower);
         }
         return String.format("%s:%s", lower, higher);
+    }
+
+    /**
+     * Returns the ranges as "--character-ranges" takes them. Its ranges are closed, so an empty range, which IntelliJ
+     * IDEA passes among the others, has no form there: it is left out, as {@code FormatterServiceImpl} leaves it out
+     * in process.
+     */
+    static List<String> toStringRanges(Collection<Range<Integer>> ranges) {
+        return ranges.stream()
+                .map(range -> range.canonical(DiscreteDomain.integers()))
+                .filter(range -> !range.isEmpty())
+                .map(RangeUtils::toStringRange)
+                .toList();
     }
 
     private RangeUtils() {}
