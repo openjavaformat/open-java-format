@@ -122,7 +122,7 @@ jobs:
   # One job per platform, as in ci.yml, but here each one hands its binary to the deploy job below
   # instead of throwing it away. macOS on Apple silicon is built here only: ci.yml leaves it out.
   native-images:
-    name: native image (${{ matrix.platform }})
+    name: native image (${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     # bash on Windows too, as in ci.yml.
@@ -133,17 +133,12 @@ jobs:
       fail-fast: false
       matrix:
         # The newest images, as in ci.yml.
-        include:
-          - platform: linux-x86-64
-            runner: ubuntu-latest
-          - platform: linux-aarch64
-            runner: ubuntu-26.04-arm
-          - platform: macos-aarch64
-            runner: macos-latest
-          - platform: macos-x86-64
-            runner: macos-26-intel
-          - platform: windows-x86-64
-            runner: windows-latest
+        runner:
+          - ubuntu-latest
+          - ubuntu-26.04-arm
+          - macos-latest
+          - macos-26-intel
+          - windows-latest
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -174,7 +169,7 @@ jobs:
       - name: Hand the binary to the deploy job
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: native-image-${{ matrix.platform }}
+          name: native-image-${{ matrix.runner }}
           path: |
             open-java-format-native/build/native/nativeCompile/open-java-format-*
             !open-java-format-native/build/native/nativeCompile/*.txt
