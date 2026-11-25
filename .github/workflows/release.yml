@@ -159,7 +159,7 @@ jobs:
           java-version: '21'
 
       - name: Install GraalVM 25 for the image
-        uses: graalvm/setup-graalvm@f70bc8032f90a104502824a54bcb94b6f01715bc # v1.6.8
+        uses: graalvm/setup-graalvm@60e76998d25690099182b796e99b8804da582d90 # v1.6.10
         with:
           java-version: '25'
           distribution: 'graalvm-community'
@@ -263,7 +263,7 @@ jobs:
 
       # Pinned to the patch: Web Image is experimental, and its options and output change between releases.
       - name: Install Oracle GraalVM 25 for the module
-        uses: graalvm/setup-graalvm@f70bc8032f90a104502824a54bcb94b6f01715bc # v1.6.8
+        uses: graalvm/setup-graalvm@60e76998d25690099182b796e99b8804da582d90 # v1.6.10
         with:
           java-version: '25.0.4'
           distribution: 'graalvm'
