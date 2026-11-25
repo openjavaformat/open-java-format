@@ -19,6 +19,10 @@
   <depends>com.intellij.modules.java</depends>
   <depends>com.intellij.modules.lang</depends>
   <depends>com.intellij.modules.platform</depends>
+  <!-- palantir-java-format has the same class names, com.palantir.javaformat.intellij.*, and the IDE keys a service
+       by its class name: with both plugins enabled, one's getService returns the other's instance and fails with a
+       ClassCastException (#276). Both replace the Java formatter, so the IDE loads only one of the two. -->
+  <incompatible-with>palantir-java-format</incompatible-with>
 
   <extensions defaultExtensionNs="com.intellij">
     <formattingService
