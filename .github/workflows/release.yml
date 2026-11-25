@@ -120,7 +120,7 @@ jobs:
           retention-days: 7
 
   # One job per platform, as in ci.yml, but here each one hands its binary to the deploy job below
-  # instead of throwing it away.
+  # instead of throwing it away. macOS on Apple silicon is built here only: ci.yml leaves it out.
   native-images:
     name: native image (${{ matrix.platform }})
     runs-on: ${{ matrix.runner }}
@@ -132,15 +132,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # The newest images, as in ci.yml.
         include:
           - platform: linux-x86-64
             runner: ubuntu-latest
           - platform: linux-aarch64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-26.04-arm
           - platform: macos-aarch64
-            runner: macos-26
+            runner: macos-latest
           - platform: macos-x86-64
-            runner: macos-15-intel
+            runner: macos-26-intel
           - platform: windows-x86-64
             runner: windows-latest
 

@@ -170,11 +170,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # The newest images. Arm Linux and Intel macOS have no free -latest label, so their images are
+        # named.
         runner:
           - ubuntu-latest
-          - ubuntu-24.04-arm
-          - macos-26
-          - macos-15-intel
+          - ubuntu-26.04-arm
+          # macOS on Apple silicon is built for a release only, in release.yml.
+          # - macos-latest
+          - macos-26-intel
           - windows-latest
 
     steps:
