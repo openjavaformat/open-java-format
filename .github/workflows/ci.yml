@@ -170,13 +170,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Linux on the previous Ubuntu LTS: a binary built against a newer glibc may need that glibc to
-        # start, and the older one keeps the binaries running on older systems. release.yml builds on the
-        # same images. Elsewhere the newest images; Intel macOS has no free -latest label, so its image is
-        # named.
+        # Linux on Ubuntu 22.04, the oldest system the binaries promise to run on (glibc 2.34 or later): a
+        # binary built against a newer glibc may need that glibc to start. release.yml builds on the same
+        # images. Elsewhere the newest images; Intel macOS has no free -latest label, so its image is named.
         runner:
-          - ubuntu-24.04
-          - ubuntu-24.04-arm
+          - ubuntu-22.04
+          - ubuntu-22.04-arm
           # macOS on Apple silicon is built for a release only, in release.yml.
           # - macos-latest
           - macos-26-intel
