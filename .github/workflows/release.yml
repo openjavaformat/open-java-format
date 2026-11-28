@@ -132,10 +132,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The newest images, as in ci.yml.
+        # The images of ci.yml: Linux on the previous Ubuntu LTS, for the oldest glibc, the rest the newest.
         runner:
-          - ubuntu-latest
-          - ubuntu-26.04-arm
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
           - macos-latest
           - macos-26-intel
           - windows-latest
@@ -178,8 +178,9 @@ jobs:
 
   # The Linux binaries as .deb packages, for the GitHub release and for the apt repository, openjavaformat/apt,
   # which serves the packages of the newest release. Each is built on the runner its binary was built on and
-  # installed with apt on the oldest Ubuntu and Debian it supports before it goes into the release. The time of
-  # the tag's commit is the time of every file in a package, so a re-run makes the same bytes.
+  # installed with apt on the oldest Ubuntu and Debian it supports before it goes into the release, by the
+  # deb-package action that ci.yml runs too. The time of the tag's commit is the time of every file in a
+  # package, so a re-run makes the same bytes.
   deb-packages:
     name: deb package (${{ matrix.runner }})
     needs: native-images
@@ -188,8 +189,8 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          - ubuntu-latest
-          - ubuntu-26.04-arm
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -201,22 +202,18 @@ jobs:
           name: native-image-${{ matrix.runner }}
           path: native-image
 
-      - name: Build the package
-        env:
-          VERSION: ${{ github.ref_name }}
+      - name: Find the binary
+        id: binary
         run: |
-          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" open-java-format-native/deb/build-deb.sh \
-            native-image/open-java-format-linux-glibc_* "$VERSION" deb-package
+          echo "path=$(ls native-image/open-java-format-linux-glibc_*)" >> "$GITHUB_OUTPUT"
+          echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
-      - name: Install the package on Ubuntu 22.04 and Debian 12
-        env:
-          VERSION: ${{ github.ref_name }}
-        run: |
-          for image in ubuntu:22.04 debian:12; do
-            docker run --rm --volume "$PWD/open-java-format-native/deb:/scripts:ro" \
-              --volume "$PWD/deb-package:/packages:ro" "$image" \
-              sh /scripts/test-deb.sh "/packages/$(ls deb-package)" "$VERSION"
-          done
+      - name: Package and install the binary
+        uses: $/.github/actions/deb-package
+        with:
+          binary: ${{ steps.binary.outputs.path }}
+          version: ${{ github.ref_name }}
+          out-dir: deb-package
 
       - name: Hand the package to the GitHub release
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
