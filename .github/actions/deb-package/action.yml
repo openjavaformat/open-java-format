@@ -1,0 +1,125 @@
+name: Package the Linux binary as a .deb
+description: >-
+  Packages a Linux native binary as open-java-format_<version>_<arch>.deb, which installs
+  /usr/bin/open-java-format, and installs it with apt on the oldest Ubuntu and Debian it supports. ci.yml runs it
+  on every pull request, release.yml for the GitHub release and the apt repository, openjavaformat/apt.
+
+inputs:
+  binary:
+    description: The native binary, for Linux on x86-64 or AArch64
+    required: true
+  version:
+    description: The version that the binary prints, which is the package version too (with 0~ in front when it does not start with a digit)
+    required: true
+  out-dir:
+    description: The directory to write the package into
+    required: true
+
+outputs:
+  package:
+    description: The path of the package
+    value: ${{ steps.build.outputs.package }}
+
+runs:
+  using: composite
+  steps:
+    # The architecture is read off the binary's ELF header, and so is the libc6 dependency: the newest GLIBC_
+    # symbol version that the binary asks for. A binary built on a newer image than the one release.yml names
+    # then cannot slip past older systems: apt refuses the package there instead of installing a binary that
+    # does not start. SOURCE_DATE_EPOCH, when the caller sets it, is the time of every file in the package,
+    # which makes a rebuild the same bytes.
+    - name: Build the package
+      id: build
+      shell: bash
+      env:
+        BINARY: ${{ inputs.binary }}
+        VERSION: ${{ inputs.version }}
+        OUT_DIR: ${{ inputs.out-dir }}
+        COPYRIGHT: ${{ github.action_path }}/copyright
+      run: |
+        set -euo pipefail
+        # Debian's rule for an upstream version without an epoch: a digit first, then these characters. Outside
+        # a tag the binary's version can be a bare commit hash, which may start with a letter: 0~ in front makes
+        # it a version that sorts below every release.
+        deb_version=$VERSION
+        if ! [[ $deb_version =~ ^[0-9] ]]; then
+          deb_version=0~$deb_version
+        fi
+        if ! [[ $deb_version =~ ^[0-9][A-Za-z0-9.+~-]*$ ]]; then
+          echo "Not a Debian package version: $deb_version" >&2
+          exit 1
+        fi
+
+        machine=$(readelf --file-header "$BINARY" | sed -n 's/^ *Machine: *//p')
+        case $machine in
+          'Advanced Micro Devices X86-64') arch=amd64 ;;
+          AArch64) arch=arm64 ;;
+          *)
+            echo "$BINARY is not a Linux binary for x86-64 or AArch64: $machine" >&2
+            exit 1
+            ;;
+        esac
+        glibc=$(readelf --version-info --wide "$BINARY" | grep -o 'GLIBC_[0-9][0-9.]*' | sed 's/^GLIBC_//' \
+          | sort -uV | tail -n 1)
+        if [ -z "$glibc" ]; then
+          echo "$BINARY asks for no GLIBC_ symbol version: not a glibc binary?" >&2
+          exit 1
+        fi
+
+        # The modes of the package's directories, mktemp's 0700 included, are those of what it installs.
+        umask 022
+        root=$(mktemp -d)
+        chmod 0755 "$root"
+        install -D --mode 0755 "$BINARY" "$root/usr/bin/open-java-format"
+        install -D --mode 0644 "$COPYRIGHT" "$root/usr/share/doc/open-java-format/copyright"
+        mkdir "$root/DEBIAN"
+        cat > "$root/DEBIAN/control" <<CONTROL
+        Package: open-java-format
+        Version: $deb_version
+        Architecture: $arch
+        Maintainer: Alexey Abashev <alexey@openjavaformat.dev>
+        Installed-Size: $(du -sk --apparent-size "$root/usr" | cut -f 1)
+        Depends: libc6 (>= $glibc), zlib1g
+        Section: devel
+        Priority: optional
+        Homepage: https://openjavaformat.dev
+        Description: modern, lambda-friendly, 120-character Java formatter
+         open-java-format reformats Java source files to one consistent style. This
+         package is its native command-line binary, which needs no JDK.
+        CONTROL
+
+        epoch=${SOURCE_DATE_EPOCH:-$(date +%s)}
+        find "$root" -exec touch --no-dereference --date "@$epoch" {} +
+        mkdir -p "$OUT_DIR"
+        package=$OUT_DIR/open-java-format_${deb_version}_$arch.deb
+        # xz, which every dpkg reads: dpkg-deb's default, zstd, needs dpkg 1.21.18 or later.
+        SOURCE_DATE_EPOCH=$epoch dpkg-deb --root-owner-group -Zxz --build "$root" "$package"
+        rm -rf "$root"
+        dpkg-deb --info "$package" control
+        echo "package=$package" >> "$GITHUB_OUTPUT"
+
+    # In a fresh container each: apt brings the dependencies, then the binary must run from /usr/bin, print the
+    # version, and format a file.
+    - name: Install the package on Ubuntu 22.04 and Debian 12
+      shell: bash
+      env:
+        PACKAGE: ${{ steps.build.outputs.package }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        for image in ubuntu:22.04 debian:12; do
+          echo "::group::$image"
+          docker run --rm --env VERSION --volume "$(realpath "$PACKAGE"):/open-java-format.deb:ro" "$image" sh -euxc '
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update -qq
+            apt-get install -qq --no-install-recommends /open-java-format.deb
+            test "$(command -v open-java-format)" = /usr/bin/open-java-format
+            # It prints the version on stderr.
+            test "$(open-java-format --version 2>&1)" = "open-java-format: Version $VERSION"
+            cd "$(mktemp -d)"
+            printf "class A{int x;}\n" > A.java
+            open-java-format --replace A.java
+            printf "class A {\n    int x;\n}\n" | diff - A.java
+          '
+          echo "::endgroup::"
+        done

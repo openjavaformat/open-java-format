@@ -14,8 +14,8 @@ plugins {
 // `-PreleaseTarget=github` deploys nothing. It is for `jreleaserRelease`, which opens a draft GitHub
 // release on the tag with what Maven Central does not carry — the runnable formatter jar, the Gradle
 // plugins' jar, the IntelliJ plugin zip, the Eclipse plugin jar, every platform's native binary as a
-// plain download and the WebAssembly module for openjavaformat.dev's playground — each file signed, plus a
-// checksum file. Its text is release-notes/<version>.md.
+// plain download, the Linux binaries as .deb packages, and the WebAssembly module for openjavaformat.dev's
+// playground — each file signed, plus a checksum file. Its text is release-notes/<version>.md.
 //
 // Publishing is a run of its own: with JRELEASER_MAVENCENTRAL_DEPLOYMENT_ID set, JReleaser publishes that
 // deployment, which an earlier run uploaded and the Portal validated, and nothing is built. The ID has to
@@ -47,8 +47,10 @@ def stagingRepositories = releasedProjects.collect { path ->
 }
 
 // The GitHub release takes the binaries the per-platform jobs collected from -PnativeImages=<dir>, exactly
-// as the native deployment does, and the WebAssembly module's zip that the wasm job built from -PwasmModule=<dir>.
+// as the native deployment does, the .deb packages built from the Linux ones from -PdebPackages=<dir>, and the
+// WebAssembly module's zip that the wasm job built from -PwasmModule=<dir>.
 def nativeBinaries = []
+def debPackages = []
 def wasmModules = []
 if (releaseTarget == 'github') {
     def collectedNativeImages = providers.gradleProperty('nativeImages').getOrNull()
@@ -61,6 +63,18 @@ if (releaseTarget == 'github') {
     }.files.sort { it.name }
     if (nativeBinaries.isEmpty()) {
         throw new GradleException("No native images to release in ${collectedNativeImages}")
+    }
+
+    def collectedDebPackages = providers.gradleProperty('debPackages').getOrNull()
+    if (collectedDebPackages == null) {
+        throw new GradleException('-PreleaseTarget=github needs -PdebPackages=<dir> holding the .deb packages')
+    }
+    debPackages = fileTree(file(collectedDebPackages)) {
+        include 'open-java-format_*.deb'
+    }.files.sort { it.name }
+    // One per Linux binary: the apt repository serves both architectures or neither.
+    if (debPackages*.name.collect { it.replaceAll(/.*_/, '') } != ['amd64.deb', 'arm64.deb']) {
+        throw new GradleException("Expected an amd64 and an arm64 .deb package in ${collectedDebPackages}, found ${debPackages*.name}")
     }
 
     def collectedWasmModule = providers.gradleProperty('wasmModule').getOrNull()
@@ -123,7 +137,7 @@ jreleaser {
     // Name templates, not Gradle's version: the root project sets its version only after applying this
     // plugin. The jars and the zip are built by the tasks jreleaserRelease depends on below.
     files {
-        (nativeBinaries + wasmModules).each { file ->
+        (nativeBinaries + debPackages + wasmModules).each { file ->
             artifact {
                 path = file.absolutePath
             }
