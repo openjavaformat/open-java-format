@@ -19,8 +19,6 @@ import com.diffplug.gradle.spotless.JavaExtension;
 import com.diffplug.spotless.FormatterStep;
 import com.palantir.javaformat.gradle.spotless.PalantirJavaFormatStep;
 import java.io.File;
-import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import org.gradle.api.Action;
@@ -29,15 +27,13 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
-import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.specs.Spec;
-import org.gradle.api.tasks.SourceSetContainer;
 
 /**
  * Class that exists only to encapsulate accessing spotless classes, so that Gradle can generate a decorated class for
  * {@link com.palantir.javaformat.gradle.PalantirJavaFormatSpotlessPlugin} even if spotless is not on the classpath.
  */
-public abstract class SpotlessInterop implements Action<JavaExtension> {
+public class SpotlessInterop implements Action<JavaExtension> {
     private final Logger logger = Logging.getLogger(SpotlessInterop.class);
 
     // Generated source directories, which are not formatted: a file is in one when its path in the project directory
@@ -52,42 +48,40 @@ public abstract class SpotlessInterop implements Action<JavaExtension> {
             "(.*/)?(build/generated[^/]*|src/generated[^/]*|generated_[^/]*src|generated_[^/]*Src|groovy-dsl-plugins)/.+");
 
     private final File projectDir;
-    private final SourceSetContainer sourceSets;
+    private final JavaSources sources;
     private final NamedDomainObjectProvider<Configuration> formatterClasspath;
     private final File gradleUserHome;
 
     @Inject
-    protected abstract ObjectFactory getObjects();
-
-    @Inject
     public SpotlessInterop(
             File projectDir,
-            SourceSetContainer sourceSets,
+            JavaSources sources,
             NamedDomainObjectProvider<Configuration> formatterClasspath,
             File gradleUserHome) {
         this.projectDir = projectDir;
-        this.sourceSets = sourceSets;
+        this.sources = sources;
         this.formatterClasspath = formatterClasspath;
         this.gradleUserHome = gradleUserHome;
     }
 
     @Override
     public void execute(JavaExtension java) {
+        if (sources.spotlessTarget()) {
+            // A target the build script sets in spotless { java { ... } } later replaces this one.
+            java.target(sources.files());
+        }
         java.targetExclude(generatedSources());
         // This is configuration cache safe as happening afterEvaluate
         java.addStep(spotlessJavaFormatStep());
     }
 
     /**
-     * The Java files of the source sets that are in a generated directory. Not the patterns themselves: Spotless
-     * matches a pattern against a file tree of the whole project directory, which every build changes, and the
-     * configuration cache entry is then never reused (#193). The source sets' files are what Spotless formats by
-     * default; a callable, so that source sets added after the plugin count too.
+     * The project's Java files that are in a generated directory. Not the patterns themselves: Spotless matches a
+     * pattern against a file tree of the whole project directory, which every build changes, and the configuration
+     * cache entry is then never reused (#193).
      */
     private FileCollection generatedSources() {
-        return getObjects().fileCollection().from((Callable<List<FileCollection>>) () -> sourceSets.stream()
-                .map(sourceSet -> sourceSet.getAllJava().filter(new InGeneratedDirectory(projectDir)))
-                .toList());
+        return sources.files().filter(new InGeneratedDirectory(projectDir));
     }
 
     /**

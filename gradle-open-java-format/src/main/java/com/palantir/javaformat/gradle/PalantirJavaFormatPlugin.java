@@ -49,7 +49,7 @@ public abstract class PalantirJavaFormatPlugin implements Plugin<Project> {
 
         project.getPlugins().apply(PalantirJavaFormatSpotlessPlugin.class);
 
-        project.getPlugins().withId("java", p -> {
+        JavaSources.whenPresent(project, _sources -> {
             var formatterClasspath = FormatterClasspath.of(project);
             var nativeImage = FormatterClasspath.nativeImageOf(project);
 

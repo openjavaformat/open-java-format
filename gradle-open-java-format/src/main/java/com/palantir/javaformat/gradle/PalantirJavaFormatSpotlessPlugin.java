@@ -21,7 +21,6 @@ import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
-import org.gradle.api.plugins.JavaPluginExtension;
 
 public abstract class PalantirJavaFormatSpotlessPlugin implements Plugin<Project> {
     // The spotless gradle plugin got renamed to 'com.diffplug.spotless' at version 5.0.0
@@ -33,7 +32,7 @@ public abstract class PalantirJavaFormatSpotlessPlugin implements Plugin<Project
         Project rootProject = project.getRootProject();
         rootProject.getPluginManager().apply(PalantirJavaFormatProviderPlugin.class);
 
-        project.getPluginManager().withPlugin("java", _javaPlugin -> {
+        JavaSources.whenPresent(project, sources -> {
             SPOTLESS_PLUGINS.forEach(spotlessPluginId -> project.getPluginManager()
                     .withPlugin(spotlessPluginId, _spotlessPlugin -> {
                         // Not before this point: Gradle's decoration of SpotlessInterop loads Spotless classes, which
@@ -43,9 +42,7 @@ public abstract class PalantirJavaFormatSpotlessPlugin implements Plugin<Project
                                 .newInstance(
                                         SpotlessInterop.class,
                                         project.getProjectDir(),
-                                        project.getExtensions()
-                                                .getByType(JavaPluginExtension.class)
-                                                .getSourceSets(),
+                                        sources,
                                         FormatterClasspath.of(project),
                                         project.getGradle().getGradleUserHomeDir());
                         SpotlessExtension spotlessExtension =
