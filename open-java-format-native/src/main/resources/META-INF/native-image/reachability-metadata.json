@@ -67,9 +67,6 @@
       "allDeclaredFields": true
     },
     {
-      "type": "com.palantir.javaformat.java.JavacTokens$CommentSavingTokenizer"
-    },
-    {
       "type": "com.palantir.javaformat.java.Replacement",
       "allDeclaredFields": true,
       "methods": [
@@ -137,26 +134,6 @@
         {
           "name": "isModule",
           "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "com.sun.tools.javac.parser.JavaTokenizer",
-      "fields": [
-        {
-          "name": "reader"
-        }
-      ]
-    },
-    {
-      "type": "com.sun.tools.javac.parser.UnicodeReader",
-      "methods": [
-        {
-          "name": "getRawCharacters",
-          "parameterTypes": [
-            "int",
-            "int"
-          ]
         }
       ]
     },
