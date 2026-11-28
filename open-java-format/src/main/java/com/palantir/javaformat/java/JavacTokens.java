@@ -24,7 +24,6 @@ import com.sun.tools.javac.parser.Tokens.Comment;
 import com.sun.tools.javac.parser.Tokens.Comment.CommentStyle;
 import com.sun.tools.javac.parser.Tokens.Token;
 import com.sun.tools.javac.parser.Tokens.TokenKind;
-import com.sun.tools.javac.parser.UnicodeReader;
 import com.sun.tools.javac.util.Context;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,15 +83,18 @@ class JavacTokens {
             scanner.nextToken();
             Token t = scanner.token();
             if (t.comments != null) {
-                for (Comment c : Lists.reverse(t.comments)) {
-                    if (last < c.getSourcePos(0)) {
-                        tokens.add(new RawTok(null, last, c.getSourcePos(0)));
+                // javac stores the comments in reverse declaration order
+                for (Comment comment : Lists.reverse(t.comments)) {
+                    if (!(comment instanceof CommentWithPosition c)) {
+                        throw new IllegalStateException(
+                                "A bug in JavacTokens: CommentSavingTokenizer makes every comment, but the tokenizer"
+                                        + " gave back a " + comment.getClass().getName());
                     }
-                    tokens.add(new RawTok(
-                            null,
-                            c.getSourcePos(0),
-                            c.getSourcePos(0) + c.getText().length()));
-                    last = c.getSourcePos(0) + c.getText().length();
+                    if (last < c.pos()) {
+                        tokens.add(new RawTok(null, last, c.pos()));
+                    }
+                    tokens.add(new RawTok(null, c.pos(), c.endPos()));
+                    last = c.endPos();
                 }
             }
             if (stopTokens.contains(t.kind)) {
@@ -113,51 +115,47 @@ class JavacTokens {
         return List.copyOf(tokens);
     }
 
-    /** A {@link JavaTokenizer} that saves comments. */
+    /** A {@link JavaTokenizer} that records where each comment starts and ends. */
     static class CommentSavingTokenizer extends JavaTokenizer {
+        private final char[] buffer;
+
         CommentSavingTokenizer(ScannerFactory fac, char[] buffer, int length) {
             super(fac, buffer, length);
+            this.buffer = buffer;
         }
 
         @Override
         protected Comment processComment(int pos, int endPos, CommentStyle style) {
-            char[] buf = getRawCharactersReflectively(pos, endPos);
-            return new CommentWithTextAndPosition(pos, endPos, new AccessibleReader(fac, buf, buf.length), style);
-        }
-
-        private char[] getRawCharactersReflectively(int beginIndex, int endIndex) {
-            Object instance;
-            try {
-                instance = JavaTokenizer.class.getDeclaredField("reader").get(this);
-            } catch (ReflectiveOperationException e) {
-                instance = this;
-            }
-            try {
-                return (char[]) instance.getClass()
-                        .getMethod("getRawCharacters", int.class, int.class)
-                        .invoke(instance, beginIndex, endIndex);
-            } catch (ReflectiveOperationException e) {
-                throw new RuntimeException(e.getMessage(), e);
-            }
+            return new CommentWithPosition(buffer, pos, endPos, style);
         }
     }
 
-    /** A {@link Comment} that saves its text and start position. */
-    static class CommentWithTextAndPosition implements Comment {
+    /**
+     * A {@link Comment} that records its start and end positions. Its text stays in the lexer's buffer until
+     * {@link #getText} copies it out.
+     */
+    static class CommentWithPosition implements Comment {
 
+        private final char[] buffer;
         private final int pos;
         private final int endPos;
-        private final AccessibleReader reader;
         private final CommentStyle style;
 
-        @Nullable
-        private String text = null;
-
-        public CommentWithTextAndPosition(int pos, int endPos, AccessibleReader reader, CommentStyle style) {
+        CommentWithPosition(char[] buffer, int pos, int endPos, CommentStyle style) {
+            this.buffer = buffer;
             this.pos = pos;
             this.endPos = endPos;
-            this.reader = reader;
             this.style = style;
+        }
+
+        /** The start position. */
+        int pos() {
+            return pos;
+        }
+
+        /** The end position. */
+        int endPos() {
+            return endPos;
         }
 
         /**
@@ -178,13 +176,10 @@ class JavacTokens {
             return style;
         }
 
+        /** The comment as it is in the source, unicode escapes untranslated. */
         @Override
         public String getText() {
-            String text = this.text;
-            if (text == null) {
-                this.text = text = new String(reader.getRawCharacters());
-            }
-            return text;
+            return new String(buffer, pos, endPos - pos);
         }
 
         /**
@@ -207,13 +202,6 @@ class JavacTokens {
     static class AccessibleScanner extends Scanner {
         protected AccessibleScanner(ScannerFactory fac, JavaTokenizer tokenizer) {
             super(fac, tokenizer);
-        }
-    }
-
-    // UnicodeReader(ScannerFactory, char[], int) is package-private
-    static class AccessibleReader extends UnicodeReader {
-        protected AccessibleReader(ScannerFactory fac, char[] buffer, int length) {
-            super(fac, buffer, length);
         }
     }
 }
