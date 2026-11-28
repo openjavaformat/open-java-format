@@ -56,6 +56,12 @@ public final class GradleTestProject {
      */
     private static final String GRADLE_VERSION = System.getProperty("testkit.gradleVersion", "9.3.1");
 
+    /**
+     * The Android Gradle plugin of {@link #withAndroidGradlePlugin}: the oldest we claim to support, the oldest that runs
+     * on the oldest Gradle above.
+     */
+    public static final String ANDROID_GRADLE_PLUGIN_VERSION = "9.1.1";
+
     /** Written by java-gradle-plugin: the classpath {@link GradleRunner#withPluginClasspath()} injects. */
     private static final String PLUGIN_METADATA = "plugin-under-test-metadata.properties";
 
@@ -68,6 +74,7 @@ public final class GradleTestProject {
     private boolean configurationCache = true;
     private boolean spotlessOnClasspath = true;
     private boolean repositories = true;
+    private boolean androidGradlePlugin;
     private Optional<Path> buildCacheDir = Optional.empty();
 
     public GradleTestProject(Path projectDir) {
@@ -144,6 +151,17 @@ public final class GradleTestProject {
     /** Leaves out the root project's {@code repositories { mavenCentral() } }: the build declares no repository at all. */
     public GradleTestProject withoutRepositories() {
         this.repositories = false;
+        return this;
+    }
+
+    /**
+     * Lets the build scripts apply com.android.application and com.android.library without a version: settings.gradle
+     * resolves them from Google's Maven repository. They are not put next to the plugin under test, which reads the
+     * Android extension by reflection and needs none of its classes, as in a real build that has a version of its own.
+     * The builds need no Android SDK for anything but Android's own tasks.
+     */
+    public GradleTestProject withAndroidGradlePlugin() {
+        this.androidGradlePlugin = true;
         return this;
     }
 
@@ -261,7 +279,23 @@ public final class GradleTestProject {
             """);
         script.append(buildGradle);
 
-        StringBuilder settings = new StringBuilder("rootProject.name = 'test-project'\n");
+        StringBuilder settings = new StringBuilder();
+        if (androidGradlePlugin) {
+            settings.append("""
+                pluginManagement {
+                    repositories {
+                        google()
+                        mavenCentral()
+                    }
+                    plugins {
+                        id 'com.android.application' version '%1$s'
+                        id 'com.android.library' version '%1$s'
+                    }
+                }
+
+                """.formatted(ANDROID_GRADLE_PLUGIN_VERSION));
+        }
+        settings.append("rootProject.name = 'test-project'\n");
         for (var name : subprojects) {
             settings.append("include '").append(name).append("'\n");
             // Gradle refuses a project whose directory is missing.
