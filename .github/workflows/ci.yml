@@ -237,6 +237,18 @@ jobs:
           "$binary" --replace C.java
           printf 'import module java.base;\n\nrecord Box(int a, int b) {}\n\nvoid main() {\n    Object o = new Box(1, 2);\n    if (o instanceof Box(_, _)) {\n        IO.println(List.of(1));\n    }\n}\n' | diff - C.java
 
+      # As release.yml packages it for the GitHub release and the apt repository, under the version the binary
+      # prints, then installed with apt on the oldest Ubuntu it supports.
+      - name: Package and install the binary as a .deb
+        if: runner.os == 'Linux'
+        run: |
+          binary="$(ls open-java-format-native/build/native/nativeCompile/open-java-format-* | grep -v '\.txt$')"
+          version="$("$binary" --version 2>&1 | sed -n 's/^open-java-format: Version //p')"
+          open-java-format-native/deb/build-deb.sh "$binary" "$version" "$RUNNER_TEMP/deb-package"
+          docker run --rm --volume "$PWD/open-java-format-native/deb:/scripts:ro" \
+            --volume "$RUNNER_TEMP/deb-package:/packages:ro" ubuntu:22.04 \
+            sh /scripts/test-deb.sh "/packages/$(ls "$RUNNER_TEMP/deb-package")" "$version"
+
       - name: Test the plugins against the image
         run: ./gradlew -PnativeImage=true :open-java-format-jdk-bootstrap:test :gradle-open-java-format:test
         env:

@@ -11,8 +11,8 @@ name: Release
 # Once Maven Central serves both, the Gradle plugins go to the Gradle Plugin Portal, signed with the same
 # release key, and the IntelliJ plugin goes to the JetBrains Marketplace, verified against the IDEs it
 # supports first. After publishing, a draft GitHub release on the tag collects the runnable jar, the Gradle
-# and IDE plugins, the native binaries and the WebAssembly module, which a job of its own builds on Oracle
-# GraalVM.
+# and IDE plugins, the native binaries, the Linux binaries again as .deb packages, and the WebAssembly module,
+# which a job of its own builds on Oracle GraalVM.
 #
 # The release notes, release-notes/<version>.md, are on the tag before it is pushed: they are the text of
 # the GitHub release and the IntelliJ plugin's change notes, and a tag without them publishes nothing.
@@ -173,6 +173,56 @@ jobs:
           path: |
             open-java-format-native/build/native/nativeCompile/open-java-format-*
             !open-java-format-native/build/native/nativeCompile/*.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  # The Linux binaries as .deb packages, for the GitHub release and for the apt repository, openjavaformat/apt,
+  # which serves the packages of the newest release. Each is built on the runner its binary was built on and
+  # installed with apt on the oldest Ubuntu and Debian it supports before it goes into the release. The time of
+  # the tag's commit is the time of every file in a package, so a re-run makes the same bytes.
+  deb-packages:
+    name: deb package (${{ matrix.runner }})
+    needs: native-images
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-latest
+          - ubuntu-26.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Collect the binary
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: native-image-${{ matrix.runner }}
+          path: native-image
+
+      - name: Build the package
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" open-java-format-native/deb/build-deb.sh \
+            native-image/open-java-format-linux-glibc_* "$VERSION" deb-package
+
+      - name: Install the package on Ubuntu 22.04 and Debian 12
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          for image in ubuntu:22.04 debian:12; do
+            docker run --rm --volume "$PWD/open-java-format-native/deb:/scripts:ro" \
+              --volume "$PWD/deb-package:/packages:ro" "$image" \
+              sh /scripts/test-deb.sh "/packages/$(ls deb-package)" "$VERSION"
+          done
+
+      - name: Hand the package to the GitHub release
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: deb-package-${{ matrix.runner }}
+          path: deb-package/*.deb
           if-no-files-found: error
           retention-days: 1
 
@@ -433,14 +483,14 @@ jobs:
           JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
 
   # What Maven Central does not carry — the runnable formatter jar, the Gradle plugins' jar, the IntelliJ
-  # plugin zip, the Eclipse plugin jar, every platform's native binary as a plain download, and the
-  # WebAssembly module — goes into a draft GitHub release on the tag, each file signed with the release key.
-  # Its text is release-notes/<version>.md, and the plugin zip has the same change notes as the one on the
-  # Marketplace. Only once both deployments are published and the module is built; publishing the draft is a
-  # click on GitHub, and a re-run fails while a release for the tag exists.
+  # plugin zip, the Eclipse plugin jar, every platform's native binary as a plain download, the .deb
+  # packages and the WebAssembly module — goes into a draft GitHub release on the tag, each file signed with
+  # the release key. Its text is release-notes/<version>.md, and the plugin zip has the same change notes as
+  # the one on the Marketplace. Only once both deployments are published and the packages and the module are
+  # built; publishing the draft is a click on GitHub, and a re-run fails while a release for the tag exists.
   github-release:
     name: draft GitHub release
-    needs: [publish, wasm, release-notes]
+    needs: [publish, deb-packages, wasm, release-notes]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -463,6 +513,13 @@ jobs:
           pattern: native-image-*
           merge-multiple: true
 
+      - name: Collect the .deb packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: deb-packages
+          pattern: deb-package-*
+          merge-multiple: true
+
       - name: Collect the WebAssembly module
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -477,8 +534,8 @@ jobs:
 
       - name: Build the plugins and open the draft release
         run: >-
-          ./gradlew -PreleaseTarget=github -PnativeImages=native-images -PwasmModule=wasm-module
-          -PchangeNotes=change-notes/change-notes.html jreleaserRelease
+          ./gradlew -PreleaseTarget=github -PnativeImages=native-images -PdebPackages=deb-packages
+          -PwasmModule=wasm-module -PchangeNotes=change-notes/change-notes.html jreleaserRelease
         env:
           JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.JRELEASER_GPG_SECRET_KEY }}
