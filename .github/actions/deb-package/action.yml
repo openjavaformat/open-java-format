@@ -9,7 +9,7 @@ inputs:
     description: The native binary, for Linux on x86-64 or AArch64
     required: true
   version:
-    description: The package version, which the binary must print as its own
+    description: The version that the binary prints, which is the package version too (with 0~ in front when it does not start with a digit)
     required: true
   out-dir:
     description: The directory to write the package into
@@ -38,9 +38,15 @@ runs:
         COPYRIGHT: ${{ github.action_path }}/copyright
       run: |
         set -euo pipefail
-        # Debian's rule for an upstream version without an epoch: a digit first, then these characters.
-        if ! [[ $VERSION =~ ^[0-9][A-Za-z0-9.+~-]*$ ]]; then
-          echo "Not a Debian package version: $VERSION" >&2
+        # Debian's rule for an upstream version without an epoch: a digit first, then these characters. Outside
+        # a tag the binary's version can be a bare commit hash, which may start with a letter: 0~ in front makes
+        # it a version that sorts below every release.
+        deb_version=$VERSION
+        if ! [[ $deb_version =~ ^[0-9] ]]; then
+          deb_version=0~$deb_version
+        fi
+        if ! [[ $deb_version =~ ^[0-9][A-Za-z0-9.+~-]*$ ]]; then
+          echo "Not a Debian package version: $deb_version" >&2
           exit 1
         fi
 
@@ -69,7 +75,7 @@ runs:
         mkdir "$root/DEBIAN"
         cat > "$root/DEBIAN/control" <<CONTROL
         Package: open-java-format
-        Version: $VERSION
+        Version: $deb_version
         Architecture: $arch
         Maintainer: Alexey Abashev <alexey@openjavaformat.dev>
         Installed-Size: $(du -sk --apparent-size "$root/usr" | cut -f 1)
@@ -85,7 +91,7 @@ runs:
         epoch=${SOURCE_DATE_EPOCH:-$(date +%s)}
         find "$root" -exec touch --no-dereference --date "@$epoch" {} +
         mkdir -p "$OUT_DIR"
-        package=$OUT_DIR/open-java-format_${VERSION}_$arch.deb
+        package=$OUT_DIR/open-java-format_${deb_version}_$arch.deb
         # xz, which every dpkg reads: dpkg-deb's default, zstd, needs dpkg 1.21.18 or later.
         SOURCE_DATE_EPOCH=$epoch dpkg-deb --root-owner-group -Zxz --build "$root" "$package"
         rm -rf "$root"
