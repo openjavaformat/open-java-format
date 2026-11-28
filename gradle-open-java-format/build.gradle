@@ -179,6 +179,15 @@ tasks.named("test").configure {
         systemProperty 'testkit.gradleVersion', testkitGradleVersion.get()
     }
 
+    // The Gradle user home of the TestKit builds, which their downloads go to: the Android Gradle plugin and its
+    // dependencies above all. TestKit's default is under this task's temporary directory, which CI's cache does not
+    // reach, so CI passes a directory in the Gradle user home it caches. Locally the default stays: one directory for
+    // every checkout would be shared by tests that delete from it.
+    def testkitDir = providers.gradleProperty('testkitDir').filter { !it.isEmpty() }
+    if (testkitDir.isPresent()) {
+        systemProperty 'org.gradle.testkit.dir', testkitDir.get()
+    }
+
     if (rootProject.ext.nativeImageRequested) {
         dependsOn(writeNativeImagePath)
     } else {

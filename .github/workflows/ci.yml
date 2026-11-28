@@ -39,19 +39,27 @@ jobs:
       # on 2026-10-19). Only builds of the default branch write the cache; pull requests read it. Two
       # things stay out: the local build cache, left out on purpose for now, and the IDE the IntelliJ
       # plugin's tests start, whose 852 MB zip and the 2.1 GB it unpacks to under transforms would take
-      # longer to restore than to download and fill much of the repository's 10 GB. Leaving paths out is a
-      # feature of the default, proprietary cache provider, bundled in the action and free for public
-      # repositories; the open-source one has none.
+      # longer to restore than to download and fill much of the repository's 10 GB. One thing goes in besides
+      # the default `caches` and `notifications`: the downloads of the Gradle plugins' TestKit builds, the
+      # Android Gradle plugin and its dependencies above all. Those builds have a Gradle user home of their
+      # own, under build/tmp by default, which the cache did not reach: every job downloaded it all from
+      # Maven Central again, until Maven Central answered 429 Too Many Requests on 2026-11-28. -PtestkitDir
+      # puts that home at test-kit in this one. Choosing paths is a feature of the default, proprietary
+      # cache provider, bundled in the action and free for public repositories; the open-source one has none.
       - name: Cache Gradle's downloads
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            test-kit/caches/modules-2
           gradle-home-cache-excludes: |
             caches/build-cache-1
             caches/modules-2/files-2.1/com.jetbrains.intellij.idea
             caches/*/transforms
 
       - name: Build
-        run: ./gradlew check
+        run: ./gradlew check -PtestkitDir="$GRADLE_USER_HOME/test-kit"
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@a16be3a69023e9bd7e748ede768b3282ea7b30ce # v6.7.1
@@ -125,6 +133,10 @@ jobs:
       - name: Cache Gradle's downloads
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            test-kit/caches/modules-2
           gradle-home-cache-excludes: |
             caches/build-cache-1
             caches/modules-2/files-2.1/com.jetbrains.intellij.idea
@@ -147,7 +159,7 @@ jobs:
           TESTKIT_GRADLE: ${{ matrix.gradle }}
         run: >-
           ./gradlew test -PjavaRuntime="${JDK%-ea}" -PtestkitGradleVersion="$TESTKIT_GRADLE" ${{ matrix.gradle_args }}
-          -Porg.gradle.java.installations.paths="$TEST_JDK"
+          -Porg.gradle.java.installations.paths="$TEST_JDK" -PtestkitDir="$GRADLE_USER_HOME/test-kit"
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@a16be3a69023e9bd7e748ede768b3282ea7b30ce # v6.7.1
@@ -210,6 +222,10 @@ jobs:
       - name: Cache Gradle's downloads
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            test-kit/caches/modules-2
           gradle-home-cache-excludes: |
             caches/build-cache-1
             caches/modules-2/files-2.1/com.jetbrains.intellij.idea
@@ -258,7 +274,9 @@ jobs:
           out-dir: ${{ runner.temp }}/deb-package
 
       - name: Test the plugins against the image
-        run: ./gradlew -PnativeImage=true :open-java-format-jdk-bootstrap:test :gradle-open-java-format:test
+        run: >-
+          ./gradlew -PnativeImage=true -PtestkitDir="$GRADLE_USER_HOME/test-kit"
+          :open-java-format-jdk-bootstrap:test :gradle-open-java-format:test
         env:
           JDK21_HOME: ${{ steps.jdk21.outputs.path }}
 
@@ -325,6 +343,10 @@ jobs:
       - name: Cache Gradle's downloads
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
+          gradle-home-cache-includes: |
+            caches
+            notifications
+            test-kit/caches/modules-2
           gradle-home-cache-excludes: |
             caches/build-cache-1
             caches/modules-2/files-2.1/com.jetbrains.intellij.idea
