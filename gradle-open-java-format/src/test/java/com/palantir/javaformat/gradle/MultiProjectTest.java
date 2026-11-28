@@ -112,12 +112,21 @@ final class MultiProjectTest {
     void formats_with_a_formatter_dependency_that_has_variants_when_the_root_has_no_java() {
         writeLibraryWithVariants();
         // idea: updateOpenJavaFormatXml runs with every build and resolves palantirJavaFormat in the root project.
+        // The library is looked for in its own repository only: without exclusiveContent the root project asked
+        // Maven Central for it first, and a 429 from Maven Central failed the test.
         var project = project()
                 .plugins("idea")
                 .buildGradle("""
                     allprojects {
                         repositories {
-                            maven { url = file("%s") }
+                            exclusiveContent {
+                                forRepository {
+                                    maven { url = file("%s") }
+                                }
+                                filter {
+                                    includeGroup 'test'
+                                }
+                            }
                         }
                     }
                     dependencies {
