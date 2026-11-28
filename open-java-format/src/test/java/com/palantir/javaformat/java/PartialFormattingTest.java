@@ -319,6 +319,44 @@ public final class PartialFormattingTest {
         assertThat(output).isEqualTo(expectedOutput);
     }
 
+    @TestTemplate
+    public void rangeBetweenFormatterMarkersChangesNothing() throws Exception {
+        var input = lines(
+                "class Foo {", //
+                "  // @formatter:off",
+                "  int    kept   =  1;",
+                "  // @formatter:on",
+                "}",
+                "");
+        var idx = input.indexOf("kept");
+        var output = doGetFormatReplacements(input, idx, idx + 1);
+        assertThat(output).isEqualTo(input);
+    }
+
+    @TestTemplate
+    public void rangeAcrossFormatterMarkersFormatsTheCodeAroundThem() throws Exception {
+        var input = lines(
+                "class Foo {",
+                "  int    before   =  1;",
+                "  // @formatter:off",
+                "  int    kept   =  2;",
+                "  // @formatter:on",
+                "  int    after   =  3;",
+                "}",
+                "");
+        var expectedOutput = lines(
+                "class Foo {",
+                "  int before = 1;",
+                "  // @formatter:off",
+                "  int    kept   =  2;",
+                "  // @formatter:on",
+                "  int after = 3;",
+                "}",
+                "");
+        var output = doGetFormatReplacements(input, input.indexOf("before"), input.indexOf("after"));
+        assertThat(output).isEqualTo(expectedOutput);
+    }
+
     private static String doGetFormatReplacements(String input, int characterILo, int characterIHi) throws Exception {
         return Formatter.create().formatSource(input, List.of(Range.closedOpen(characterILo, characterIHi + 1)));
     }

@@ -16,6 +16,7 @@
 
 package com.palantir.javaformat.intellij;
 
+import com.intellij.application.options.CodeStyle;
 import com.intellij.codeInsight.actions.ReformatCodeProcessor;
 import com.intellij.formatting.service.AsyncFormattingRequest;
 import com.intellij.formatting.service.FormattingService;
@@ -95,6 +96,41 @@ final class PalantirJavaFormatFormattingServiceTest {
         });
 
         assertThat(file.getText()).isEqualTo(output);
+        assertThat(delegatingFormatter.wasInvoked()).isTrue();
+    }
+
+    @Test
+    void keepsCodeBetweenFormatterMarkersWhateverTheIdeSaysOfThem() throws Exception {
+        // The formatter honours the markers, as the build's does: the IDE's setting for them changes nothing.
+        var input = """
+                package com.foo;
+
+                class FormatTest {
+                    void configure(Http   http) {
+                        // @formatter:off
+                        http
+                            .authorizeRequests()
+                            .formLogin();
+                        // @formatter:on
+                    }
+                }
+                """;
+        var file = createPsiFile("com/foo/FormatTest.java", input);
+        var codeStyle = CodeStyle.createTestSettings(CodeStyle.getSettings(getProject()));
+        codeStyle.FORMATTER_TAGS_ENABLED = false;
+        var processor = new ReformatCodeProcessor(file, false);
+
+        CodeStyle.doWithTemporarySettings(
+                getProject(),
+                codeStyle,
+                () -> WriteCommandAction.runWriteCommandAction(getProject(), () -> {
+                    ProjectRootManager.getInstance(getProject())
+                            .setProjectSdk(getProjectDescriptor().getSdk());
+                    processor.run();
+                    PsiDocumentManager.getInstance(getProject()).commitAllDocuments();
+                }));
+
+        assertThat(file.getText()).isEqualTo(input.replace("Http   http", "Http http"));
         assertThat(delegatingFormatter.wasInvoked()).isTrue();
     }
 

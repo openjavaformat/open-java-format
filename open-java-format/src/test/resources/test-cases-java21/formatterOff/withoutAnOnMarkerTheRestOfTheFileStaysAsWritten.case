@@ -1,0 +1,18 @@
+----------
+class T {
+    int    formatted   =  1;
+
+    // @formatter:off
+    int    kept   =  2;
+
+    void   keptToo( ) { }
+}
+----------
+class T {
+    int formatted = 1;
+
+    // @formatter:off
+    int    kept   =  2;
+
+    void   keptToo( ) { }
+}

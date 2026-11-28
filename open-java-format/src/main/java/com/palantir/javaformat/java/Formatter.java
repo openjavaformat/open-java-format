@@ -17,9 +17,11 @@ package com.palantir.javaformat.java;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableRangeSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeSet;
+import com.google.common.collect.TreeRangeSet;
 import com.google.common.io.CharSink;
 import com.google.common.io.CharSource;
 import com.google.errorprone.annotations.Immutable;
@@ -340,7 +342,8 @@ public final class Formatter {
     }
 
     /**
-     * Emit a list of {@link Replacement}s to convert from input to output.
+     * Emit a list of {@link Replacement}s to convert from input to output. The code between {@code // @formatter:off}
+     * and {@code // @formatter:on} stays as written, and so does all of a statement or member that holds some of it.
      *
      * @param input the input compilation unit
      * @param characterRanges the character ranges to reformat
@@ -350,21 +353,66 @@ public final class Formatter {
     public List<Replacement> getFormatReplacements(String input, Collection<Range<Integer>> characterRanges)
             throws FormatterException {
         JavaInput javaInput = new JavaInput(input);
+        var codeToKeep = FormatterOffRegions.find(javaInput);
 
         // TODO(cushon): this is only safe because the modifier ordering doesn't affect whitespace,
         // and doesn't change the replacements that are output. This is not true in general for
         // 'de-linting' changes (e.g. import ordering).
-        javaInput = ModifierOrderer.reorderModifiers(javaInput, characterRanges);
+        javaInput = ModifierOrderer.reorderModifiers(
+                javaInput, codeToKeep.isEmpty() ? characterRanges : without(characterRanges, codeToKeep));
 
-        JavaCommentsHelper commentsHelper = new JavaCommentsHelper(javaInput, options);
-        JavaOutput javaOutput;
+        var javaOutput = layOut(javaInput);
+        RangeSet<Integer> tokenRangeSet = javaInput.characterRangesToTokenRanges(characterRanges);
+        if (!codeToKeep.isEmpty()) {
+            tokenRangeSet.removeAll(keptToks(javaInput, javaOutput, codeToKeep));
+        }
+        return javaOutput.getFormatReplacements(tokenRangeSet);
+    }
+
+    /**
+     * The character ranges of {@code input} that formatting keeps as written: the statements and members that hold
+     * code between {@code // @formatter:off} and {@code // @formatter:on}. {@link StringWrapper} leaves the literals
+     * in them as they are.
+     */
+    RangeSet<Integer> keptRanges(String input) throws FormatterException {
+        if (!FormatterOffRegions.mayHoldMarkers(input)) {
+            return ImmutableRangeSet.of();
+        }
+        var javaInput = new JavaInput(input);
+        var codeToKeep = FormatterOffRegions.find(javaInput);
+        RangeSet<Integer> kept = TreeRangeSet.create();
+        if (codeToKeep.isEmpty()) {
+            return kept;
+        }
+        var keptToks = keptToks(javaInput, layOut(javaInput), codeToKeep);
+        for (var toks : keptToks.asRanges()) {
+            var first = JavaOutput.startTok(javaInput.getToken(toks.lowerEndpoint()));
+            var last = JavaOutput.endTok(javaInput.getToken(toks.upperEndpoint() - 1));
+            kept.add(Range.closedOpen(first.getPosition(), last.getPosition() + last.length()));
+        }
+        return kept;
+    }
+
+    // A range is widened to the statements or members around it, so one next to code to keep would rewrite that code
+    // too: none of the statements and members that hold some of it is formatted.
+    private static RangeSet<Integer> keptToks(JavaInput javaInput, JavaOutput javaOutput, RangeSet<Integer> codeToKeep)
+            throws FormatterException {
+        return javaOutput.expandToBreakableRegions(javaInput.characterRangesToTokenRanges(codeToKeep.asRanges()));
+    }
+
+    private JavaOutput layOut(JavaInput javaInput) throws FormatterException {
         try {
-            javaOutput = format(javaInput, options, commentsHelper, debugMode);
+            return format(javaInput, options, new JavaCommentsHelper(javaInput, options), debugMode);
         } catch (FormattingError e) {
             throw new FormatterException(e.diagnostics());
         }
-        RangeSet<Integer> tokenRangeSet = javaInput.characterRangesToTokenRanges(characterRanges);
-        return javaOutput.getFormatReplacements(tokenRangeSet);
+    }
+
+    private static Collection<Range<Integer>> without(
+            Collection<Range<Integer>> characterRanges, RangeSet<Integer> codeToKeep) {
+        var rest = TreeRangeSet.create(characterRanges);
+        rest.removeAll(codeToKeep);
+        return rest.asRanges();
     }
 
     /**

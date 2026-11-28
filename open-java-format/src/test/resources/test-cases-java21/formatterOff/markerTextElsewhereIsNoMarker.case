@@ -1,0 +1,32 @@
+# A marker is a line or block comment that starts with it. The same text in a string, a text block, a Javadoc, a
+# Markdown doc comment, later in a comment or as part of a longer word turns nothing off.
+----------
+class T {
+    String literal = "// @formatter:off";
+    String block = """
+            // @formatter:off
+            """;
+    /** Mentions @formatter:off in a Javadoc. */
+    int    a   =  1;
+    /// @formatter:off in a Markdown doc comment
+    int    b   =  2;
+    // see @formatter:off
+    int    c   =  3;
+    // @formatter:offline
+    int    d   =  4;
+}
+----------
+class T {
+    String literal = "// @formatter:off";
+    String block = """
+        // @formatter:off
+        """;
+    /** Mentions @formatter:off in a Javadoc. */
+    int a = 1;
+    /// @formatter:off in a Markdown doc comment
+    int b = 2;
+    // see @formatter:off
+    int c = 3;
+    // @formatter:offline
+    int d = 4;
+}

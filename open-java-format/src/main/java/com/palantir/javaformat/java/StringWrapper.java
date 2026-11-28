@@ -123,7 +123,8 @@ public final class StringWrapper {
         // The pieces continue the way the formatter continues a chain of +: four columns times the multiplier of its
         // style, eight in OJF.
         var continuationIndent = 4 * formatter.options().indentationMultiplier();
-        TreeRangeMap<Integer, String> replacements = input.reflowReplacements(columnLimit, continuationIndent);
+        TreeRangeMap<Integer, String> replacements =
+                input.reflowReplacements(columnLimit, continuationIndent, formatter);
         if (replacements.asMapOfRanges().isEmpty()) {
             // needWrapping is an over-approximation, so there may be nothing to do after all.
             return input;
@@ -140,7 +141,7 @@ public final class StringWrapper {
                 // If formatting the replacement ranges resulted in a change, recalculate the replacements on
                 // the updated input.
                 input = firstPass;
-                replacements = input.reflowReplacements(columnLimit, continuationIndent);
+                replacements = input.reflowReplacements(columnLimit, continuationIndent, formatter);
             }
         }
         if (rangesFormatted && input.unchangedBy(replacements)) {
@@ -155,7 +156,7 @@ public final class StringWrapper {
         Source secondPass = result.format(formatter, rangesAfterAppliedReplacements(replacements));
 
         if (!secondPass.text().equals(result.text())) {
-            replacements = secondPass.reflowReplacements(columnLimit, continuationIndent);
+            replacements = secondPass.reflowReplacements(columnLimit, continuationIndent, formatter);
             result = secondPass.apply(replacements);
         }
 
@@ -183,17 +184,21 @@ public final class StringWrapper {
      */
     private record Source(String text, @Nullable RangeSet<Integer> ranges) {
 
-        /** The replacements of {@link #getReflowReplacements}, less those for literals outside the ranges. */
-        TreeRangeMap<Integer, String> reflowReplacements(int columnLimit, int continuationIndent)
+        /**
+         * The replacements of {@link #getReflowReplacements}, less those for literals outside the ranges and for
+         * literals in what formatting keeps as written, a statement or member with {@code // @formatter:off} code.
+         */
+        TreeRangeMap<Integer, String> reflowReplacements(int columnLimit, int continuationIndent, Formatter formatter)
                 throws FormatterException {
             TreeRangeMap<Integer, String> replacements = getReflowReplacements(columnLimit, continuationIndent, text);
             RangeSet<Integer> within = ranges;
-            if (within == null) {
+            var kept = formatter.keptRanges(text);
+            if (within == null && kept.isEmpty()) {
                 return replacements;
             }
             TreeRangeMap<Integer, String> inRanges = TreeRangeMap.create();
             replacements.asMapOfRanges().forEach((literal, replacement) -> {
-                if (within.intersects(literal)) {
+                if ((within == null || within.intersects(literal)) && !kept.intersects(literal)) {
                     inRanges.put(literal, replacement);
                 }
             });

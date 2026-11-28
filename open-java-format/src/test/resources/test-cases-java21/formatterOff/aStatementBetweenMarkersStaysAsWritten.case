@@ -1,0 +1,28 @@
+# The lines from the one with // @formatter:off to the one with // @formatter:on stay as written, such as a builder
+# chain laid out by hand, and the code around them is formatted (#215).
+----------
+class T {
+    void configure(Http   http) {
+        // @formatter:off
+        http
+            .authorizeRequests()
+                .anyRequest().authenticated()
+                .and()
+            .formLogin();
+        // @formatter:on
+        int    x   =  1;
+    }
+}
+----------
+class T {
+    void configure(Http http) {
+        // @formatter:off
+        http
+            .authorizeRequests()
+                .anyRequest().authenticated()
+                .and()
+            .formLogin();
+        // @formatter:on
+        int x = 1;
+    }
+}

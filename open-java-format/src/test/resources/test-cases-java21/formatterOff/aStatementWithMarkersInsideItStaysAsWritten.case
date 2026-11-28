@@ -1,0 +1,30 @@
+# Formatting lays out whole statements and members, so markers inside one, here in an argument list, keep all of it as
+# written. The statements around it are formatted.
+----------
+class T {
+    List<Integer> identity() {
+        int    before   =  1;
+        return List.of(
+                // @formatter:off
+                1,  0,
+                0,  1
+                // @formatter:on
+        );
+    }
+
+    int    after   =  2;
+}
+----------
+class T {
+    List<Integer> identity() {
+        int before = 1;
+        return List.of(
+                // @formatter:off
+                1,  0,
+                0,  1
+                // @formatter:on
+        );
+    }
+
+    int after = 2;
+}

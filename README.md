@@ -83,6 +83,11 @@ private static void configureResolvedVersionsWithVersionMapping(Project project)
 }
 ```
 
+Code between a `// @formatter:off` and a `// @formatter:on` comment stays as written, in every tool
+alike: the command line, Gradle, Spotless, IntelliJ IDEA and Eclipse. A statement with the markers
+inside it stays as written whole. The markers cannot be changed or turned off, so the IDE's own
+setting for them does not apply.
+
 ## Coming from palantir-java-format
 
 - **Same output, except for bug fixes.** The formatter is the code of palantir-java-format 2.98.0,

@@ -1,0 +1,22 @@
+# A long string outside the markers, in the statement that holds them, is not reflowed either: the statement stays as
+# written whole.
+----------
+class T {
+    List<String> f() {
+        return List.of("a string literal that is far too long for one line, so that the formatter would have to reflow it",
+                // @formatter:off
+                "x",  "y"
+                // @formatter:on
+        );
+    }
+}
+----------
+class T {
+    List<String> f() {
+        return List.of("a string literal that is far too long for one line, so that the formatter would have to reflow it",
+                // @formatter:off
+                "x",  "y"
+                // @formatter:on
+        );
+    }
+}
